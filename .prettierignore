@@ -1,0 +1,8 @@
+node_modules/
+dist/
+build/
+out/
+release/
+artifacts/
+src-tauri/gen/
+target/

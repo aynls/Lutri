@@ -1,0 +1,40 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 9rem;
+  padding: 1rem;
+  border-right: 1px solid GrayText;
+}
+
+.brand {
+  margin-bottom: 1rem;
+}
+
+.navigation button {
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.navigation button[aria-current="page"] {
+  font-weight: bold;
+}
+
+.workspace {
+  flex: 1;
+  padding: 1rem 2rem;
+}
