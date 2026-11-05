@@ -70,6 +70,16 @@
   overflow: auto;
   padding: 8px 20px 80px;
 }
+.gallery-date {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted);
+  margin: 10px 0 -8px;
+}
+.gallery-date:first-child {
+  margin-top: 4px;
+}
 .gallery-grid {
   gap: 16px;
 }

@@ -55,6 +55,7 @@ export function ImageStage({
         layer.style.width = `${reference.width}px`;
         layer.style.height = `${reference.height}px`;
         layer.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.scale})`;
+        for (const image of layer.querySelectorAll("img")) image.style.imageRendering = v.scale >= 3 ? "pixelated" : "";
       }
     setScaleLabel(Math.round(v.scale * 100));
   };

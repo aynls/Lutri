@@ -208,6 +208,11 @@ const messages = {
   failed: ["Failed", "生成失败", "失敗"],
   pending: ["Pending", "等待中", "待機中"],
   saved: ["Saved", "已保存", "保存済み"],
+  random: ["Random", "随机", "ランダム"],
+  newSeed: ["New seed", "换一个", "別の値"],
+  editTarget: ["Edit target", "编辑主图", "編集対象"],
+  imageCount: ["images", "张", "枚"],
+  requestPreview: ["Request preview", "请求预览", "リクエスト確認"],
 } as const;
 
 export type MessageKey = keyof typeof messages;

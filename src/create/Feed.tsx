@@ -9,6 +9,7 @@ import {
   ClockCounterClockwiseIcon,
 } from "@phosphor-icons/react";
 import type { FeedSlot, GalleryEntry } from "../domain/types";
+import { displayPrompt } from "../domain/references";
 import { ModelIcon } from "../components/ModelIcon";
 import { t } from "../i18n";
 import { combinationById } from "../models";
@@ -63,7 +64,7 @@ export function Feed({
       if (!task) continue;
       const column = heights.indexOf(Math.min(...heights));
       groups[column].push(slot);
-      heights[column] += (asset ? (254 * asset.height) / asset.width : 220) + 84;
+      heights[column] += (asset ? (254 * asset.height) / asset.width : 220) + 100;
     }
     return groups;
   }, [feed, columnCount, taskMap, assets]);
@@ -82,7 +83,8 @@ export function Feed({
               {column.map((slot) => {
                 const task = taskMap.get(slot.taskId)!;
                 const result = task.results[slot.resultIndex],
-                  asset = result?.assetId ? assets.get(result.assetId) : undefined;
+                  asset = result?.assetId ? assets.get(result.assetId) : undefined,
+                  prompt = displayPrompt(task.draft);
                 const busy = ["queued", "submitting", "generating", "downloading"].includes(task.status);
                 const status = result?.assetId
                   ? "missing"
@@ -134,20 +136,40 @@ export function Feed({
                           : String(slot.resultIndex + 1).padStart(2, "0")}
                       </span>
                     </footer>
+                    {prompt.trim() ? (
+                      <p className="result-prompt" title={prompt}>
+                        {prompt}
+                      </p>
+                    ) : null}
                     {asset && (
                       <div className="result-actions">
-                        <button title={t("useReference")} onClick={() => onReference(asset)}>
-                          <PlusIcon />
-                          {t("references")}
+                        <button
+                          title={t("useReference")}
+                          aria-label={t("useReference")}
+                          onClick={() => onReference(asset)}
+                        >
+                          <PlusIcon size={15} />
                         </button>
-                        <button title={t("favorites")} onClick={() => attempt(() => favorite(asset))}>
-                          <HeartIcon weight={asset.favorite ? "fill" : "regular"} />
+                        <button
+                          title={t("favorites")}
+                          aria-label={t("favorites")}
+                          onClick={() => attempt(() => favorite(asset))}
+                        >
+                          <HeartIcon size={15} weight={asset.favorite ? "fill" : "regular"} />
                         </button>
-                        <button title={t("saveAs")} onClick={() => attempt(() => exportImages([asset]))}>
-                          <DownloadSimpleIcon />
+                        <button
+                          title={t("saveAs")}
+                          aria-label={t("saveAs")}
+                          onClick={() => attempt(() => exportImages([asset]))}
+                        >
+                          <DownloadSimpleIcon size={15} />
                         </button>
-                        <button title={t("related")} onClick={() => onRelated(asset.asset.id)}>
-                          <ClockCounterClockwiseIcon />
+                        <button
+                          title={t("related")}
+                          aria-label={t("related")}
+                          onClick={() => onRelated(asset.asset.id)}
+                        >
+                          <ClockCounterClockwiseIcon size={15} />
                         </button>
                       </div>
                     )}

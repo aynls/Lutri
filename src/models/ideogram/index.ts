@@ -1,5 +1,5 @@
 import { ParameterFields } from "../../create/components/Fields";
-import { count, json, seed, select, text, toggle } from "../fields";
+import { adv, count, json, seed, select, text, toggle } from "../fields";
 import { runware, take } from "../requests";
 import { request, validateFields, values } from "../shared";
 import type { FieldDefinition, ModelCombination, ProviderId } from "../types";
@@ -21,6 +21,7 @@ function make(version: "4.0" | "4.5", provider: ProviderId): ModelCombination {
           quality,
           {
             ...text("context_window", ["Context window", "上下文区域", "コンテキスト領域"]),
+            advanced: true,
             visible: (d: Parameters<typeof values>[1]) => d.parameters.edit_mode === "precise",
           },
         ]
@@ -31,7 +32,7 @@ function make(version: "4.0" | "4.5", provider: ProviderId): ModelCombination {
             provider === "ideogram" ? ["turbo", "default", "quality"] : ["TURBO", "DEFAULT", "QUALITY"],
           ),
           ...(provider !== "ideogram"
-            ? [json("structured_prompt", ["Structured prompt", "结构化提示词", "構造化プロンプト"])]
+            ? [adv(json("structured_prompt", ["Structured prompt", "结构化提示词", "構造化プロンプト"]))]
             : []),
         ]),
     {
@@ -42,7 +43,7 @@ function make(version: "4.0" | "4.5", provider: ProviderId): ModelCombination {
       ? [magic, seed(), count(provider === "runware" ? "numberResults" : "num_images", provider === "runware" ? 20 : 8)]
       : []),
     ...(provider === "comfy"
-      ? [toggle("enable_copyright_detection", ["Copyright detection", "版权检测", "著作権チェック"])]
+      ? [adv(toggle("enable_copyright_detection", ["Copyright detection", "版权检测", "著作権チェック"]))]
       : []),
   ];
   return {

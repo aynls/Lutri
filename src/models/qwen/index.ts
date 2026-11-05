@@ -1,5 +1,5 @@
 import { ParameterFields } from "../../create/components/Fields";
-import { aspect, count, format, height, resolution, seed, select, text, toggle, width } from "../fields";
+import { adv, aspect, count, format, height, resolution, seed, select, text, toggle, width } from "../fields";
 import { contentImages, fal, imageSize, openRouter, runware, take } from "../requests";
 import { dimensionErrors, request, validateFields, values } from "../shared";
 import type { FieldDefinition, ModelCombination, ProviderId } from "../types";
@@ -40,19 +40,19 @@ function make(version: string, provider: ProviderId): ModelCombination {
   else if (provider === "fal")
     fields = [
       text("image_size", ["Image size", "图片尺寸", "画像サイズ"]),
-      text("negative_prompt", ["Negative prompt", "负面提示词", "ネガティブプロンプト"], 500),
+      adv(text("negative_prompt", ["Negative prompt", "负面提示词", "ネガティブプロンプト"], 500)),
       toggle("enable_prompt_expansion", ["Expand prompt", "扩展提示词", "プロンプト拡張"]),
       seed(),
       count("num_images", 6),
       format(),
-      toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"]),
-      toggle("enable_safety_checker", ["Safety checker", "安全检查", "安全チェック"]),
+      adv(toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"])),
+      adv(toggle("enable_safety_checker", ["Safety checker", "安全检查", "安全チェック"])),
     ];
   else
     fields = [
       text("size", ["Image size", "图片尺寸", "画像サイズ"]),
       count("n", 6),
-      ...(!old ? [text("negative_prompt", ["Negative prompt", "负面提示词", "ネガティブプロンプト"], 500)] : []),
+      ...(!old ? [adv(text("negative_prompt", ["Negative prompt", "负面提示词", "ネガティブプロンプト"], 500))] : []),
       expand,
       mode,
       ...(provider === "qwencloud" ? [toggle("enable_thinking", ["Thinking", "思考", "思考"])] : []),

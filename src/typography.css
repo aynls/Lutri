@@ -294,7 +294,7 @@ h2 {
   font-size: 12px;
 }
 .reference-add:only-child {
-  flex: 1;
+  grid-column: 1 / -1;
 }
 .reference-item {
   background: var(--surface);

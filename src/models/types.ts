@@ -22,7 +22,7 @@ export type Localized = { en: string; zh: string; ja: string };
 export interface FieldDefinition {
   key: string;
   label: Localized;
-  kind: "text" | "number" | "select" | "toggle" | "json" | "size";
+  kind: "text" | "number" | "select" | "toggle" | "json" | "size" | "seed";
   options?: readonly string[];
   min?: number;
   max?: number;
@@ -30,6 +30,7 @@ export interface FieldDefinition {
   integer?: boolean;
   maxLength?: number;
   default?: Json;
+  advanced?: boolean;
   visible?: (draft: GenerationDraft) => boolean;
 }
 

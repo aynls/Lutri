@@ -1,14 +1,27 @@
 import { ParameterFields } from "../../create/components/Fields";
 import type { Json } from "../../domain/types";
-import { aspect, count, fluxRatios, format, height, number, resolution, seed, text, toggle, width } from "../fields";
+import {
+  adv,
+  aspect,
+  count,
+  fluxRatios,
+  format,
+  height,
+  number,
+  resolution,
+  seed,
+  text,
+  toggle,
+  width,
+} from "../fields";
 import { dimensionErrors, request, validateFields, values } from "../shared";
 import { imageSize } from "../requests";
 import type { CompileContext, FieldDefinition, ModelCombination, ProviderId } from "../types";
 
 const safety = (max: number) => number("safety_tolerance", ["Safety tolerance", "审核容忍度", "安全許容度"], 0, max);
 const grounding = () => toggle("grounding", ["Web search", "联网搜索", "ウェブ検索"]);
-const version = () => text("version", ["Version", "版本", "バージョン"]);
-const user = () => text("user", ["User identifier", "用户标识", "ユーザー識別子"], 256);
+const version = () => adv(text("version", ["Version", "版本", "バージョン"]));
+const user = () => adv(text("user", ["User identifier", "用户标识", "ユーザー識別子"], 256));
 
 function promptWithRegions(context: CompileContext): string {
   if (!context.draft.regions.length) return context.prompt;
@@ -70,9 +83,9 @@ function make(provider: ProviderId, klein: boolean): ModelCombination {
           seed(),
           toggle("enable_prompt_expansion", ["Expand prompt", "扩展提示词", "プロンプト拡張"]),
           count("num_images", 4),
-          toggle("enable_safety_checker", ["Safety checker", "安全检查", "安全チェック"]),
+          adv(toggle("enable_safety_checker", ["Safety checker", "安全检查", "安全チェック"])),
           format(),
-          toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"]),
+          adv(toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"])),
         ]
       : [
           aspect(fluxRatios.filter((v) => v !== "9:21")),
@@ -80,7 +93,7 @@ function make(provider: ProviderId, klein: boolean): ModelCombination {
           toggle("enable_prompt_expansion", ["Expand prompt", "扩展提示词", "プロンプト拡張"]),
           safety(4),
           format("output_format", ["jpeg", "png"]),
-          toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"]),
+          adv(toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"])),
           version(),
         ];
   else
@@ -90,7 +103,7 @@ function make(provider: ProviderId, klein: boolean): ModelCombination {
       resolution(["0.75K", "1K", "2K", "4K"]),
       count("numberResults", 20),
       format("outputFormat", ["JPG", "PNG", "WEBP"]),
-      number("outputQuality", ["Compression quality", "压缩质量", "圧縮品質"], 20, 99),
+      adv(number("outputQuality", ["Compression quality", "压缩质量", "圧縮品質"], 20, 99)),
       ...(klein ? [seed(), number("steps", ["Steps", "步数", "ステップ"], 1, 50)] : [grounding(), safety(4)]),
     ];
   return {

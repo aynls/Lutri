@@ -1,5 +1,5 @@
 import { ParameterFields } from "../../create/components/Fields";
-import { count, format, json, select, text, toggle, seed } from "../fields";
+import { adv, count, format, json, select, text, toggle, seed } from "../fields";
 import { fal, imageSize, runware, take } from "../requests";
 import { request, validateFields, values } from "../shared";
 import type { ModelCombination, ProviderId } from "../types";
@@ -52,8 +52,8 @@ function make(variant: (typeof variants)[number], provider: ProviderId): ModelCo
     ...(provider !== "fal"
       ? [count(provider === "runware" ? "numberResults" : "n", provider === "runware" ? 20 : 6)]
       : []),
-    json("colors", ["Palette", "配色", "パレット"]),
-    json("background_color", ["Background color", "背景色", "背景色"]),
+    adv(json("colors", ["Palette", "配色", "パレット"])),
+    adv(json("background_color", ["Background color", "背景色", "背景色"])),
     ...(styles || provider === "recraft"
       ? [
           text("style_id", ["Style ID", "风格 ID", "スタイル ID"]),
@@ -67,7 +67,7 @@ function make(variant: (typeof variants)[number], provider: ProviderId): ModelCo
         : [
             seed(4294967295, "random_seed"),
             format("image_format", ["webp", "png"]),
-            select("response_format", ["Response format", "返回格式", "応答形式"], ["url", "b64_json"]),
+            adv(select("response_format", ["Response format", "返回格式", "応答形式"], ["url", "b64_json"])),
           ]),
   ];
   return {

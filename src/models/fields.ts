@@ -25,6 +25,7 @@ export const text = (key: string, names: [string, string, string], maxLength?: n
   kind: "text",
   maxLength,
 });
+export const adv = (field: FieldDefinition): FieldDefinition => ({ ...field, advanced: true });
 export const json = (key: string, names: [string, string, string]): FieldDefinition => ({
   key,
   label: label(...names),
@@ -36,9 +37,17 @@ export const resolution = (values: readonly string[]) =>
   select("resolution", ["Resolution", "分辨率", "解像度"], values);
 export const count = (key: string, max: number) =>
   number(key, ["Images per request", "单次生成数量", "リクエストごとの画像数"], 1, max);
-export const seed = (max = 2147483647, key = "seed") => number(key, ["Seed", "种子", "シード"], 0, max);
-export const format = (key = "output_format", values = ["jpeg", "png", "webp"]) =>
-  select(key, ["Format", "格式", "形式"], values);
+export const seed = (max = 2147483647, key = "seed"): FieldDefinition => ({
+  key,
+  label: label("Seed", "种子", "シード"),
+  kind: "seed",
+  min: 0,
+  max,
+});
+export const format = (key = "output_format", values = ["jpeg", "png", "webp"]): FieldDefinition => ({
+  ...select(key, ["Format", "格式", "形式"], values),
+  advanced: true,
+});
 export const width = (min: number, max: number, step = 1) => number("width", ["Width", "宽度", "幅"], min, max, step);
 export const height = (min: number, max: number, step = 1) =>
   number("height", ["Height", "高度", "高さ"], min, max, step);

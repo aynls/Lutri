@@ -1,6 +1,6 @@
 import { ParameterFields } from "../../create/components/Fields";
 import { seedreamRegions } from "./regions";
-import { aspect, count, format, height, number, resolution, seed, select, text, toggle, width } from "../fields";
+import { adv, aspect, count, format, height, number, resolution, seed, select, text, toggle, width } from "../fields";
 import { fal, imageSize, openRouter, runware, take } from "../requests";
 import { dimensionErrors, request, validateFields, values } from "../shared";
 import type { FieldDefinition, ModelCombination, ProviderId } from "../types";
@@ -72,21 +72,21 @@ function make(variant: "pro" | "flash" | "lite", provider: ProviderId): ModelCom
       count("num_images", 6),
       format("output_format", ["jpeg", "png"]),
       watermark,
-      toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"]),
-      toggle("enable_safety_checker", ["Safety checker", "安全检查", "安全チェック"]),
+      adv(toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"])),
+      adv(toggle("enable_safety_checker", ["Safety checker", "安全检查", "安全チェック"])),
       ...(lite ? [sequential, maxImages] : variant === "pro" ? [enhance] : []),
     ];
   else
     fields = [
       size,
       format("output_format", ["jpeg", "png"]),
-      select("response_format", ["Response format", "返回格式", "応答形式"], ["url", "b64_json"]),
+      adv(select("response_format", ["Response format", "返回格式", "応答形式"], ["url", "b64_json"])),
       watermark,
       ...(lite
         ? [
             sequential,
             maxImages,
-            ...(provider !== "comfy" ? [toggle("stream", ["Stream", "流式传输", "ストリーミング"])] : []),
+            ...(provider !== "comfy" ? [adv(toggle("stream", ["Stream", "流式传输", "ストリーミング"]))] : []),
             ...(provider === "ark" ? [toggle("web_search", ["Web search", "联网搜索", "ウェブ検索"])] : []),
           ]
         : [

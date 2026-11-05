@@ -11,6 +11,7 @@ export function References({
   onAdd,
   onView,
   limit,
+  primary,
 }: {
   draft: GenerationDraft;
   gallery: GalleryEntry[];
@@ -18,6 +19,7 @@ export function References({
   onAdd: () => void;
   onView: (id: string) => void;
   limit: number;
+  primary?: boolean;
 }) {
   const move = (index: number, direction: number) => {
     const references = [...draft.references];
@@ -41,7 +43,7 @@ export function References({
         {draft.references.map((reference, index) => {
           const asset = gallery.find((entry) => entry.asset.id === reference.assetId);
           return (
-            <div className="reference-item" key={reference.id}>
+            <div className={`reference-item${asset ? "" : " missing"}`} key={reference.id}>
               <button
                 className="image-button reference-preview"
                 disabled={!asset}
@@ -49,6 +51,7 @@ export function References({
                 onClick={() => onView(reference.assetId)}
               >
                 {asset ? <AssetImage entry={asset} thumbnail /> : <span className="missing-image">{t("missing")}</span>}
+                {primary && index === 0 ? <span className="reference-badge">{t("editTarget")}</span> : null}
               </button>
               <div>
                 <div className="reference-name">
@@ -67,6 +70,11 @@ export function References({
                     }
                   />
                 </div>
+                {asset ? (
+                  <small className="reference-dims">
+                    {asset.asset.width} × {asset.asset.height}
+                  </small>
+                ) : null}
                 <div className="reference-actions">
                   <button disabled={index === 0} aria-label="←" onClick={() => move(index, -1)}>
                     <ArrowLeftIcon />

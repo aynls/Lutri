@@ -51,7 +51,7 @@ export function validateFields(fields: FieldDefinition[], draft: GenerationDraft
     if (value === undefined || value === null || value === "") continue;
     const name = field.label[locale];
     if (
-      field.kind === "number" &&
+      (field.kind === "number" || field.kind === "seed") &&
       (typeof value !== "number" ||
         !Number.isFinite(value) ||
         (field.integer !== false && !Number.isInteger(value)) ||

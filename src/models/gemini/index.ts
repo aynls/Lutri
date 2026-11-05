@@ -1,5 +1,19 @@
 import { ParameterFields } from "../../create/components/Fields";
-import { aspect, count, format, height, json, resolution, select, text, toggle, width, seed, number } from "../fields";
+import {
+  adv,
+  aspect,
+  count,
+  format,
+  height,
+  json,
+  resolution,
+  select,
+  text,
+  toggle,
+  width,
+  seed,
+  number,
+} from "../fields";
 import { fal, inlineData, openRouter, runware } from "../requests";
 import { dimensionErrors, request, validateFields, values } from "../shared";
 import type { FieldDefinition, ModelCombination, ProviderId } from "../types";
@@ -54,23 +68,23 @@ function make(variant: (typeof variants)[number], provider: ProviderId): ModelCo
       count("num_images", 4),
       format(),
       select("safety_tolerance", ["Safety tolerance", "审核容忍度", "安全許容度"], ["1", "2", "3", "4", "5", "6"]),
-      text("system_prompt", ["System instruction", "系统指令", "システム指示"]),
-      toggle("limit_generations", ["Limit generations", "限制生成数量", "生成数を制限"]),
+      adv(text("system_prompt", ["System instruction", "系统指令", "システム指示"])),
+      adv(toggle("limit_generations", ["Limit generations", "限制生成数量", "生成数を制限"])),
       thinking,
       web,
       ...(variant.id === "2" ? [toggle("enable_image_search", ["Image search", "图片搜索", "画像検索"])] : []),
-      toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"]),
-      json("history", ["Conversation", "会话", "会話"]),
+      adv(toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"])),
+      adv(json("history", ["Conversation", "会话", "会話"])),
       ...(variant.id !== "2.1"
         ? [
             seed(),
-            { ...number("temperature", ["Temperature", "温度", "温度"], 0, 2, 0.01), integer: false },
-            { ...number("top_p", ["Top P", "Top P", "Top P"], 0, 1, 0.01), integer: false },
-            number("max_output_tokens", ["Output token limit", "输出令牌上限", "出力トークン上限"], 1, 65536),
+            adv({ ...number("temperature", ["Temperature", "温度", "温度"], 0, 2, 0.01), integer: false }),
+            adv({ ...number("top_p", ["Top P", "Top P", "Top P"], 0, 1, 0.01), integer: false }),
+            adv(number("max_output_tokens", ["Output token limit", "输出令牌上限", "出力トークン上限"], 1, 65536)),
           ]
         : []),
-      json("context", ["Context", "上下文", "コンテキスト"]),
-      toggle("return_history", ["Return conversation", "返回会话", "会話を返す"]),
+      adv(json("context", ["Context", "上下文", "コンテキスト"])),
+      adv(toggle("return_history", ["Return conversation", "返回会话", "会話を返す"])),
     ];
   else
     fields = [
@@ -80,8 +94,8 @@ function make(variant: (typeof variants)[number], provider: ProviderId): ModelCo
       web,
       ...(!lite ? [thinking] : []),
       ...(provider === "google"
-        ? [text("previous_interaction_id", ["Previous interaction", "上一轮交互", "前の対話"])]
-        : [toggle("uploadImagesToStorage", ["Hosted images", "托管图片", "画像ホスティング"])]),
+        ? [adv(text("previous_interaction_id", ["Previous interaction", "上一轮交互", "前の対話"]))]
+        : [adv(toggle("uploadImagesToStorage", ["Hosted images", "托管图片", "画像ホスティング"]))]),
     ];
   return {
     id: `${variant.model}:${provider}`,

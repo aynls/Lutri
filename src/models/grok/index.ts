@@ -1,5 +1,5 @@
 import { ParameterFields } from "../../create/components/Fields";
-import { aspect, commonRatios, count, format, height, number, resolution, select, toggle, width } from "../fields";
+import { adv, aspect, commonRatios, count, format, height, number, resolution, select, toggle, width } from "../fields";
 import { fal, openRouter, runware, take } from "../requests";
 import { dimensionErrors, request, validateFields, values } from "../shared";
 import type { FieldDefinition, ModelCombination, ProviderId } from "../types";
@@ -18,7 +18,7 @@ function make(provider: ProviderId): ModelCombination {
           quality,
           count("numberResults", 20),
           format("outputFormat", ["JPG", "PNG", "WEBP"]),
-          number("outputQuality", ["Compression quality", "压缩质量", "圧縮品質"], 20, 99),
+          adv(number("outputQuality", ["Compression quality", "压缩质量", "圧縮品質"], 20, 99)),
         ]
       : [
           aspect([
@@ -31,9 +31,9 @@ function make(provider: ProviderId): ModelCombination {
           quality,
           ...(provider !== "openrouter" ? [count(provider === "fal" ? "num_images" : "n", 10)] : []),
           ...(provider === "fal"
-            ? [format(), toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"])]
+            ? [format(), adv(toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"]))]
             : provider !== "openrouter"
-              ? [select("response_format", ["Response format", "返回格式", "応答形式"], ["url", "b64_json"])]
+              ? [adv(select("response_format", ["Response format", "返回格式", "応答形式"], ["url", "b64_json"]))]
               : []),
         ];
   return {

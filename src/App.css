@@ -256,17 +256,35 @@ small {
   overflow: hidden;
 }
 .references {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 7px;
-  overflow: auto;
-  padding-bottom: 4px;
 }
 .reference-item {
-  width: 96px;
-  flex-shrink: 0;
   border: 1px solid var(--line);
   border-radius: 5px;
   overflow: hidden;
+}
+.reference-item.missing {
+  border-color: #b26557;
+}
+.reference-preview {
+  position: relative;
+}
+.reference-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  background: var(--accent);
+  color: var(--surface);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+.reference-dims {
+  display: block;
+  font-size: 10px;
+  padding: 0 4px;
 }
 .reference-item > img {
   width: 94px;
@@ -299,6 +317,56 @@ small {
 .parameter-fields {
   display: grid;
   gap: 12px;
+}
+.field-inline {
+  display: flex;
+  gap: 6px;
+}
+.field-inline input {
+  flex: 1;
+  min-width: 0;
+}
+.field-inline button {
+  padding: 7px 8px;
+  flex-shrink: 0;
+}
+.advanced-fields {
+  border-top: 1px solid var(--line);
+}
+.advanced-fields > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 8px 0;
+}
+.advanced-fields > .parameter-fields {
+  padding-bottom: 6px;
+}
+.request-preview {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.request-preview > summary {
+  cursor: pointer;
+  color: var(--muted);
+  padding: 8px 0;
+}
+.request-preview pre {
+  max-height: 240px;
+  overflow: auto;
+  margin: 4px 0 8px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.request-preview > p {
+  padding: 4px 0 10px;
+  overflow-wrap: anywhere;
 }
 .field {
   display: grid;
@@ -1142,6 +1210,17 @@ small {
   align-items: center;
   justify-content: space-between;
   padding: 0 8px 8px;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+.result-card:hover .result-actions,
+.result-card:focus-within .result-actions {
+  opacity: 1;
+}
+@media (hover: none) {
+  .result-actions {
+    opacity: 1;
+  }
 }
 .result-actions button {
   padding: 5px;
@@ -1150,6 +1229,16 @@ small {
 }
 .result-actions button:hover {
   color: var(--accent);
+}
+.result-prompt {
+  padding: 0 12px 8px;
+  font-size: 11px;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 .result-card:focus-within .card-remove {
   opacity: 1;
@@ -1261,9 +1350,6 @@ small {
 }
 .reference-name small {
   font-size: 11px;
-}
-.reference-item {
-  width: 110px;
 }
 .reference-preview .missing-image {
   min-height: 0;

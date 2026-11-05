@@ -30,6 +30,7 @@ import { resumeTasks, submitBatch } from "./services/generation";
 import { Feed } from "./create/Feed";
 import { PromptField } from "./create/components/PromptField";
 import { References } from "./create/components/References";
+import { RequestPreview } from "./create/components/RequestPreview";
 import { Regions } from "./create/components/Regions";
 import { Gallery } from "./gallery/Gallery";
 import { History } from "./history/History";
@@ -300,6 +301,7 @@ export default function App() {
                   onAdd={() => setPicker(true)}
                   onView={view}
                   limit={combination.maxReferences}
+                  primary
                 />
                 {combination.mask && state.draft.references.length ? (
                   <div className="button-row">
@@ -319,6 +321,11 @@ export default function App() {
                     </button>
                   </div>
                   <Form combination={combination} draft={state.draft} onChange={changeDraft} />
+                  <RequestPreview
+                    combination={combination}
+                    draft={state.draft}
+                    configuration={state.preferences.providers[combination.provider] ?? {}}
+                  />
                 </section>
                 {combination.regions ? <Regions draft={state.draft} onChange={changeDraft} /> : null}
               </div>
@@ -357,7 +364,13 @@ export default function App() {
                   onClick={() => void submit().catch(onError)}
                 >
                   <SparkleIcon weight="fill" />
-                  {submitting ? t("submitting") : t("generate")}
+                  {submitting
+                    ? t("submitting")
+                    : `${t("generate")}${
+                        state.draft.requestCount * combination.outputCount(state.draft.parameters) > 1
+                          ? ` · ${state.draft.requestCount * combination.outputCount(state.draft.parameters)} ${t("imageCount")}`
+                          : ""
+                      }`}
                   <kbd>Ctrl ↵</kbd>
                 </button>
               </div>

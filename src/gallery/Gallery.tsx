@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import {
   HeartIcon,
@@ -299,62 +299,67 @@ export function Gallery({
         </div>
         <div className="gallery-scroll">
           <div className="gallery-grid" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${size}px, 1fr))` }}>
-            {entries.map((entry) => (
-              <article
-                className={`gallery-card ${selection.includes(entry.asset.id) ? "is-selected" : ""}`}
-                key={entry.asset.id}
-              >
-                <div className="gallery-image">
-                  <button
-                    className="image-button"
-                    title={entry.asset.name}
-                    onClick={(event) => {
-                      if (picker || event.ctrlKey || event.metaKey || event.shiftKey || selection.length)
-                        toggle(entry.asset.id, event.shiftKey);
-                      else onView(entry.asset.id);
-                    }}
-                  >
-                    <AssetImage entry={entry} thumbnail />
-                  </button>
-                  <input
-                    type="checkbox"
-                    aria-label={entry.asset.name}
-                    checked={selection.includes(entry.asset.id)}
-                    onChange={() => toggle(entry.asset.id)}
-                  />
-                  <button
-                    className="favorite"
-                    title={entry.favorite ? t("removeFavorite") : t("favorites")}
-                    onClick={() => attempt(() => favorite(entry))}
-                  >
-                    <HeartIcon weight={entry.favorite ? "fill" : "regular"} />
-                  </button>
-                </div>
-                <footer>
-                  <span title={entry.asset.name}>{entry.asset.name}</span>
-                  <small>
-                    {entry.asset.width} × {entry.asset.height}
-                  </small>
-                </footer>
-                {!picker && (
-                  <div className="gallery-actions">
-                    <button onClick={() => onReference(entry)}>{t("useReference")}</button>
-                    <details className="action-menu">
-                      <summary aria-label={t("details")}>
-                        <DotsThreeIcon size={20} />
-                      </summary>
-                      <div>
-                        <button onClick={() => onView(entry.asset.id)}>{t("details")}</button>
-                        {onUpscale && <button onClick={() => onUpscale(entry)}>{t("upscale")}</button>}
-                        <button onClick={() => onRelated(entry.asset.id)}>{t("related")}</button>
-                        <button onClick={() => attempt(() => exportImages([entry]))}>{t("saveAs")}</button>
-                        <CopyButton value={entry.asset.id} onError={onError} />
+            {entries.map((entry, index) => {
+              const day = sort === "name" ? null : new Date(entry.addedAt).toDateString();
+              const newDay =
+                day !== null && (index === 0 || new Date(entries[index - 1].addedAt).toDateString() !== day);
+              return (
+                <Fragment key={entry.asset.id}>
+                  {newDay ? <h3 className="gallery-date">{new Date(entry.addedAt).toLocaleDateString()}</h3> : null}
+                  <article className={`gallery-card ${selection.includes(entry.asset.id) ? "is-selected" : ""}`}>
+                    <div className="gallery-image">
+                      <button
+                        className="image-button"
+                        title={entry.asset.name}
+                        onClick={(event) => {
+                          if (picker || event.ctrlKey || event.metaKey || event.shiftKey || selection.length)
+                            toggle(entry.asset.id, event.shiftKey);
+                          else onView(entry.asset.id);
+                        }}
+                      >
+                        <AssetImage entry={entry} thumbnail />
+                      </button>
+                      <input
+                        type="checkbox"
+                        aria-label={entry.asset.name}
+                        checked={selection.includes(entry.asset.id)}
+                        onChange={() => toggle(entry.asset.id)}
+                      />
+                      <button
+                        className="favorite"
+                        title={entry.favorite ? t("removeFavorite") : t("favorites")}
+                        onClick={() => attempt(() => favorite(entry))}
+                      >
+                        <HeartIcon weight={entry.favorite ? "fill" : "regular"} />
+                      </button>
+                    </div>
+                    <footer>
+                      <span title={entry.asset.name}>{entry.asset.name}</span>
+                      <small>
+                        {entry.asset.width} × {entry.asset.height}
+                      </small>
+                    </footer>
+                    {!picker && (
+                      <div className="gallery-actions">
+                        <button onClick={() => onReference(entry)}>{t("useReference")}</button>
+                        <details className="action-menu">
+                          <summary aria-label={t("details")}>
+                            <DotsThreeIcon size={20} />
+                          </summary>
+                          <div>
+                            <button onClick={() => onView(entry.asset.id)}>{t("details")}</button>
+                            {onUpscale && <button onClick={() => onUpscale(entry)}>{t("upscale")}</button>}
+                            <button onClick={() => onRelated(entry.asset.id)}>{t("related")}</button>
+                            <button onClick={() => attempt(() => exportImages([entry]))}>{t("saveAs")}</button>
+                            <CopyButton value={entry.asset.id} onError={onError} />
+                          </div>
+                        </details>
                       </div>
-                    </details>
-                  </div>
-                )}
-              </article>
-            ))}
+                    )}
+                  </article>
+                </Fragment>
+              );
+            })}
           </div>
           {!entries.length && (
             <div className="empty-state">

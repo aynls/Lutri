@@ -1,5 +1,5 @@
 import { ParameterFields } from "../../create/components/Fields";
-import { aspect, commonRatios, count, format, height, toggle, width } from "../fields";
+import { adv, aspect, commonRatios, count, format, height, toggle, width } from "../fields";
 import { fal, openRouter } from "../requests";
 import { dimensionErrors, request, validateFields, values } from "../shared";
 import type { FieldDefinition, ModelCombination, ProviderId } from "../types";
@@ -17,7 +17,11 @@ function make(version: "2.5" | "2.6", provider: ProviderId): ModelCombination {
       : [
           aspect(commonRatios),
           ...(provider === "fal"
-            ? [count("num_images", 4), format(), toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"])]
+            ? [
+                count("num_images", 4),
+                format(),
+                adv(toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"])),
+              ]
             : version === "2.6"
               ? [grounding]
               : []),

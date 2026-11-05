@@ -1,14 +1,15 @@
 import { ParameterFields } from "../../create/components/Fields";
-import { aspect, count, format, height, number, select, text, toggle, width } from "../fields";
+import { adv, aspect, count, format, height, number, select, text, toggle, width } from "../fields";
 import { fal, imageSize, openRouter, runware, take } from "../requests";
 import { dimensionErrors, request, validateFields, values } from "../shared";
 import type { FieldDefinition, ModelCombination, ProviderId } from "../types";
 
 const quality = () => select("quality", ["Quality", "质量", "品質"], ["auto", "low", "medium", "high", "xhigh", "max"]);
 const background = () => select("background", ["Background", "背景", "背景"], ["auto", "transparent", "opaque"]);
-const moderation = () => select("moderation", ["Moderation", "审核", "モデレーション"], ["auto", "low"]);
+const moderation = () => adv(select("moderation", ["Moderation", "审核", "モデレーション"], ["auto", "low"]));
 const compression = () => ({
   ...number("output_compression", ["Compression quality", "压缩质量", "圧縮品質"], 0, 100),
+  advanced: true,
   visible: (draft: Parameters<typeof values>[1]) => draft.parameters.output_format !== "png",
 });
 
@@ -23,7 +24,7 @@ function make(variant: "flare" | "sunburst", provider: ProviderId): ModelCombina
       count("n", 10),
       compression(),
       moderation(),
-      toggle("stream", ["Stream", "流式传输", "ストリーミング"]),
+      adv(toggle("stream", ["Stream", "流式传输", "ストリーミング"])),
     ];
   else if (provider === "runware")
     fields = [
@@ -34,7 +35,7 @@ function make(variant: "flare" | "sunburst", provider: ProviderId): ModelCombina
       moderation(),
       count("numberResults", 20),
       format("outputFormat", ["JPG", "PNG", "WEBP"]),
-      number("outputQuality", ["Compression quality", "压缩质量", "圧縮品質"], 20, 99),
+      adv(number("outputQuality", ["Compression quality", "压缩质量", "圧縮品質"], 20, 99)),
     ];
   else
     fields = [
@@ -46,10 +47,10 @@ function make(variant: "flare" | "sunburst", provider: ProviderId): ModelCombina
       compression(),
       ...(provider === "fal"
         ? [
-            toggle("enable_safety_checker", ["Safety checker", "安全检查", "安全チェック"]),
-            toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"]),
+            adv(toggle("enable_safety_checker", ["Safety checker", "安全检查", "安全チェック"])),
+            adv(toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"])),
           ]
-        : [moderation(), text("user", ["User identifier", "用户标识", "ユーザー識別子"])]),
+        : [moderation(), adv(text("user", ["User identifier", "用户标识", "ユーザー識別子"]))]),
     ];
   return {
     id: `${model}:${provider}`,

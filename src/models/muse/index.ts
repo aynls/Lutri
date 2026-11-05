@@ -1,5 +1,5 @@
 import { ParameterFields } from "../../create/components/Fields";
-import { count, format, resolution, select, text, toggle } from "../fields";
+import { adv, count, format, resolution, select, text, toggle } from "../fields";
 import { fal, runware, take } from "../requests";
 import { request, validateFields, values } from "../shared";
 import type { ModelCombination, ProviderId } from "../types";
@@ -32,10 +32,10 @@ function make(provider: ProviderId): ModelCombination {
           count(provider === "fal" ? "num_images" : "n", 10),
           format(),
           ...(provider === "fal"
-            ? [toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"])]
+            ? [adv(toggle("sync_mode", ["Inline result", "内嵌结果", "インライン結果"]))]
             : [
-                select("response_format", ["Response format", "返回格式", "応答形式"], ["url", "b64_json"]),
-                toggle("stream", ["Stream", "流式传输", "ストリーミング"]),
+                adv(select("response_format", ["Response format", "返回格式", "応答形式"], ["url", "b64_json"])),
+                adv(toggle("stream", ["Stream", "流式传输", "ストリーミング"])),
               ]),
         ];
   return {
