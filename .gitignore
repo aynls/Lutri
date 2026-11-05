@@ -20,7 +20,6 @@ src-tauri/gen/
 
 # Editor directories and files
 .vscode/*
-!.vscode/extensions.json
 .idea
 .kilo/*
 .DS_Store
