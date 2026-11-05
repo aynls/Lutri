@@ -1,0 +1,1 @@
+Describe the desired final scene precisely: subject, action, composition, lighting, materials and atmosphere. For editing, identify what changes and what stays unchanged. Refer to input images by their ordered position. Keep object IDs and spatial instructions supplied by the user intact.

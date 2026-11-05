@@ -1,0 +1,138 @@
+import type { GenerationTask } from "../domain/types";
+import { displayPrompt } from "../domain/references";
+import { combinationById } from "../models";
+import { providerNames } from "../models/shared";
+import { localize, t } from "../i18n";
+import { useApplication } from "../services/store";
+import { AssetImage } from "../gallery/AssetImage";
+import { CopyButton } from "../components/CopyButton";
+
+export function RequestDetails({
+  task,
+  onView,
+  onError,
+}: {
+  task: GenerationTask;
+  onView: (id: string) => void;
+  onError: (error: unknown) => void;
+}) {
+  const { gallery } = useApplication();
+  const combination = combinationById(task.draft.combinationId);
+  return (
+    <div className="request-details">
+      <dl className="metadata-grid">
+        <dt>{t("model")}</dt>
+        <dd>{combination.label}</dd>
+        <dt>{t("provider")}</dt>
+        <dd>{providerNames[combination.provider]}</dd>
+        <dt>{t("request")}</dt>
+        <dd>
+          <code>{task.id}</code>
+          <CopyButton value={task.id} onError={onError} />
+        </dd>
+        <dt>{t("results")}</dt>
+        <dd>
+          {task.results.filter((result) => result.status === "saved").length} / {task.results.length} · {t(task.status)}
+        </dd>
+      </dl>
+      <section>
+        <div className="section-heading">
+          <span>{t("prompt")}</span>
+          <CopyButton value={displayPrompt(task.draft)} title={t("copyPrompt")} onError={onError} />
+        </div>
+        <p className="full-prompt">{displayPrompt(task.draft)}</p>
+      </section>
+      {!!task.draft.references.length && (
+        <section>
+          <h3>{t("references")}</h3>
+          <div className="detail-images">
+            {task.draft.references.map((reference, index) => {
+              const entry = gallery.find((value) => value.asset.id === reference.assetId);
+              return (
+                <div key={reference.id}>
+                  <button className="image-button" disabled={!entry} onClick={() => onView(reference.assetId)}>
+                    {entry ? (
+                      <AssetImage entry={entry} thumbnail />
+                    ) : (
+                      <span className="missing-image">{t("missing")}</span>
+                    )}
+                  </button>
+                  <span>
+                    {index + 1}. {reference.name}
+                  </span>
+                  <code title={reference.assetId}>{reference.assetId}</code>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+      <section>
+        <h3>{t("parameters")}</h3>
+        <dl className="metadata-grid">
+          {Object.entries(task.draft.parameters).map(([key, value]) => (
+            <div className="metadata-row" key={key}>
+              <dt>
+                {localize(
+                  combination.fields.find((field) => field.key === key)?.label ?? { en: key, zh: key, ja: key },
+                )}
+              </dt>
+              <dd>{typeof value === "object" ? <pre>{JSON.stringify(value, null, 2)}</pre> : String(value)}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+      {!!task.draft.regions.length && (
+        <details>
+          <summary>{t("regions")}</summary>
+          <pre>{JSON.stringify(task.draft.regions, null, 2)}</pre>
+        </details>
+      )}
+      {task.draft.mask && (
+        <details>
+          <summary>{t("mask")}</summary>
+          <code>{task.draft.mask.assetId}</code>
+        </details>
+      )}
+      {!!task.results.length && (
+        <section>
+          <h3>{t("results")}</h3>
+          <div className="detail-images">
+            {task.results.map((result, index) => {
+              const entry = gallery.find((value) => value.asset.id === result.assetId);
+              return (
+                <div key={result.id}>
+                  <button className="image-button" disabled={!entry} onClick={() => entry && onView(entry.asset.id)}>
+                    {entry ? (
+                      <AssetImage entry={entry} thumbnail />
+                    ) : (
+                      <span className="missing-image">{result.assetId ? t("missing") : t(result.status)}</span>
+                    )}
+                  </button>
+                  <span>
+                    {index + 1} · {t(result.status)}
+                  </span>
+                  {result.assetId && <CopyButton value={result.assetId} onError={onError} />}
+                  {result.error && <p className="error-text">{result.error}</p>}
+                  {result.metadata && (
+                    <details>
+                      <summary>{t("details")}</summary>
+                      <pre>{JSON.stringify(result.metadata, null, 2)}</pre>
+                    </details>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+      {task.metadata && (
+        <details>
+          <summary>{t("details")}</summary>
+          <pre>{JSON.stringify(task.metadata, null, 2)}</pre>
+        </details>
+      )}
+      {task.error && <p className="error-text">{task.error}</p>}
+    </div>
+  );
+}

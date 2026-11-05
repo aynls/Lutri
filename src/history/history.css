@@ -1,0 +1,97 @@
+.history-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+.history-toolbar {
+  flex-wrap: wrap;
+}
+.history-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+.history-batch {
+  margin-bottom: 16px;
+}
+.history-batch > header {
+  align-items: center;
+  background: var(--panel);
+}
+.history-batch > header > div {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.history-task {
+  align-items: flex-start;
+  gap: 14px;
+}
+.request-index {
+  font-size: 11px;
+  color: var(--muted);
+  padding-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.history-task-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.history-info .history-prompt {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.7;
+}
+.history-task-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.history-task-actions button {
+  margin: 0;
+}
+.history-task-actions small {
+  margin-left: auto;
+  font-size: 11px;
+}
+.history-images {
+  max-width: 34%;
+}
+.history-images > button {
+  width: 86px;
+  height: 86px;
+  flex-shrink: 0;
+  background: var(--panel);
+}
+.history-images img {
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+}
+.history-images .missing-image {
+  font-size: 11px;
+  min-height: 0;
+}
+.pagination {
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  border-top: 1px solid var(--line);
+}
+.request-dialog {
+  width: min(760px, 90vw);
+}
+.request-dialog .dialog-body {
+  padding: 24px;
+}

@@ -1,0 +1,233 @@
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { Channel } from "@tauri-apps/api/core";
+import type { GenerationDraft, Json } from "../domain/types";
+import { combinations, combinationById } from "../models";
+import { initialDraft } from "../models/shared";
+import { assetData, importAsset, native } from "./native";
+import { execute, submitBatch } from "./generation";
+import { getState, refreshGallery } from "./store";
+
+import { loadUpscaleModels, resolveUpscaleModel, noiseOptions } from "../upscale/catalog";
+
+const string = { type: "string" };
+const tools = [
+  {
+    name: "list_models",
+    description: "List model/provider combinations, fields, constraints and supported inputs.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "generate",
+    description:
+      "Submit one generation batch. Requests and per-request output counts are distinct. Returns existing task IDs; use get_tasks to monitor and resume_task to retrieve original results.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        combinationId: { ...string, enum: combinations.map((c) => c.id) },
+        prompt: string,
+        requestCount: { type: "integer", minimum: 1 },
+        parameters: { type: "object" },
+        references: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: string,
+              assetId: string,
+              name: string,
+              purpose: { enum: ["reference", "style", "subject"] },
+            },
+            required: ["assetId"],
+          },
+        },
+        regions: { type: "array", items: { type: "object" } },
+        mask: {
+          type: "object",
+          properties: { assetId: string, referenceId: string },
+          required: ["assetId", "referenceId"],
+        },
+      },
+      required: ["combinationId"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_tasks",
+    description: "Read generation batches, original task states and saved result asset IDs.",
+    inputSchema: { type: "object", properties: { batchId: string, taskId: string }, additionalProperties: false },
+  },
+  {
+    name: "resume_task",
+    description: "Resume polling or download for an existing task. Never submits another generation request.",
+    inputSchema: { type: "object", properties: { taskId: string }, required: ["taskId"], additionalProperties: false },
+  },
+  {
+    name: "find_assets",
+    description: "Find gallery assets by asset ID, filename or source.",
+    inputSchema: {
+      type: "object",
+      properties: { query: string, source: { enum: ["generated", "imported"] } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_image",
+    description: "Read an image by its gallery asset ID.",
+    inputSchema: {
+      type: "object",
+      properties: { assetId: string },
+      required: ["assetId"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "import_image",
+    description: "Copy a local image or Base64 data URL into reference materials and return its asset ID.",
+    inputSchema: {
+      type: "object",
+      properties: { path: string, dataUrl: string, name: string },
+      required: ["name"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "upscale",
+    description: "Run local neural super resolution on a gallery asset. Results do not enter generation history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        assetId: string,
+        modelId: string,
+        noise: { enum: noiseOptions.map((option) => option.id) },
+        scale: { type: "integer", minimum: 1, maximum: 4 },
+        tileSize: { type: "integer", minimum: 32, maximum: 512 },
+        destination: string,
+        saveToGallery: { type: "boolean" },
+      },
+      required: ["assetId", "modelId"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_upscale_models",
+    description: "List installed local super-resolution models.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+];
+let unlisten: UnlistenFn | undefined;
+export let connection: { url: string; token: string } | undefined;
+
+async function dispatch(name: string, args: Record<string, unknown>): Promise<unknown> {
+  switch (name) {
+    case "list_models":
+      return combinations.map(({ id, label, provider, maxReferences, mask, regions, fields, docs }) => ({
+        id,
+        label,
+        provider,
+        maxReferences,
+        mask,
+        regions,
+        docs,
+        fields: fields.map(({ visible, ...field }) => ({ ...field, conditional: !!visible })),
+      }));
+    case "generate": {
+      const combination = combinationById(String(args.combinationId));
+      const draft = { ...initialDraft(combination), ...args } as GenerationDraft;
+      draft.references = (draft.references ?? []).map((ref) => ({
+        ...ref,
+        id: ref.id ?? crypto.randomUUID(),
+        name: ref.name ?? ref.assetId,
+        purpose: ref.purpose ?? "reference",
+      }));
+      return submitBatch(draft, "mcp");
+    }
+    case "get_tasks":
+      return getState().tasks.filter(
+        (task) => (!args.batchId || task.batchId === args.batchId) && (!args.taskId || task.id === args.taskId),
+      );
+    case "resume_task": {
+      const id = String(args.taskId);
+      if (!getState().tasks.some((task) => task.id === id)) throw new Error("Task not found");
+      void execute(id);
+      return { taskId: id };
+    }
+    case "find_assets":
+      return getState().gallery.filter(
+        (entry) =>
+          (!args.source || entry.source === args.source) &&
+          (!args.query ||
+            `${entry.asset.id} ${entry.asset.name}`.toLowerCase().includes(String(args.query).toLowerCase())),
+      );
+    case "get_image":
+      return { image: await assetData(String(args.assetId)) };
+    case "import_image": {
+      const entry = await importAsset(String(args.name), {
+        path: typeof args.path === "string" ? args.path : undefined,
+        dataUrl: typeof args.dataUrl === "string" ? args.dataUrl : undefined,
+      });
+      await refreshGallery();
+      return entry;
+    }
+    case "list_upscale_models":
+      return loadUpscaleModels();
+    case "upscale": {
+      const models = await loadUpscaleModels();
+      const modelId = String(args.modelId);
+      const model = models.find((entry) => entry.id === modelId);
+      const scale = Number(args.scale ?? (model?.scales.includes(4) ? 4 : model?.scales[0]));
+      const fileId = resolveUpscaleModel(
+        models,
+        modelId,
+        scale,
+        typeof args.noise === "string" ? args.noise : undefined,
+      );
+      const result = await native("upscale_run", {
+        assetId: args.assetId,
+        modelId: fileId,
+        scale,
+        tileSize: args.tileSize ?? 128,
+        destination: args.destination ?? null,
+        saveToGallery: args.saveToGallery ?? true,
+        channel: new Channel<Json>(),
+      });
+      await refreshGallery();
+      return result;
+    }
+    default:
+      throw new Error("Unknown tool");
+  }
+}
+
+export async function startMcp(port: number) {
+  unlisten = await listen<{ id: string; name: string; arguments?: Record<string, unknown> }>(
+    "mcp-request",
+    async ({ payload }) => {
+      let result;
+      try {
+        const value = await dispatch(payload.name, payload.arguments ?? {});
+        if (payload.name === "get_image") {
+          const image = (value as { image: string }).image;
+          const match = /^data:([^;]+);base64,(.*)$/s.exec(image)!;
+          result = { content: [{ type: "image", mimeType: match[1], data: match[2] }] };
+        } else result = { content: [{ type: "text", text: JSON.stringify(value) }] };
+      } catch (error) {
+        result = { isError: true, content: [{ type: "text", text: String(error) }] };
+      }
+      await native("mcp_reply", { id: payload.id, result });
+    },
+  );
+  try {
+    connection = await native<{ url: string; token: string }>("mcp_start", { port, tools });
+    return connection;
+  } catch (error) {
+    unlisten();
+    unlisten = undefined;
+    throw error;
+  }
+}
+export async function stopMcp() {
+  await native("mcp_stop");
+  unlisten?.();
+  unlisten = undefined;
+  connection = undefined;
+}

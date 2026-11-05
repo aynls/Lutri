@@ -1,0 +1,116 @@
+.upscale-panel {
+  padding: 20px;
+  gap: 22px;
+  overflow: visible;
+}
+.upscale-panel > label {
+  font-size: 13px;
+}
+.upscale-panel .folder-button {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+  text-align: left;
+}
+.upscale-panel .button-row {
+  display: flex;
+}
+.upscale-submit {
+  margin-top: auto;
+  display: grid;
+  gap: 12px;
+}
+.upscale-submit small {
+  font-size: 12px;
+}
+.upscale-results {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.upscale-grid {
+  padding: 20px;
+  gap: 16px;
+}
+.upscale-grid article {
+  position: relative;
+}
+.upscale-grid .image-button img {
+  object-fit: contain;
+}
+.upscale-remove {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 4;
+  padding: 4px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.upscale-single {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+}
+.upscale-single > article {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+.upscale-single .empty-state,
+.upscale-grid .empty-state {
+  flex: 1;
+  grid-column: 1 / -1;
+}
+.upscale-single .upscale-remove {
+  top: 52px;
+}
+.upscale-job-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  gap: 8px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: 12px;
+}
+.upscale-job-footer > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  flex: 1;
+}
+.upscale-job-footer strong {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+}
+.upscale-job-footer small {
+  font-size: 11px;
+}
+.upscale-job-footer button {
+  font-size: 12px;
+}
+.upscale-workspace progress {
+  width: 100%;
+  height: 3px;
+  border: 0;
+  accent-color: var(--accent);
+}
+.upscale-workspace article > .error-text {
+  padding: 12px;
+  max-height: 130px;
+  overflow: auto;
+  font-size: 12px;
+}
+.upscale-grid .upscale-job-footer {
+  justify-content: flex-start;
+}
+.upscale-grid .upscale-job-footer > div {
+  flex-basis: 100%;
+}

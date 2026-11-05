@@ -1,0 +1,232 @@
+.gallery-content {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.library-sidebar {
+  overflow: auto;
+}
+.board-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.content-toolbar {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  min-height: 56px;
+}
+.content-toolbar button {
+  border-color: transparent;
+}
+.gallery-toolbar {
+  flex-wrap: wrap;
+}
+.gallery-toolbar > select {
+  width: 118px;
+  font-size: 12px;
+}
+.filter-bar {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  flex-wrap: wrap;
+}
+.filter-bar label {
+  font-size: 11px;
+  color: var(--muted);
+  flex: 1;
+  min-width: 100px;
+}
+.filter-bar input,
+.filter-bar select {
+  font-size: 12px;
+}
+.selection-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  font-size: 12px;
+  min-height: 42px;
+  flex-shrink: 0;
+}
+.selection-toolbar button {
+  font-size: 12px;
+  padding: 4px;
+}
+.thumbnail-size {
+  width: 75px;
+  padding: 0;
+  accent-color: var(--accent);
+}
+.gallery-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 20px 80px;
+}
+.gallery-grid {
+  gap: 16px;
+}
+.gallery-card {
+  border: 1px solid transparent;
+  padding: 4px;
+  border-radius: 8px;
+  position: relative;
+}
+.gallery-card.is-selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.gallery-card:has(.action-menu[open]) {
+  z-index: 10;
+}
+.gallery-image {
+  border: 1px solid var(--line);
+}
+.gallery-image img {
+  object-fit: contain;
+}
+.gallery-image > input {
+  width: 16px;
+  height: 16px;
+  opacity: 0;
+  cursor: pointer;
+}
+.gallery-card:hover .gallery-image > input,
+.gallery-image > input:checked,
+.gallery-image > input:focus-visible {
+  opacity: 1;
+}
+.gallery-image > .favorite {
+  opacity: 0;
+}
+.gallery-card:hover .favorite,
+.gallery-card:focus-within .favorite {
+  opacity: 1;
+}
+.gallery-card footer {
+  padding: 9px 2px 2px;
+  flex-direction: column;
+  gap: 3px;
+}
+.gallery-card footer small {
+  font-variant-numeric: tabular-nums;
+}
+.gallery-actions {
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 3px;
+}
+.gallery-actions > button {
+  font-size: 11px;
+}
+.gallery-selection-footer {
+  padding: 12px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+  font-size: 13px;
+}
+.gallery-selection-footer > select {
+  width: 140px;
+  font-size: 12px;
+}
+.gallery-selection-footer > .primary-button {
+  margin-left: auto;
+  min-width: 100px;
+}
+.asset-picker .dialog-body {
+  display: flex;
+  overflow: hidden;
+}
+.viewer-workspace {
+  flex-direction: column;
+}
+.viewer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  height: 60px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.viewer-toolbar > strong {
+  max-width: 30%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  font-size: 13px;
+}
+.viewer-toolbar .button-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.viewer-toolbar .button-row button {
+  border: 0;
+}
+.viewer-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.viewer-body > .empty-state {
+  flex: 1;
+}
+.viewer-inspector {
+  width: 300px;
+  flex-shrink: 0;
+  padding: 20px;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  overflow: auto;
+  font-size: 13px;
+}
+.viewer-inspector > section {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.viewer-inspector h2 {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.viewer-inspector p {
+  color: var(--muted);
+}
+.viewer-inspector .full-prompt {
+  color: var(--text);
+}
+.asset-id {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.asset-id code {
+  word-break: break-all;
+  font-size: 11px;
+  color: var(--muted);
+}
+.viewer-inspector .metadata-grid {
+  grid-template-columns: 78px minmax(0, 1fr);
+  font-size: 12px;
+  gap: 8px;
+}
+
+.gallery-actions .action-menu > div {
+  top: auto;
+  bottom: calc(100% + 4px);
+}

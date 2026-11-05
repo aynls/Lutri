@@ -1,0 +1,1 @@
+Describe subjects, spatial relationships, style and lighting clearly. Quote text that must appear in the image exactly. When editing multiple images, refer to image 1, image 2 and image 3 consistently and explain each image's role.

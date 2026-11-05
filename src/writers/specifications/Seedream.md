@@ -1,0 +1,1 @@
+Use natural language to describe subject, action, composition and style. State the intended visual result and the relationship between reference images. Preserve any requested text verbatim. Avoid redundant quality tags.

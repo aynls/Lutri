@@ -1,0 +1,1 @@
+Write a coherent description rather than a disconnected list of tags. Explain the subject, camera viewpoint, composition, lighting and artistic intent. Assign a clear role to every reference. For changes, describe the exact edit and preserve everything else.

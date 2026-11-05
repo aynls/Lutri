@@ -1,0 +1,35 @@
+import { useEffect, useRef, useState } from "react";
+import { CheckIcon, CopyIcon } from "@phosphor-icons/react";
+import { t } from "../i18n";
+
+export function CopyButton({
+  value,
+  title = t("copyId"),
+  onError,
+}: {
+  value: string;
+  title?: string;
+  onError: (error: unknown) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return (
+    <button
+      title={copied ? t("copied") : title}
+      aria-label={copied ? t("copied") : title}
+      onClick={() =>
+        void navigator.clipboard
+          .writeText(value)
+          .then(() => {
+            setCopied(true);
+            clearTimeout(timer.current);
+            timer.current = setTimeout(() => setCopied(false), 1800);
+          })
+          .catch(onError)
+      }
+    >
+      {copied ? <CheckIcon /> : <CopyIcon />}
+    </button>
+  );
+}

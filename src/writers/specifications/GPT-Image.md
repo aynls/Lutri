@@ -1,0 +1,1 @@
+State the intended use and composition. Specify exact visible text in quotation marks, typography, placement, lighting and material details. For edits, explicitly preserve identity, framing and unmodified elements. Avoid contradictory requirements.

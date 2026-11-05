@@ -1,0 +1,1 @@
+Place exact lettering in quotation marks. Describe hierarchy, alignment, margins, type style and legibility. Separate text content from visual instructions. Do not invent extra labels, logos or captions.
