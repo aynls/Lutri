@@ -4,8 +4,14 @@
   padding: 0;
   overflow: hidden;
 }
-.library-sidebar {
+.library-nav {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+  padding: 22px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .board-name {
   overflow: hidden;
@@ -197,15 +203,20 @@
   flex: 1;
 }
 .viewer-inspector {
-  width: 300px;
-  flex-shrink: 0;
-  padding: 20px;
   background: var(--surface);
   border-left: 1px solid var(--line);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   font-size: 13px;
 }
-.viewer-inspector > section {
+.inspector-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px;
+}
+.inspector-scroll > section {
   display: grid;
   gap: 12px;
   margin-bottom: 28px;

@@ -16,6 +16,7 @@ import { AssetImage } from "./AssetImage";
 import { getState, refreshGallery, updateState, useApplication } from "../services/store";
 import { Dialog } from "../components/Dialog";
 import { CopyButton } from "../components/CopyButton";
+import { ResizablePanel } from "../components/ResizablePanel";
 import { chooseImages, exportImages, favorite } from "./actions";
 export { chooseImages, favorite } from "./actions";
 
@@ -163,45 +164,54 @@ export function Gallery({
   };
   return (
     <div className="gallery-workspace">
-      <aside className="library-sidebar">
-        {(["all", "generated", "imported", "favorites"] as const).map((id) => (
-          <button
-            className={filter === id ? "selected" : ""}
-            key={id}
-            onClick={() => {
-              setFilter(id);
-              setSelected([]);
-            }}
-          >
-            {t(id)}
-            <span>
-              {
-                gallery.filter((entry) => id === "all" || entry.source === id || (id === "favorites" && entry.favorite))
-                  .length
-              }
-            </span>
-          </button>
-        ))}
-        <div className="section-heading">
-          <span>{t("boards")}</span>
-          <button title={t("newBoard")} onClick={() => setBoardEditor({ name: "" })}>
-            <PlusIcon />
-          </button>
+      <ResizablePanel
+        className="library-sidebar"
+        storageKey="lutri.gallery.sidebar"
+        initialWidth={180}
+        minWidth={150}
+        maxWidth={320}
+      >
+        <div className="library-nav">
+          {(["all", "generated", "imported", "favorites"] as const).map((id) => (
+            <button
+              className={filter === id ? "selected" : ""}
+              key={id}
+              onClick={() => {
+                setFilter(id);
+                setSelected([]);
+              }}
+            >
+              {t(id)}
+              <span>
+                {
+                  gallery.filter(
+                    (entry) => id === "all" || entry.source === id || (id === "favorites" && entry.favorite),
+                  ).length
+                }
+              </span>
+            </button>
+          ))}
+          <div className="section-heading">
+            <span>{t("boards")}</span>
+            <button title={t("newBoard")} onClick={() => setBoardEditor({ name: "" })}>
+              <PlusIcon />
+            </button>
+          </div>
+          {boards.map((entry) => (
+            <button
+              className={filter === entry.id ? "selected" : ""}
+              key={entry.id}
+              onClick={() => {
+                setFilter(entry.id);
+                setSelected([]);
+              }}
+            >
+              <span className="board-name">{entry.name}</span>
+              <small>{gallery.filter((image) => image.boardIds.includes(entry.id)).length}</small>
+            </button>
+          ))}
         </div>
-        {boards.map((entry) => (
-          <button
-            className={filter === entry.id ? "selected" : ""}
-            key={entry.id}
-            onClick={() => {
-              setFilter(entry.id);
-              setSelected([]);
-            }}
-          >
-            <span className="board-name">{entry.name}</span>
-            <small>{gallery.filter((image) => image.boardIds.includes(entry.id)).length}</small>
-          </button>
-        ))}
-      </aside>
+      </ResizablePanel>
       <div className="gallery-content">
         <div className="content-toolbar gallery-toolbar">
           <div className="search-input">

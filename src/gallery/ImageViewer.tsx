@@ -7,6 +7,7 @@ import { imageUrl } from "../services/native";
 import { t } from "../i18n";
 import { ImageStage } from "../components/ImageStage";
 import { CopyButton } from "../components/CopyButton";
+import { ResizablePanel } from "../components/ResizablePanel";
 import { RequestDetails } from "../history/RequestDetails";
 import { exportImages, favorite } from "./actions";
 
@@ -76,22 +77,31 @@ export function ImageViewer({ assetId }: { assetId: string }) {
           <div className="empty-state">{ready ? t("missing") : <span className="spinner" />}</div>
         )}
         {info && (
-          <aside className="viewer-inspector">
-            {entry && (
-              <section>
-                <h2>{entry.asset.name}</h2>
-                <p>
-                  {entry.asset.width} × {entry.asset.height} · {entry.asset.mediaType.split("/")[1].toUpperCase()}
-                </p>
-                <p>{new Date(entry.addedAt).toLocaleString()}</p>
-                <div className="asset-id">
-                  <code>{current}</code>
-                  <CopyButton value={current} onError={onError} />
-                </div>
-              </section>
-            )}
-            {task && <RequestDetails task={task} onView={setCurrent} onError={onError} />}
-          </aside>
+          <ResizablePanel
+            className="viewer-inspector"
+            storageKey="lutri.viewer.inspector"
+            initialWidth={300}
+            minWidth={240}
+            maxWidth={480}
+            side="right"
+          >
+            <div className="inspector-scroll">
+              {entry && (
+                <section>
+                  <h2>{entry.asset.name}</h2>
+                  <p>
+                    {entry.asset.width} × {entry.asset.height} · {entry.asset.mediaType.split("/")[1].toUpperCase()}
+                  </p>
+                  <p>{new Date(entry.addedAt).toLocaleString()}</p>
+                  <div className="asset-id">
+                    <code>{current}</code>
+                    <CopyButton value={current} onError={onError} />
+                  </div>
+                </section>
+              )}
+              {task && <RequestDetails task={task} onView={setCurrent} onError={onError} />}
+            </div>
+          </ResizablePanel>
         )}
       </div>
       {error && (

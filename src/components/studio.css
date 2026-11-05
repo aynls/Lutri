@@ -57,6 +57,7 @@
 }
 .resizable-panel {
   position: relative;
+  flex-shrink: 0;
   max-width: 48vw;
 }
 .panel-resizer {
@@ -76,6 +77,10 @@
   top: 0;
   bottom: 0;
   left: 3px;
+}
+.panel-resizer.mirror {
+  right: auto;
+  left: -4px;
 }
 .panel-resizer:hover::after,
 .panel-resizer:focus-visible::after {

@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import type { GalleryEntry, GenerationDraft, Rectangle, Region } from "../../domain/types";
 import { Dialog } from "../../components/Dialog";
+import { ResizablePanel } from "../../components/ResizablePanel";
 import { useEditHistory } from "../../components/useEditHistory";
 import { AssetImage } from "../../gallery/AssetImage";
 import { useApplication } from "../../services/store";
@@ -276,177 +277,185 @@ export function LayoutEditor({
       }
     >
       <div className="layout-workspace">
-        <aside className="region-inspector">
-          <div className="region-list-toolbar">
-            <strong>
-              {t("regions")} <small>{regions.length}</small>
-            </strong>
-            <span className="toolbar-spacer" />
-            <button disabled={!history.canUndo} onClick={history.undo} title={t("undo")}>
-              <ArrowCounterClockwiseIcon />
-            </button>
-            <button disabled={!history.canRedo} onClick={history.redo} title={t("redo")}>
-              <ArrowClockwiseIcon />
-            </button>
-            <button onClick={() => add()} title={t("add")}>
-              <PlusIcon />
-            </button>
-          </div>
-          <div className="region-list">
-            {regions.map((region, index) => (
-              <button
-                key={region.id}
-                className={selected?.id === region.id ? "selected" : ""}
-                onClick={() => {
-                  setSelection(region.id);
-                  setError("");
-                }}
-              >
-                <span className="region-color" style={{ background: regionColors[index % regionColors.length] }} />
-                <span>{region.id}</span>
-                <small>
-                  {t(
-                    operation(region) === "place"
-                      ? "placeObject"
-                      : operation(region) === "move"
-                        ? "moveObject"
-                        : operation(region) === "anchor"
-                          ? "anchorObject"
-                          : "removeObject",
-                  )}
-                </small>
+        <ResizablePanel
+          className="region-inspector"
+          storageKey="lutri.layout.inspector"
+          initialWidth={290}
+          minWidth={220}
+          maxWidth={420}
+        >
+          <div className="region-scroll">
+            <div className="region-list-toolbar">
+              <strong>
+                {t("regions")} <small>{regions.length}</small>
+              </strong>
+              <span className="toolbar-spacer" />
+              <button disabled={!history.canUndo} onClick={history.undo} title={t("undo")}>
+                <ArrowCounterClockwiseIcon />
               </button>
-            ))}
-          </div>
-          {selected ? (
-            <div className="region-properties" key={selected.id}>
-              <div className="region-object-actions">
+              <button disabled={!history.canRedo} onClick={history.redo} title={t("redo")}>
+                <ArrowClockwiseIcon />
+              </button>
+              <button onClick={() => add()} title={t("add")}>
+                <PlusIcon />
+              </button>
+            </div>
+            <div className="region-list">
+              {regions.map((region, index) => (
                 <button
+                  key={region.id}
+                  className={selected?.id === region.id ? "selected" : ""}
                   onClick={() => {
-                    const id = newId();
-                    history.change([...regions, { ...structuredClone(selected), id }]);
-                    setSelection(id);
-                  }}
-                  title={t("duplicate")}
-                >
-                  <CopyIcon />
-                </button>
-                <button disabled={selectedIndex === 0} title={t("moveUp")} onClick={() => move(-1)}>
-                  <ArrowUpIcon />
-                </button>
-                <button disabled={selectedIndex === regions.length - 1} title={t("moveDown")} onClick={() => move(1)}>
-                  <ArrowDownIcon />
-                </button>
-                <span className="toolbar-spacer" />
-                <button title={t("remove")} className="danger-button" onClick={remove}>
-                  <TrashIcon />
-                </button>
-              </div>
-              <label>
-                {t("regionName")}
-                <CommitText
-                  label={t("regionName")}
-                  value={selected.id}
-                  onCommit={(value) => {
-                    const id = value.trim();
-                    if (
-                      !/^[A-Za-z0-9_]+$/.test(id) ||
-                      regions.some((region) => region.id !== selected.id && region.id === id)
-                    ) {
-                      setError(t("regionNameError"));
-                      return;
-                    }
-                    update(selected.id, { id });
-                    setSelection(id);
+                    setSelection(region.id);
                     setError("");
                   }}
-                />
-              </label>
-              {!!draft.references.length && (
-                <label>
-                  {t("operation")}
-                  <select
-                    value={operation(selected)}
-                    onChange={(event) => changeOperation(event.target.value as NonNullable<Region["operation"]>)}
+                >
+                  <span className="region-color" style={{ background: regionColors[index % regionColors.length] }} />
+                  <span>{region.id}</span>
+                  <small>
+                    {t(
+                      operation(region) === "place"
+                        ? "placeObject"
+                        : operation(region) === "move"
+                          ? "moveObject"
+                          : operation(region) === "anchor"
+                            ? "anchorObject"
+                            : "removeObject",
+                    )}
+                  </small>
+                </button>
+              ))}
+            </div>
+            {selected ? (
+              <div className="region-properties" key={selected.id}>
+                <div className="region-object-actions">
+                  <button
+                    onClick={() => {
+                      const id = newId();
+                      history.change([...regions, { ...structuredClone(selected), id }]);
+                      setSelection(id);
+                    }}
+                    title={t("duplicate")}
                   >
-                    <option value="place">{t("placeObject")}</option>
-                    <option value="move">{t("moveObject")}</option>
-                    <option value="anchor">{t("anchorObject")}</option>
-                    <option value="remove">{t("removeObject")}</option>
-                  </select>
-                </label>
-              )}
-              <label>
-                {t("description")}
-                <CommitText
-                  label={t("description")}
-                  value={selected.description}
-                  onCommit={(description) => update(selected.id, { description })}
-                  multiline
-                />
-              </label>
-              {selected.target && (
-                <section>
-                  <h3>{t("target")}</h3>
-                  <RectFields
-                    value={selected.target}
-                    width={frame.width}
-                    height={frame.height}
-                    onChange={(target) => changeRectangle(selected.id, target)}
+                    <CopyIcon />
+                  </button>
+                  <button disabled={selectedIndex === 0} title={t("moveUp")} onClick={() => move(-1)}>
+                    <ArrowUpIcon />
+                  </button>
+                  <button disabled={selectedIndex === regions.length - 1} title={t("moveDown")} onClick={() => move(1)}>
+                    <ArrowDownIcon />
+                  </button>
+                  <span className="toolbar-spacer" />
+                  <button title={t("remove")} className="danger-button" onClick={remove}>
+                    <TrashIcon />
+                  </button>
+                </div>
+                <label>
+                  {t("regionName")}
+                  <CommitText
+                    label={t("regionName")}
+                    value={selected.id}
+                    onCommit={(value) => {
+                      const id = value.trim();
+                      if (
+                        !/^[A-Za-z0-9_]+$/.test(id) ||
+                        regions.some((region) => region.id !== selected.id && region.id === id)
+                      ) {
+                        setError(t("regionNameError"));
+                        return;
+                      }
+                      update(selected.id, { id });
+                      setSelection(id);
+                      setError("");
+                    }}
                   />
-                </section>
-              )}
-              {operation(selected) !== "place" && (
-                <section className="source-binding">
+                </label>
+                {!!draft.references.length && (
                   <label>
-                    {t("source")}
+                    {t("operation")}
                     <select
-                      value={selected.referenceId ?? ""}
-                      onChange={(event) => {
-                        update(selected.id, {
-                          referenceId: event.target.value,
-                          source: [0, 0, 1000, 1000],
-                          ...(operation(selected) === "anchor" ? { target: [0, 0, 1000, 1000] as Rectangle } : {}),
-                        });
-                      }}
+                      value={operation(selected)}
+                      onChange={(event) => changeOperation(event.target.value as NonNullable<Region["operation"]>)}
                     >
-                      {draft.references.map((reference, index) => (
-                        <option key={reference.id} value={reference.id}>
-                          {index + 1}. {reference.name}
-                        </option>
-                      ))}
+                      <option value="place">{t("placeObject")}</option>
+                      <option value="move">{t("moveObject")}</option>
+                      <option value="anchor">{t("anchorObject")}</option>
+                      <option value="remove">{t("removeObject")}</option>
                     </select>
                   </label>
-                  <button className="source-preview" disabled={!source} onClick={() => setSourceEditor(true)}>
-                    {source ? <AssetImage entry={source} thumbnail /> : <span>{t("missing")}</span>}
-                    <span>
-                      <BoundingBoxIcon />
-                      {t("pickSource")}
-                    </span>
-                  </button>
-                  {source && selected.source && (
+                )}
+                <label>
+                  {t("description")}
+                  <CommitText
+                    label={t("description")}
+                    value={selected.description}
+                    onCommit={(description) => update(selected.id, { description })}
+                    multiline
+                  />
+                </label>
+                {selected.target && (
+                  <section>
+                    <h3>{t("target")}</h3>
                     <RectFields
-                      value={selected.source}
-                      width={source.asset.width}
-                      height={source.asset.height}
-                      onChange={(value) =>
-                        update(selected.id, {
-                          source: value,
-                          ...(operation(selected) === "anchor" ? { target: value } : {}),
-                        })
-                      }
+                      value={selected.target}
+                      width={frame.width}
+                      height={frame.height}
+                      onChange={(target) => changeRectangle(selected.id, target)}
                     />
-                  )}
-                </section>
-              )}
-            </div>
-          ) : (
-            <div className="region-selection-empty">
-              <BoundingBoxIcon size={28} />
-              <span>{t("drawRegionHint")}</span>
-            </div>
-          )}
-        </aside>
+                  </section>
+                )}
+                {operation(selected) !== "place" && (
+                  <section className="source-binding">
+                    <label>
+                      {t("source")}
+                      <select
+                        value={selected.referenceId ?? ""}
+                        onChange={(event) => {
+                          update(selected.id, {
+                            referenceId: event.target.value,
+                            source: [0, 0, 1000, 1000],
+                            ...(operation(selected) === "anchor" ? { target: [0, 0, 1000, 1000] as Rectangle } : {}),
+                          });
+                        }}
+                      >
+                        {draft.references.map((reference, index) => (
+                          <option key={reference.id} value={reference.id}>
+                            {index + 1}. {reference.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button className="source-preview" disabled={!source} onClick={() => setSourceEditor(true)}>
+                      {source ? <AssetImage entry={source} thumbnail /> : <span>{t("missing")}</span>}
+                      <span>
+                        <BoundingBoxIcon />
+                        {t("pickSource")}
+                      </span>
+                    </button>
+                    {source && selected.source && (
+                      <RectFields
+                        value={selected.source}
+                        width={source.asset.width}
+                        height={source.asset.height}
+                        onChange={(value) =>
+                          update(selected.id, {
+                            source: value,
+                            ...(operation(selected) === "anchor" ? { target: value } : {}),
+                          })
+                        }
+                      />
+                    )}
+                  </section>
+                )}
+              </div>
+            ) : (
+              <div className="region-selection-empty">
+                <BoundingBoxIcon size={28} />
+                <span>{t("drawRegionHint")}</span>
+              </div>
+            )}
+          </div>
+        </ResizablePanel>
         <div className="layout-stage">
           <div className="layout-background-toolbar">
             <label>

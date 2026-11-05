@@ -4,6 +4,7 @@ import { label, localize, t } from "../i18n";
 import { assetData, commit, native, readRecords } from "../services/native";
 import { streamChat } from "./stream";
 import { builtInSpecifications, type Specification } from "./specifications";
+import { ResizablePanel } from "../components/ResizablePanel";
 
 interface Writer {
   id: string;
@@ -108,123 +109,131 @@ export function Writers({
         <h2>{t("writers")}</h2>
       </header>
       <div className="writer-body">
-        <aside>
-          <textarea value={input} onChange={(e) => setInput(e.target.value)} aria-label={t("prompt")} />
-          <div className="section-heading">
-            <span>{localize(label("Writer queue", "作家队列", "ライターキュー"))}</span>
-            <button
-              onClick={() => {
-                setSecret("");
-                setEditing({
-                  id: crypto.randomUUID(),
-                  name: "",
-                  endpoint: "https://openrouter.ai/api/v1",
-                  model: "",
-                  vision: true,
-                });
+        <ResizablePanel
+          className="writer-panel"
+          storageKey="lutri.writers.panel"
+          initialWidth={350}
+          minWidth={260}
+          maxWidth={520}
+        >
+          <div className="writer-scroll">
+            <textarea value={input} onChange={(e) => setInput(e.target.value)} aria-label={t("prompt")} />
+            <div className="section-heading">
+              <span>{localize(label("Writer queue", "作家队列", "ライターキュー"))}</span>
+              <button
+                onClick={() => {
+                  setSecret("");
+                  setEditing({
+                    id: crypto.randomUUID(),
+                    name: "",
+                    endpoint: "https://openrouter.ai/api/v1",
+                    model: "",
+                    vision: true,
+                  });
+                }}
+              >
+                {t("add")}
+              </button>
+            </div>
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) setQueue([...queue, e.target.value]);
               }}
             >
-              {t("add")}
-            </button>
-          </div>
-          <select
-            value=""
-            onChange={(e) => {
-              if (e.target.value) setQueue([...queue, e.target.value]);
-            }}
-          >
-            <option value="">{t("model")}</option>
-            {writers.map((writer) => (
-              <option key={writer.id} value={writer.id}>
-                {writer.name}
-              </option>
-            ))}
-          </select>
-          {queue.map((id, index) => {
-            const writer = writers.find((entry) => entry.id === id);
-            return writer ? (
-              <div className="writer-queue-item" key={`${id}:${index}`}>
-                <span>{writer.name}</span>
-                <button
-                  onClick={() => {
-                    setSecret("");
-                    setEditing(writer);
-                  }}
-                >
-                  {localize(label("Edit", "编辑", "編集"))}
-                </button>
-                {!writer.vision ? (
-                  <small>{localize(label("No image input", "不支持图像输入", "画像入力非対応"))}</small>
-                ) : null}
-                <button onClick={() => setQueue(queue.filter((_, i) => i !== index))}>×</button>
-              </div>
-            ) : null;
-          })}
-          <div className="section-heading">
-            <span>{localize(label("Specifications", "附加规范", "追加ガイド"))}</span>
-            <label className="file-button">
-              {t("import")}
-              <input
-                type="file"
-                accept=".md"
-                multiple
-                onChange={(e) => {
-                  for (const file of Array.from(e.target.files ?? []))
-                    void file
-                      .text()
-                      .then(async (content) => {
-                        const spec = { id: crypto.randomUUID(), name: file.name, content };
-                        await commit([{ collection: "specifications", id: spec.id, value: spec }]);
-                        setSpecs((current) => [...current, spec]);
-                      })
-                      .catch(onError);
-                }}
-              />
-            </label>
-          </div>
-          {specs.map((spec) => (
-            <label className="spec-option" key={spec.id}>
-              <input
-                type="checkbox"
-                checked={selected.includes(spec.id)}
-                onChange={(e) =>
-                  setSelected(e.target.checked ? [...selected, spec.id] : selected.filter((id) => id !== spec.id))
-                }
-              />
-              {spec.name}
-              {selected.includes(spec.id) ? (
-                <>
-                  <small>{selected.indexOf(spec.id) + 1}</small>
+              <option value="">{t("model")}</option>
+              {writers.map((writer) => (
+                <option key={writer.id} value={writer.id}>
+                  {writer.name}
+                </option>
+              ))}
+            </select>
+            {queue.map((id, index) => {
+              const writer = writers.find((entry) => entry.id === id);
+              return writer ? (
+                <div className="writer-queue-item" key={`${id}:${index}`}>
+                  <span>{writer.name}</span>
                   <button
-                    type="button"
-                    disabled={selected.indexOf(spec.id) === 0}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      const next = [...selected],
-                        index = next.indexOf(spec.id);
-                      [next[index - 1], next[index]] = [next[index], next[index - 1]];
-                      setSelected(next);
+                    onClick={() => {
+                      setSecret("");
+                      setEditing(writer);
                     }}
                   >
-                    ↑
+                    {localize(label("Edit", "编辑", "編集"))}
                   </button>
-                </>
-              ) : null}
-            </label>
-          ))}
-          <button
-            className="primary-button"
-            disabled={!queue.length || !input.trim()}
-            onClick={() => {
-              for (const id of queue) {
-                const writer = writers.find((entry) => entry.id === id);
-                if (writer) void run(writer);
-              }
-            }}
-          >
-            {t("generate")}
-          </button>
-        </aside>
+                  {!writer.vision ? (
+                    <small>{localize(label("No image input", "不支持图像输入", "画像入力非対応"))}</small>
+                  ) : null}
+                  <button onClick={() => setQueue(queue.filter((_, i) => i !== index))}>×</button>
+                </div>
+              ) : null;
+            })}
+            <div className="section-heading">
+              <span>{localize(label("Specifications", "附加规范", "追加ガイド"))}</span>
+              <label className="file-button">
+                {t("import")}
+                <input
+                  type="file"
+                  accept=".md"
+                  multiple
+                  onChange={(e) => {
+                    for (const file of Array.from(e.target.files ?? []))
+                      void file
+                        .text()
+                        .then(async (content) => {
+                          const spec = { id: crypto.randomUUID(), name: file.name, content };
+                          await commit([{ collection: "specifications", id: spec.id, value: spec }]);
+                          setSpecs((current) => [...current, spec]);
+                        })
+                        .catch(onError);
+                  }}
+                />
+              </label>
+            </div>
+            {specs.map((spec) => (
+              <label className="spec-option" key={spec.id}>
+                <input
+                  type="checkbox"
+                  checked={selected.includes(spec.id)}
+                  onChange={(e) =>
+                    setSelected(e.target.checked ? [...selected, spec.id] : selected.filter((id) => id !== spec.id))
+                  }
+                />
+                {spec.name}
+                {selected.includes(spec.id) ? (
+                  <>
+                    <small>{selected.indexOf(spec.id) + 1}</small>
+                    <button
+                      type="button"
+                      disabled={selected.indexOf(spec.id) === 0}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        const next = [...selected],
+                          index = next.indexOf(spec.id);
+                        [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                        setSelected(next);
+                      }}
+                    >
+                      ↑
+                    </button>
+                  </>
+                ) : null}
+              </label>
+            ))}
+            <button
+              className="primary-button"
+              disabled={!queue.length || !input.trim()}
+              onClick={() => {
+                for (const id of queue) {
+                  const writer = writers.find((entry) => entry.id === id);
+                  if (writer) void run(writer);
+                }
+              }}
+            >
+              {t("generate")}
+            </button>
+          </div>
+        </ResizablePanel>
         <div className="writer-results">
           {outputs.map((output) => (
             <article key={output.id}>

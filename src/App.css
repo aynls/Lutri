@@ -541,22 +541,19 @@ small {
   min-height: 0;
 }
 .library-sidebar {
-  width: 180px;
-  flex-shrink: 0;
   border-right: 1px solid var(--line);
   background: var(--panel);
-  padding: 22px 13px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  min-height: 0;
 }
-.library-sidebar > button {
+.library-nav > button {
   justify-content: space-between;
   text-align: left;
   font-size: 13px;
   color: var(--muted);
 }
-.library-sidebar > button.selected {
+.library-nav > button.selected {
   background: var(--raised);
   color: var(--text);
 }
@@ -858,9 +855,6 @@ small {
   .feed {
     padding: 18px;
   }
-  .library-sidebar {
-    width: 150px;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -892,12 +886,18 @@ small {
   flex: 1;
   min-height: 0;
 }
-.writer-body > aside {
-  width: 350px;
-  padding: 24px;
+.writer-panel {
   background: var(--panel);
   border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.writer-scroll {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
