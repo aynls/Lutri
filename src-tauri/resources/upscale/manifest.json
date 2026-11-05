@@ -1,0 +1,116 @@
+{
+  "ncnnRelease": "20261020",
+  "runtimeSource": "https://github.com/Tencent/ncnn/releases/download/20261020/ncnn-20261020-windows-vs2026-shared.zip",
+  "linuxRuntimeSource": "https://github.com/Tencent/ncnn/releases/download/20261020/ncnn-20261020-ubuntu-2204-shared.zip",
+  "macosSource": "https://github.com/Tencent/ncnn/releases/download/20261020/ncnn-20261020-full-source.zip",
+  "macosSourceSha256": "699d9acc67489eee0993a551ca1ebc247bbf0f4e33babe1dec810e6a9a52b988",
+  "moltenVkSource": "https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-macos.tar",
+  "moltenVkSourceSha256": "f95765a6229cb7b915990a2890ce12ebe36a730b021545d3d52ae69ce4c4024e",
+  "modelSource": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-windows.zip",
+  "files": [
+    {
+      "file": "models/realesrgan-x4plus-anime.bin",
+      "bytes": 8943500,
+      "sha256": "fe01c269cfd10cdef8e018ab66ebe750cf79c7af4d1f9c16c737e1295229bacc"
+    },
+    {
+      "file": "models/realesrgan-x4plus-anime.param",
+      "bytes": 30290,
+      "sha256": "2b8fb6e0ae4d2d85704ca08c119a2f5ea40add4f2ecd512eb7f4cd44b6127ed4"
+    },
+    {
+      "file": "models/realesrgan-x4plus.bin",
+      "bytes": 33424520,
+      "sha256": "713ee713b0353afaa27976f0563a64a5043bd70b9bd8936c2e26e25ebcdbcddf"
+    },
+    {
+      "file": "models/realesrgan-x4plus.param",
+      "bytes": 116029,
+      "sha256": "35330ececcea33b6c397a72548e788d5d53becee4734c50b7fada36e89f10a86"
+    },
+    {
+      "file": "windows-x86_64/ncnn.dll",
+      "bytes": 19524608,
+      "sha256": "4c48428d5d4f446b2d0ea3d24b12bbe908a9df38357bc94241d6267fd34a954f"
+    },
+    {
+      "file": "linux-x86_64/libncnn.so",
+      "bytes": 23142888,
+      "sha256": "751c4e8a00bfe2cc61787263a28bfa6baeb17a9f41d14708c3fc2af18d54f558"
+    },
+    {
+      "file": "models/realcugan-pro-2x-conservative.bin",
+      "bytes": 2573648,
+      "sha256": "087b4f1836a084f432752503c9e12246a4f8446cfa2c5c919fcf490961b5b4f1"
+    },
+    {
+      "file": "models/realcugan-pro-2x-conservative.param",
+      "bytes": 4765,
+      "sha256": "0ce323af8f840a68f7d43df195cb413184583f8ee3c43a3c1fdcb1c7b7f56821"
+    },
+    {
+      "file": "models/realcugan-pro-2x-denoise3x.bin",
+      "bytes": 2573648,
+      "sha256": "815fe3bf3f14f010f4f7a26ab6d2c47330d80c789720639088ccfaf013cec651"
+    },
+    {
+      "file": "models/realcugan-pro-2x-denoise3x.param",
+      "bytes": 4765,
+      "sha256": "0ce323af8f840a68f7d43df195cb413184583f8ee3c43a3c1fdcb1c7b7f56821"
+    },
+    {
+      "file": "models/realcugan-pro-2x-no-denoise.bin",
+      "bytes": 2573648,
+      "sha256": "d99abb3266d08b04aadd6008b8855eee06b78055f202c7b93fbf34ab8365cbc9"
+    },
+    {
+      "file": "models/realcugan-pro-2x-no-denoise.param",
+      "bytes": 4765,
+      "sha256": "0ce323af8f840a68f7d43df195cb413184583f8ee3c43a3c1fdcb1c7b7f56821"
+    },
+    {
+      "file": "models/realcugan-pro-3x-conservative.bin",
+      "bytes": 2577104,
+      "sha256": "bda924012738fd82b13e5ef23feb051976be2803a0aba5651b7c4f99b5713436"
+    },
+    {
+      "file": "models/realcugan-pro-3x-conservative.param",
+      "bytes": 4765,
+      "sha256": "d3a47068767671865080961892d6c0803ee00e3fd777de74781262144d1970fd"
+    },
+    {
+      "file": "models/realcugan-pro-3x-denoise3x.bin",
+      "bytes": 2577104,
+      "sha256": "01a32b0fbba96a60e7e83fbe351a1231f40a43fa9247f9695d7e0633d2f3a938"
+    },
+    {
+      "file": "models/realcugan-pro-3x-denoise3x.param",
+      "bytes": 4765,
+      "sha256": "d3a47068767671865080961892d6c0803ee00e3fd777de74781262144d1970fd"
+    },
+    {
+      "file": "models/realcugan-pro-3x-no-denoise.bin",
+      "bytes": 2577104,
+      "sha256": "2f767e54d25fe4a9a8927783ecff36151504299c833cde85445b1986bbb44800"
+    },
+    {
+      "file": "models/realcugan-pro-3x-no-denoise.param",
+      "bytes": 4765,
+      "sha256": "d3a47068767671865080961892d6c0803ee00e3fd777de74781262144d1970fd"
+    },
+    {
+      "file": "models/realesr-general-x4v3.bin",
+      "bytes": 4853320,
+      "sha256": "bfdfaebf0b26be9442faa30b8cec617fe04a808ae2aa3616ece85b92d81ae0ce"
+    },
+    {
+      "file": "models/realesr-general-x4v3.param",
+      "bytes": 3949,
+      "sha256": "01cc6d4dffb68573b5e9b97f02b8c13f88fb60d20adc8e5f7c0535a541a66328"
+    }
+  ],
+  "generalModelSource": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth",
+  "generalCheckpointSha256": "8dc7edb9ac80ccdc30c3a5dca6616509367f05fbc184ad95b731f05bece96292",
+  "generalConversion": "scripts/convert-general-x4v3.py (FP32; official general checkpoint, no DNI interpolation)",
+  "cuganModelSource": "https://github.com/nihui/realcugan-ncnn-vulkan/tree/395302c5c70f1bff604c974e92e0a87e45c9f9ee/models/models-pro"
+}

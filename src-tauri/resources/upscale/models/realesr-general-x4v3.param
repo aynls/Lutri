@@ -1,0 +1,74 @@
+7767517
+72 73
+Input input 0 1 in0
+Split residual 1 2 in0 body_in base_in
+Convolution body_0 1 1 body_in body_0 0=64 1=3 2=1 3=1 4=1 5=1 6=1728
+PReLU body_1 1 1 body_0 body_1 0=64
+Convolution body_2 1 1 body_1 body_2 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_3 1 1 body_2 body_3 0=64
+Convolution body_4 1 1 body_3 body_4 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_5 1 1 body_4 body_5 0=64
+Convolution body_6 1 1 body_5 body_6 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_7 1 1 body_6 body_7 0=64
+Convolution body_8 1 1 body_7 body_8 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_9 1 1 body_8 body_9 0=64
+Convolution body_10 1 1 body_9 body_10 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_11 1 1 body_10 body_11 0=64
+Convolution body_12 1 1 body_11 body_12 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_13 1 1 body_12 body_13 0=64
+Convolution body_14 1 1 body_13 body_14 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_15 1 1 body_14 body_15 0=64
+Convolution body_16 1 1 body_15 body_16 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_17 1 1 body_16 body_17 0=64
+Convolution body_18 1 1 body_17 body_18 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_19 1 1 body_18 body_19 0=64
+Convolution body_20 1 1 body_19 body_20 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_21 1 1 body_20 body_21 0=64
+Convolution body_22 1 1 body_21 body_22 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_23 1 1 body_22 body_23 0=64
+Convolution body_24 1 1 body_23 body_24 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_25 1 1 body_24 body_25 0=64
+Convolution body_26 1 1 body_25 body_26 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_27 1 1 body_26 body_27 0=64
+Convolution body_28 1 1 body_27 body_28 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_29 1 1 body_28 body_29 0=64
+Convolution body_30 1 1 body_29 body_30 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_31 1 1 body_30 body_31 0=64
+Convolution body_32 1 1 body_31 body_32 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_33 1 1 body_32 body_33 0=64
+Convolution body_34 1 1 body_33 body_34 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_35 1 1 body_34 body_35 0=64
+Convolution body_36 1 1 body_35 body_36 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_37 1 1 body_36 body_37 0=64
+Convolution body_38 1 1 body_37 body_38 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_39 1 1 body_38 body_39 0=64
+Convolution body_40 1 1 body_39 body_40 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_41 1 1 body_40 body_41 0=64
+Convolution body_42 1 1 body_41 body_42 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_43 1 1 body_42 body_43 0=64
+Convolution body_44 1 1 body_43 body_44 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_45 1 1 body_44 body_45 0=64
+Convolution body_46 1 1 body_45 body_46 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_47 1 1 body_46 body_47 0=64
+Convolution body_48 1 1 body_47 body_48 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_49 1 1 body_48 body_49 0=64
+Convolution body_50 1 1 body_49 body_50 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_51 1 1 body_50 body_51 0=64
+Convolution body_52 1 1 body_51 body_52 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_53 1 1 body_52 body_53 0=64
+Convolution body_54 1 1 body_53 body_54 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_55 1 1 body_54 body_55 0=64
+Convolution body_56 1 1 body_55 body_56 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_57 1 1 body_56 body_57 0=64
+Convolution body_58 1 1 body_57 body_58 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_59 1 1 body_58 body_59 0=64
+Convolution body_60 1 1 body_59 body_60 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_61 1 1 body_60 body_61 0=64
+Convolution body_62 1 1 body_61 body_62 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_63 1 1 body_62 body_63 0=64
+Convolution body_64 1 1 body_63 body_64 0=64 1=3 2=1 3=1 4=1 5=1 6=36864
+PReLU body_65 1 1 body_64 body_65 0=64
+Convolution body_66 1 1 body_65 body_66 0=48 1=3 2=1 3=1 4=1 5=1 6=27648
+PixelShuffle shuffle 1 1 body_66 shuffled 0=4 1=0
+Interp nearest 1 1 base_in base 0=1 1=4.0 2=4.0
+BinaryOp add 2 1 shuffled base out0 0=0
