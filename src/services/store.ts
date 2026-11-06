@@ -9,6 +9,7 @@ import type {
   GenerationBatch,
   GenerationDraft,
   GenerationTask,
+  StoredImage,
 } from "../domain/types";
 import { combinationById, combinations } from "../models";
 import { initialDraft } from "../models/shared";
@@ -30,6 +31,7 @@ export interface Preferences {
 export interface ApplicationState {
   ready: boolean;
   gallery: GalleryEntry[];
+  masks: StoredImage[];
   boards: Board[];
   tasks: GenerationTask[];
   batches: GenerationBatch[];
@@ -40,6 +42,7 @@ export interface ApplicationState {
 let state: ApplicationState = {
   ready: false,
   gallery: [],
+  masks: [],
   boards: [],
   tasks: [],
   batches: [],
@@ -69,8 +72,9 @@ export function useApplication() {
 let loading: Promise<void> | undefined;
 export function loadApplication(): Promise<void> {
   return (loading ??= (async () => {
-    const [gallery, boards, tasks, batches, feed, drafts, preferences] = await Promise.all([
+    const [gallery, masks, boards, tasks, batches, feed, drafts, preferences] = await Promise.all([
       native<{ entries: GalleryEntry[]; total: number }>("gallery_query", { query: {}, limit: 80, offset: 0 }),
+      readRecords<StoredImage>("masks"),
       readRecords<Board>("boards"),
       readRecords<GenerationTask>("tasks"),
       readRecords<GenerationBatch>("batches"),
@@ -129,6 +133,7 @@ export function loadApplication(): Promise<void> {
     );
     updateState({
       gallery: backfilled,
+      masks,
       boards,
       tasks,
       batches,
@@ -138,6 +143,12 @@ export function loadApplication(): Promise<void> {
       ready: true,
     });
   })());
+}
+
+export async function saveMask(dataUrl: string) {
+  const mask = await native<StoredImage>("mask_save", { dataUrl });
+  updateState({ masks: [...state.masks, mask] });
+  return mask;
 }
 
 let draftWrites = Promise.resolve();
@@ -211,12 +222,14 @@ export async function refreshGallery() {
   const ids = [
     ...new Set([...state.gallery.map((entry) => entry.asset.id), ...relatedAssetIds(state.tasks, state.draft)]),
   ];
-  const [entries, page] = await Promise.all([
+  const [entries, page, masks] = await Promise.all([
     native<GalleryEntry[]>("gallery_entries", { ids }),
     native<{ entries: GalleryEntry[]; total: number }>("gallery_query", { query: {}, limit: 80, offset: 0 }),
+    readRecords<StoredImage>("masks"),
   ]);
   updateState({
     gallery: [...new Map([...entries, ...page.entries].map((entry) => [entry.asset.id, entry])).values()],
+    masks,
   });
 }
 function relatedAssetIds(tasks: GenerationTask[], draft: GenerationDraft, feed = state.feed) {
@@ -231,7 +244,6 @@ function relatedAssetIds(tasks: GenerationTask[], draft: GenerationDraft, feed =
     ...new Set([
       ...drafts.flatMap((entry) => [
         ...entry.references.map((reference) => reference.assetId),
-        ...(entry.mask ? [entry.mask.assetId] : []),
         ...parameterAssetIds(entry.parameters),
       ]),
       ...needed.flatMap((task) => task.results.flatMap((result) => (result.assetId ? [result.assetId] : []))),

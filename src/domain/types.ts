@@ -11,10 +11,13 @@ export interface Asset {
   height: number;
 }
 
-export interface GalleryEntry {
+export interface StoredImage {
   asset: Asset;
   path: string;
   thumbnailPath: string;
+}
+
+export interface GalleryEntry extends StoredImage {
   source: "generated" | "imported";
   addedAt: number;
   favorite: boolean;

@@ -170,14 +170,24 @@ fn migrate_library(app: &tauri::AppHandle, store: &Store, directory: String) -> 
     let mut db = store.db.lock().map_err(|e| e.to_string())?;
     let mut entries = {
         let mut stmt = db
-            .prepare("SELECT id,body FROM records WHERE collection='gallery'")
+            .prepare("SELECT collection,id,body FROM records WHERE collection IN ('gallery','masks')")
             .map_err(|e| e.to_string())?;
         let rows = stmt
-            .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            })
             .map_err(|e| e.to_string())?;
         rows.map(|row| {
-            let (id, body) = row.map_err(|e| e.to_string())?;
-            Ok((id, serde_json::from_str::<Value>(&body).map_err(|e| e.to_string())?))
+            let (collection, id, body) = row.map_err(|e| e.to_string())?;
+            Ok((
+                collection,
+                id,
+                serde_json::from_str::<Value>(&body).map_err(|e| e.to_string())?,
+            ))
         })
         .collect::<Result<Vec<_>, String>>()?
     };
@@ -185,7 +195,7 @@ fn migrate_library(app: &tauri::AppHandle, store: &Store, directory: String) -> 
         for folder in ["assets", "thumbnails"] {
             std::fs::create_dir_all(new.join(folder)).map_err(|e| e.to_string())?;
         }
-        for (_, entry) in &mut entries {
+        for (_, _, entry) in &mut entries {
             for (key, folder) in [("path", "assets"), ("thumbnailPath", "thumbnails")] {
                 let source = PathBuf::from(entry[key].as_str().ok_or("Invalid asset path")?);
                 let destination = new
@@ -216,10 +226,10 @@ fn migrate_library(app: &tauri::AppHandle, store: &Store, directory: String) -> 
     })();
     prepared?;
     let tx = db.transaction().map_err(|e| e.to_string())?;
-    for (id, entry) in &entries {
+    for (collection, id, entry) in &entries {
         tx.execute(
-            "UPDATE records SET body=?2 WHERE collection='gallery' AND id=?1",
-            params![id, entry.to_string()],
+            "UPDATE records SET body=?3 WHERE collection=?1 AND id=?2",
+            params![collection, id, entry.to_string()],
         )
         .map_err(|e| e.to_string())?;
     }
@@ -242,7 +252,7 @@ fn migrate_library(app: &tauri::AppHandle, store: &Store, directory: String) -> 
     .map_err(|e| e.to_string())?;
     std::fs::remove_file(journal).map_err(|e| e.to_string())?;
     // Remove only previously registered files, leaving unrelated user files untouched.
-    for (_, entry) in entries {
+    for (_, _, entry) in entries {
         for (key, folder) in [("path", "assets"), ("thumbnailPath", "thumbnails")] {
             if let Some(name) = entry[key]
                 .as_str()

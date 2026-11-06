@@ -26,8 +26,9 @@ import { validateDraft } from "./models/validateDraft";
 import { combinationById } from "./models";
 import { initialDraft } from "./models/shared";
 import { useApplication, loadApplication, saveDraft, removeFeed, getState, refreshGallery } from "./services/store";
-import { assetExists, importAsset, native } from "./services/native";
+import { assetExists, imageUrl as assetImageUrl, importAsset, native } from "./services/native";
 import { ImageViewer } from "./gallery/ImageViewer";
+import { AssetImage } from "./gallery/AssetImage";
 import { cancelBatchQueued, resumeTasks, submitBatch } from "./services/generation";
 import { Feed } from "./create/Feed";
 import { PromptField } from "./create/components/PromptField";
@@ -373,6 +374,13 @@ export default function App() {
   }
   const combination = combinationById(state.draft.combinationId),
     Form = combination.Form;
+  const maskEntry = state.draft.mask
+    ? state.masks.find((entry) => entry.asset.id === state.draft.mask?.assetId)
+    : undefined;
+  const maskReference = state.draft.references.find((reference) => reference.id === state.draft.mask?.referenceId);
+  const maskReferenceEntry = maskReference
+    ? state.gallery.find((entry) => entry.asset.id === maskReference.assetId)
+    : undefined;
   const validation = validateDraft(state.draft);
   const configuration = state.preferences.providers[combination.provider];
   const configured =
@@ -495,11 +503,34 @@ export default function App() {
                   />
                 )}
                 {combination.mask && state.draft.references.length ? (
-                  <div className="button-row">
-                    <button onClick={() => setMaskEditor(true)}>{t("mask")}</button>
+                  <div className="mask-input">
                     {state.draft.mask ? (
-                      <button onClick={() => changeDraft({ ...state.draft, mask: undefined })}>{t("remove")}</button>
+                      <button
+                        className="image-button mask-preview"
+                        aria-label={t("mask")}
+                        title={t("mask")}
+                        onClick={() => setMaskEditor(true)}
+                      >
+                        {maskEntry && maskReferenceEntry ? (
+                          <>
+                            <AssetImage key={maskReferenceEntry.asset.id} entry={maskReferenceEntry} thumbnail />
+                            <span
+                              className="mask-preview-overlay"
+                              aria-hidden="true"
+                              style={{ maskImage: `url(${JSON.stringify(assetImageUrl(maskEntry.thumbnailPath))})` }}
+                            />
+                          </>
+                        ) : (
+                          <span className="missing-image">{t("missing")}</span>
+                        )}
+                      </button>
                     ) : null}
+                    <div className="button-row">
+                      <button onClick={() => setMaskEditor(true)}>{t("mask")}</button>
+                      {state.draft.mask ? (
+                        <button onClick={() => changeDraft({ ...state.draft, mask: undefined })}>{t("remove")}</button>
+                      ) : null}
+                    </div>
                   </div>
                 ) : null}
                 <section>
@@ -723,6 +754,7 @@ export default function App() {
         <MaskEditor
           draft={state.draft}
           gallery={state.gallery}
+          masks={state.masks}
           onChange={changeDraft}
           onClose={() => setMaskEditor(false)}
           onError={onError}

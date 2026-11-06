@@ -50,6 +50,7 @@ pub fn run() {
             library::library_stats,
             library::library_maintain,
             assets::asset_import,
+            assets::mask_save,
             assets::asset_download,
             assets::asset_data,
             assets::asset_exists,

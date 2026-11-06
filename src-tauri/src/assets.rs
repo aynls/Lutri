@@ -23,8 +23,19 @@ pub(crate) fn save_asset_with_id(
     source: &str,
     id: String,
 ) -> Result<Value, String> {
+    save_image_with_id(store, bytes, name, source, id, "gallery")
+}
+
+fn save_image_with_id(
+    store: &Store,
+    bytes: &[u8],
+    name: String,
+    source: &str,
+    id: String,
+    collection: &str,
+) -> Result<Value, String> {
     let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
-    if let Ok(existing) = entry(store, &id) {
+    if let Ok(existing) = image_entry(store, &id) {
         return Ok(existing);
     }
     let (decoded, extension, media_type) = match image::guess_format(bytes) {
@@ -73,25 +84,45 @@ pub(crate) fn save_asset_with_id(
         .lock()
         .map_err(|e| e.to_string())?
         .execute(
-            "INSERT INTO records(collection,id,body) VALUES('gallery',?1,?2)",
-            rusqlite::params![id, entry.to_string()],
+            "INSERT INTO records(collection,id,body) VALUES(?1,?2,?3)",
+            rusqlite::params![collection, id, entry.to_string()],
         )
         .map_err(|e| e.to_string())?;
     Ok(entry)
 }
 
 pub fn entry(store: &Store, id: &str) -> Result<Value, String> {
+    read_entry(store, id, "collection='gallery'")
+}
+
+fn image_entry(store: &Store, id: &str) -> Result<Value, String> {
+    read_entry(store, id, "collection IN ('gallery','masks')")
+}
+
+fn read_entry(store: &Store, id: &str, collection_filter: &str) -> Result<Value, String> {
     let body: String = store
         .db
         .lock()
         .map_err(|e| e.to_string())?
         .query_row(
-            "SELECT body FROM records WHERE collection='gallery' AND id=?1",
+            &format!("SELECT body FROM records WHERE {collection_filter} AND id=?1"),
             [id],
             |row| row.get(0),
         )
         .map_err(|e| e.to_string())?;
     serde_json::from_str(&body).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn mask_save(store: tauri::State<Store>, data_url: String) -> Result<Value, String> {
+    save_image_with_id(
+        &store,
+        &decode_data_url(&data_url)?,
+        "Mask.png".into(),
+        "imported",
+        uuid::Uuid::new_v4().to_string(),
+        "masks",
+    )
 }
 
 #[tauri::command]
@@ -170,7 +201,7 @@ pub fn result_stage(store: tauri::State<Store>, data_url: String) -> Result<Stri
 #[tauri::command]
 pub fn asset_data(store: tauri::State<Store>, id: String) -> Result<String, String> {
     let _guard = store.library.read().map_err(|e| e.to_string())?;
-    let value = entry(&store, &id)?;
+    let value = image_entry(&store, &id)?;
     let path = value["path"].as_str().ok_or("Missing asset path")?;
     let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
     let media = value["asset"]["mediaType"].as_str().ok_or("Missing media type")?;
@@ -182,7 +213,7 @@ pub fn asset_exists(store: tauri::State<Store>, id: String) -> bool {
     let Ok(_guard) = store.library.read() else {
         return false;
     };
-    entry(&store, &id)
+    image_entry(&store, &id)
         .ok()
         .and_then(|v| v["path"].as_str().map(|p| Path::new(p).is_file()))
         .unwrap_or(false)

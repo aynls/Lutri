@@ -10,10 +10,10 @@ import {
   PlusIcon,
   UploadSimpleIcon,
 } from "@phosphor-icons/react";
-import type { GalleryEntry, GenerationDraft } from "../../domain/types";
+import type { GalleryEntry, GenerationDraft, StoredImage } from "../../domain/types";
 import { t } from "../../i18n";
-import { imageUrl, importAsset } from "../../services/native";
-import { refreshGallery } from "../../services/store";
+import { imageUrl } from "../../services/native";
+import { saveMask } from "../../services/store";
 import { Dialog } from "../../components/Dialog";
 import { useEditHistory } from "../../components/useEditHistory";
 import { useCanvasViewport } from "../../components/canvas/useCanvasViewport";
@@ -26,12 +26,14 @@ type Gesture =
 export function MaskEditor({
   draft,
   gallery,
+  masks,
   onChange,
   onClose,
   onError,
 }: {
   draft: GenerationDraft;
   gallery: GalleryEntry[];
+  masks: StoredImage[];
   onChange: (draft: GenerationDraft) => void;
   onClose: () => void;
   onError: (error: unknown) => void;
@@ -46,14 +48,13 @@ export function MaskEditor({
           entry={entry}
           mask={
             draft.mask?.referenceId === reference.id
-              ? gallery.find((entry) => entry.asset.id === draft.mask?.assetId)
+              ? masks.find((entry) => entry.asset.id === draft.mask?.assetId)
               : undefined
           }
           onClose={onClose}
           onError={onError}
           onApply={async (dataUrl) => {
-            const asset = await importAsset("Mask.png", { dataUrl });
-            await refreshGallery();
+            const asset = await saveMask(dataUrl);
             onChange({ ...draft, mask: { assetId: asset.asset.id, referenceId: reference.id } });
             onClose();
           }}
@@ -72,7 +73,7 @@ function MaskWorkspace({
   onError,
 }: {
   entry: GalleryEntry;
-  mask?: GalleryEntry;
+  mask?: StoredImage;
   onApply: (dataUrl: string) => Promise<void>;
   onClose: () => void;
   onError: (error: unknown) => void;

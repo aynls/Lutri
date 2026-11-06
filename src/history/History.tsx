@@ -91,7 +91,6 @@ export function History({
     ...new Set(
       pageRequests.flatMap((task) => [
         ...task.draft.references.map((reference) => reference.assetId),
-        ...(task.draft.mask ? [task.draft.mask.assetId] : []),
         ...task.results.flatMap((result) => (result.assetId ? [result.assetId] : [])),
       ]),
     ),

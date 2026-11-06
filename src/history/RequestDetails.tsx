@@ -29,7 +29,6 @@ export function RequestDetails({
   const assetKey = JSON.stringify([
     ...new Set([
       ...task.draft.references.map((reference) => reference.assetId),
-      ...(task.draft.mask ? [task.draft.mask.assetId] : []),
       ...task.results.flatMap((result) => (result.assetId ? [result.assetId] : [])),
     ]),
   ]);
