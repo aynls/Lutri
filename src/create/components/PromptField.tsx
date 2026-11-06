@@ -1,5 +1,5 @@
 import { SparkleIcon } from "@phosphor-icons/react";
-import { useLayoutEffect, useRef } from "react";
+import { useId, useLayoutEffect, useRef } from "react";
 import type { GenerationDraft, ImageReference } from "../../domain/types";
 import { insertReference } from "../../domain/references";
 import { t } from "../../i18n";
@@ -27,9 +27,11 @@ export function PromptField({
 }: {
   draft: GenerationDraft;
   onChange: (draft: GenerationDraft) => void;
-  onWriters: () => void;
+  onWriters?: () => void;
   limit?: { min?: number; max: number };
 }) {
+  const labelId = useId();
+  const limitId = useId();
   const input = useRef<HTMLDivElement>(null),
     selection = useRef<Range | null>(null);
   const publish = () => {
@@ -86,11 +88,13 @@ export function PromptField({
   return (
     <section className="prompt-field">
       <div className="section-heading">
-        <label id="prompt-label">{t("prompt")}</label>
-        <button className="writer-launch" onClick={onWriters}>
-          <SparkleIcon size={14} />
-          {t("writers")}
-        </button>
+        <label id={labelId}>{t("prompt")}</label>
+        {onWriters && (
+          <button className="writer-launch" onClick={onWriters}>
+            <SparkleIcon size={14} />
+            {t("writers")}
+          </button>
+        )}
       </div>
       <div
         className="prompt-editor"
@@ -100,8 +104,8 @@ export function PromptField({
         suppressContentEditableWarning
         role="textbox"
         aria-multiline="true"
-        aria-labelledby="prompt-label"
-        aria-describedby="prompt-limit"
+        aria-labelledby={labelId}
+        aria-describedby={limitId}
         aria-invalid={
           (limit && (draft.prompt.length > limit.max || (!!draft.prompt && draft.prompt.length < (limit.min ?? 0)))) ||
           undefined
@@ -125,7 +129,7 @@ export function PromptField({
         }}
       />
       <div
-        id="prompt-limit"
+        id={limitId}
         className={`prompt-length${limit && draft.prompt.length > limit.max ? " error-text" : " muted"}`}
       >
         <span>{limit && draft.prompt.length > limit.max ? c("promptLimit") : ""}</span>

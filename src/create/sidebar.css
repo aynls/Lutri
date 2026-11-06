@@ -131,12 +131,12 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
-.creation-panel .references {
+:is(.creation-panel, .writer-panel) .references {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.creation-panel .reference-item {
+:is(.creation-panel, .writer-panel) .reference-item {
   display: grid;
   grid-template-columns: 82px minmax(0, 1fr);
   gap: 10px;
@@ -144,7 +144,7 @@
   background: transparent;
   overflow: visible;
 }
-.creation-panel .reference-preview {
+:is(.creation-panel, .writer-panel) .reference-preview {
   height: 82px;
   width: 82px;
   padding: 0;
@@ -153,10 +153,10 @@
   border: 1px solid var(--line);
   background: var(--surface);
 }
-.creation-panel .reference-item.missing .reference-preview {
+:is(.creation-panel, .writer-panel) .reference-item.missing .reference-preview {
   border-color: #b26557;
 }
-.creation-panel .reference-information {
+:is(.creation-panel, .writer-panel) .reference-information {
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -164,25 +164,25 @@
   gap: 4px;
   min-width: 0;
 }
-.creation-panel .reference-name input {
+:is(.creation-panel, .writer-panel) .reference-name input {
   font-size: 12px;
   min-width: 0;
 }
-.creation-panel .reference-dims {
+:is(.creation-panel, .writer-panel) .reference-dims {
   padding: 0;
   font-size: 11px;
 }
-.creation-panel .reference-actions {
+:is(.creation-panel, .writer-panel) .reference-actions {
   justify-content: flex-start;
   gap: 7px;
 }
-.creation-panel .reference-actions button {
+:is(.creation-panel, .writer-panel) .reference-actions button {
   padding: 3px;
 }
-.creation-panel .reference-actions button:last-child {
+:is(.creation-panel, .writer-panel) .reference-actions button:last-child {
   margin-left: auto;
 }
-.creation-panel .reference-add {
+:is(.creation-panel, .writer-panel) .reference-add {
   min-height: 38px;
   width: 100%;
   display: flex;

@@ -866,9 +866,6 @@ small {
   flex-direction: column;
   gap: 16px;
 }
-.writer-body textarea {
-  min-height: 180px;
-}
 .writer-queue {
   display: grid;
   gap: 8px;
@@ -1386,6 +1383,10 @@ small {
 }
 .submit-panel .primary-button {
   justify-content: flex-start;
+}
+.writer-submit .primary-button {
+  justify-content: center;
+  text-align: center;
 }
 .creation-scroll > section {
   min-width: 0;

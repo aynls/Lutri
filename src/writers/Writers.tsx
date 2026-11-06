@@ -1,47 +1,119 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowDownIcon, ArrowUpIcon, DotsSixVerticalIcon, XIcon, GearSixIcon } from "@phosphor-icons/react";
-import type { GenerationDraft, Json } from "../domain/types";
+import type { GenerationDraft, GalleryEntry } from "../domain/types";
 import { label, localize, t } from "../i18n";
-import { assetData, commit, readRecords } from "../services/native";
+import { importAsset, native, commit, readRecords } from "../services/native";
 import { streamChat } from "./stream";
 import { builtInSpecifications, type Specification } from "./specifications";
 import { ResizablePanel } from "../components/ResizablePanel";
 
 import type { Writer } from "./types";
+import { refreshGallery, useApplication } from "../services/store";
+import { PromptField } from "../create/components/PromptField";
+import { References, type ReferenceSource } from "../create/components/References";
+import { AssetPicker } from "../gallery/AssetPicker";
+import { Dialog } from "../components/Dialog";
+import { chooseImages } from "../gallery/actions";
+import { combinationById } from "../models";
+import { c } from "../create/messages";
+import { writerMessages } from "./request";
 
 interface Output {
   id: string;
   writer: Writer;
+  draft: GenerationDraft;
   text: string;
   reasoning: string;
   busy: boolean;
   error?: string;
 }
-const systemPrompt =
-  "You write production-ready image generation prompts. Return only the final prompt, without a preface or markdown fence. Preserve user intent, reference image ordering and exact requested text. Treat attached writing specifications as guidance, not as an instruction to ignore the user's request.";
-
 export function Writers({
   draft,
   onAccept,
+  onView,
+  incomingImages,
   onClose,
   onSettings,
   active,
   onError,
 }: {
   draft: GenerationDraft;
-  onAccept: (text: string) => void;
+  onAccept: (draft: GenerationDraft) => void;
+  onView: (id: string) => void;
+  incomingImages?: { entries: GalleryEntry[]; nonce: string };
   onClose: () => void;
   onSettings: () => void;
   active: boolean;
   onError: (error: unknown) => void;
 }) {
+  const { gallery } = useApplication();
   const [writers, setWriters] = useState<Writer[]>([]),
     [queue, setQueue] = useState<{ id: string; writerId: string }[]>([]),
-    [input, setInput] = useState(draft.prompt),
+    [writerDraft, setWriterDraft] = useState(() => structuredClone(draft)),
     [specs, setSpecs] = useState<Specification[]>(builtInSpecifications),
     [selected, setSelected] = useState(""),
     [outputs, setOutputs] = useState<Output[]>([]);
+  const [picker, setPicker] = useState(false);
+  const [urlImport, setUrlImport] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const referenceLimit = Math.max(
+    combinationById(writerDraft.combinationId).maxReferences || 10,
+    writerDraft.references.length,
+  );
+  const addReferences = (entries: GalleryEntry[]) => {
+    if (!entries.length) return;
+    if (writerDraft.references.length + entries.length > referenceLimit) {
+      onError(c("tooMany"));
+      return;
+    }
+    setWriterDraft((current) => ({
+      ...current,
+      references: [
+        ...current.references,
+        ...entries.map((entry) => ({
+          id: crypto.randomUUID(),
+          assetId: entry.asset.id,
+          name: t("referenceAlias"),
+          purpose: "reference" as const,
+        })),
+      ],
+    }));
+    setPicker(false);
+  };
+  const addSource = async (source: ReferenceSource) => {
+    if (source === "library") {
+      setPicker(true);
+      return;
+    }
+    if (source === "url") {
+      setUrlImport(true);
+      return;
+    }
+    if (source === "files") {
+      addReferences(await chooseImages());
+      return;
+    }
+    const entry = await native<GalleryEntry>("asset_paste");
+    await refreshGallery();
+    addReferences([entry]);
+  };
   const [loaded, setLoaded] = useState(false);
+  const wasActive = useRef(false);
+  useEffect(() => {
+    if (active && !wasActive.current) {
+      setWriterDraft(structuredClone(draft));
+      setNotice("");
+    }
+    wasActive.current = active;
+  }, [active, draft]);
+  const lastIncoming = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!active || !incomingImages || incomingImages.nonce === lastIncoming.current) return;
+    lastIncoming.current = incomingImages.nonce;
+    addReferences(incomingImages.entries);
+  }, [active, incomingImages]);
   const dragged = useRef<{ id: string; pointerId: number } | null>(null);
   const [draggingId, setDraggingId] = useState<string>();
   useEffect(() => {
@@ -73,7 +145,7 @@ export function Writers({
     void Promise.all([
       readRecords<Writer>("writers"),
       readRecords<Specification>("specifications"),
-      readRecords<{ queue: string[]; selected: string[]; input: string }>("writer-session"),
+      readRecords<{ queue: string[]; selected: string[] }>("writer-session"),
     ])
       .then(([w, s, sessions]) => {
         setWriters(w);
@@ -87,7 +159,6 @@ export function Writers({
           setSelected(
             sessions[0].selected.find((id) => [...builtInSpecifications, ...s].some((spec) => spec.id === id)) ?? "",
           );
-          setInput(sessions[0].input);
         }
         setLoaded(true);
       })
@@ -99,28 +170,21 @@ export function Writers({
         {
           collection: "writer-session",
           id: "current",
-          value: { queue: queue.map((entry) => entry.writerId), selected: selected ? [selected] : [], input },
+          value: { queue: queue.map((entry) => entry.writerId), selected: selected ? [selected] : [] },
         },
       ]).catch(onError);
-  }, [queue, selected, input, loaded, onError]);
+  }, [queue, selected, loaded, onError]);
   const run = async (writer: Writer, id: string = crypto.randomUUID()) => {
+    const snapshot = structuredClone(writerDraft);
     setOutputs((current) => [
       ...current.filter((output) => output.id !== id),
-      { id, writer, text: "", reasoning: "", busy: true },
+      { id, writer, draft: snapshot, text: "", reasoning: "", busy: true },
     ]);
     const update = (changes: Partial<Output>) =>
       setOutputs((current) => current.map((output) => (output.id === id ? { ...output, ...changes } : output)));
     try {
-      const content: Json[] = [{ type: "text", text: input }];
-      if (writer.vision)
-        for (const reference of draft.references)
-          content.push({ type: "image_url", image_url: { url: await assetData(reference.assetId) } });
-      const messages: Json[] = [
-        { role: "system", content: systemPrompt },
-        { role: "user", content },
-      ];
       const specification = specs.find((spec) => spec.id === selected);
-      if (specification) messages.push({ role: "user", content: specification.content });
+      const messages = await writerMessages(snapshot, writer.vision, specification?.content);
       await streamChat(
         {
           url: `${writer.endpoint.replace(/\/$/, "")}/chat/completions`,
@@ -152,7 +216,22 @@ export function Writers({
           maxWidth={520}
         >
           <div className="writer-scroll">
-            <textarea value={input} onChange={(e) => setInput(e.target.value)} aria-label={t("prompt")} />
+            <PromptField draft={writerDraft} onChange={setWriterDraft} />
+            <References
+              draft={writerDraft}
+              gallery={gallery}
+              onChange={setWriterDraft}
+              onAdd={(source) => void addSource(source).catch(onError)}
+              onView={onView}
+              limit={referenceLimit}
+              primary={combinationById(writerDraft.combinationId).primaryReference}
+              onNotice={setNotice}
+            />
+            {notice && (
+              <span className="muted" role="status">
+                {notice}
+              </span>
+            )}
             <div className="section-heading">
               <span>{localize(label("Writer queue", "Writer 队列", "Writer キュー"))}</span>
               <button onClick={onSettings}>
@@ -318,9 +397,11 @@ export function Writers({
                 </optgroup>
               )}
             </select>
+          </div>
+          <footer className="submit-panel writer-submit">
             <button
               className="primary-button"
-              disabled={!queue.length || !input.trim()}
+              disabled={!queue.length || !writerDraft.prompt.trim()}
               onClick={() => {
                 for (const queued of queue) {
                   const writer = writers.find((entry) => entry.id === queued.writerId);
@@ -328,9 +409,9 @@ export function Writers({
                 }
               }}
             >
-              {t("generate")}
+              {t("writers")}
             </button>
-          </div>
+          </footer>
         </ResizablePanel>
         <div className="writer-results-area">
           {outputs.length ? (
@@ -363,7 +444,10 @@ export function Writers({
                   <button disabled={output.busy} onClick={() => void run(output.writer, output.id)}>
                     {localize(label("Rewrite", "重写", "書き直す"))}
                   </button>
-                  <button disabled={!output.text || output.busy} onClick={() => onAccept(output.text)}>
+                  <button
+                    disabled={!output.text || output.busy}
+                    onClick={() => onAccept({ ...output.draft, prompt: output.text })}
+                  >
                     {localize(label("Use prompt", "使用提示词", "使用する"))}
                   </button>
                 </footer>
@@ -372,6 +456,50 @@ export function Writers({
           </div>
         </div>
       </div>
+      {picker && (
+        <AssetPicker
+          onSelect={addReferences}
+          onClose={() => setPicker(false)}
+          onError={onError}
+          limit={Math.max(0, referenceLimit - writerDraft.references.length)}
+        />
+      )}
+      {urlImport && (
+        <Dialog
+          title={c("url")}
+          className="compact-dialog"
+          onClose={() => setUrlImport(false)}
+          footer={
+            <>
+              <button onClick={() => setUrlImport(false)}>{t("cancel")}</button>
+              <button
+                disabled={importBusy || !/^https?:\/\//i.test(imageUrl)}
+                onClick={() => {
+                  setImportBusy(true);
+                  void importAsset({ url: imageUrl })
+                    .then(async (entry) => {
+                      await refreshGallery();
+                      addReferences([entry]);
+                      setUrlImport(false);
+                      setImageUrl("");
+                    })
+                    .catch(onError)
+                    .finally(() => setImportBusy(false));
+                }}
+              >
+                {t("import")}
+              </button>
+            </>
+          }
+        >
+          <input
+            type="url"
+            aria-label={c("url")}
+            value={imageUrl}
+            onChange={(event) => setImageUrl(event.target.value)}
+          />
+        </Dialog>
+      )}
     </section>
   );
 }

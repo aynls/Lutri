@@ -75,6 +75,7 @@ export default function App() {
     [search, setSearch] = useState(""),
     [writers, setWriters] = useState(false),
     [maskEditor, setMaskEditor] = useState(false);
+  const [writerImages, setWriterImages] = useState<{ entries: GalleryEntry[]; nonce: string }>();
   const [upscaleInput, setUpscaleInput] = useState<{ entries: GalleryEntry[]; nonce: string }>();
   const [credential, setCredential] = useState<boolean | undefined>(),
     [sent, setSent] = useState(false);
@@ -133,6 +134,10 @@ export default function App() {
   const receiveImages = useCallback(
     async (entries: GalleryEntry[]) => {
       if (!entries.length) return;
+      if (writers) {
+        setWriterImages({ entries, nonce: crypto.randomUUID() });
+        return;
+      }
       if (page === "creation") {
         const draft = getState().draft;
         if (draft.references.length + entries.length > combinationById(draft.combinationId).maxReferences)
@@ -151,7 +156,7 @@ export default function App() {
         });
       } else if (page === "upscale") setUpscaleInput({ entries, nonce: crypto.randomUUID() });
     },
-    [page],
+    [page, writers],
   );
   useEffect(() => {
     if (new URLSearchParams(location.search).has("asset")) return;
@@ -763,8 +768,17 @@ export default function App() {
       <div hidden={!writers}>
         <Writers
           draft={state.draft}
-          onAccept={(prompt) => {
-            changeDraft({ ...state.draft, prompt });
+          onView={view}
+          incomingImages={writerImages}
+          onAccept={(draft) => {
+            const sameCombination = draft.combinationId === state.draft.combinationId;
+            changeDraft({
+              ...state.draft,
+              prompt: draft.prompt,
+              references: draft.references,
+              regions: sameCombination ? draft.regions : [],
+              mask: sameCombination ? draft.mask : undefined,
+            });
             setWriters(false);
           }}
           onClose={() => setWriters(false)}
