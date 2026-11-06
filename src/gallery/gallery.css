@@ -78,16 +78,26 @@
   border-color: transparent;
 }
 .thumbnail-size {
+  appearance: none;
   width: 150px;
-  height: 4px;
+  height: 16px;
   padding: 0;
-  accent-color: var(--accent);
+  border: 0;
+  background: transparent;
   cursor: pointer;
 }
 .thumbnail-size::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 2px;
   background: var(--line);
+}
+.thumbnail-size::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 .gallery-scroll {
   flex: 1;
