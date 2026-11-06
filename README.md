@@ -24,6 +24,8 @@ npm run format:check
 
 Linux 的构建依赖、桌面环境要求和运行限制见 [Linux 平台说明](doc/linux.md)。
 
+Windows setup 沿用 legacy 的品牌侧栏、页眉及安装／卸载图标，名称统一为 Lutri，支持中文、英文和日文，默认安装到当前用户。品牌位图已保存在 `src-tauri/windows`；修改名称或图标后，可在 Windows PowerShell 中运行 `./scripts/generate-installer-art.ps1` 重新生成，再执行打包命令。生成脚本读取当前产品名称和 `src-tauri/icons/icon.png`。
+
 MCP 在设置中启动，仅监听本机地址；复制配置后加入支持 Streamable HTTP 的客户端。可查询模型组合、提交批次、恢复原任务、搜索与读取图库图片，以及执行本地超分。
 
 架构、覆盖范围和核对记录见 [实施说明](doc/implementation.md)。产品规则见 [PRD](doc/PRD.md)，模型资料见 [API 索引](doc/model/README.md)。

@@ -2,6 +2,18 @@
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
     "targets": ["nsis"],
+    "publisher": "Lutri",
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico",
+        "headerImage": "windows/installer-header.bmp",
+        "sidebarImage": "windows/installer-sidebar.bmp",
+        "languages": ["English", "SimpChinese", "Japanese"],
+        "installMode": "currentUser",
+        "startMenuFolder": "Lutri"
+      }
+    },
     "resources": [
       "resources/upscale/*.txt",
       "resources/upscale/*.md",
