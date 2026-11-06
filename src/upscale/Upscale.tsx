@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { Channel } from "@tauri-apps/api/core";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { cancelUpscale, runUpscale } from "./queue";
+import { settingsText } from "../settings/messages";
 import { open } from "@tauri-apps/plugin-dialog";
 import { PlusIcon, XIcon, PauseIcon, PlayIcon, FolderOpenIcon, ArrowUpRightIcon } from "@phosphor-icons/react";
 import type { GalleryEntry } from "../domain/types";
@@ -17,13 +18,29 @@ interface Job {
   id: string;
   input: GalleryEntry;
   progress: number;
-  status: "pending" | "generating" | "completed" | "failed";
+  status: "pending" | "queued" | "generating" | "completed" | "failed" | "cancelled";
   path?: string;
   assetId?: string;
   error?: string;
+  exportError?: string;
+  destination?: string;
   scale?: number;
+  modelId?: string;
   saving?: boolean;
 }
+let workspace: { single?: Job; jobs: Job[]; batch: boolean; busy: boolean } = { jobs: [], batch: false, busy: false };
+const listeners = new Set<() => void>();
+const publish = (next: Partial<typeof workspace>) => {
+  workspace = { ...workspace, ...next };
+  listeners.forEach((listener) => listener());
+};
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+const snapshot = () => workspace;
 const makeJob = (input: GalleryEntry): Job => ({ id: crypto.randomUUID(), input, progress: 0, status: "pending" });
 export function Upscale({
   onError,
@@ -36,23 +53,25 @@ export function Upscale({
     [model, setModel] = useState("");
   const [noise, setNoise] = useState<Noise>("no-denoise");
   const [scale, setScale] = useState(4),
-    [tile, setTile] = useState(128),
-    [batch, setBatch] = useState(false);
+    [tile, setTile] = useState(128);
   const [destination, setDestination] = useState(""),
     [saveToGallery, setSaveToGallery] = useState(true);
-  const [single, setSingle] = useState<Job>(),
-    [jobs, setJobs] = useState<Job[]>([]),
-    [view, setView] = useState<string>();
+  const { single, jobs, batch, busy } = useSyncExternalStore(subscribe, snapshot);
+  const setSingle = (next: Job | undefined | ((value: Job | undefined) => Job | undefined)) =>
+    publish({ single: typeof next === "function" ? next(workspace.single) : next });
+  const setJobs = (next: Job[] | ((value: Job[]) => Job[])) =>
+    publish({ jobs: typeof next === "function" ? next(workspace.jobs) : next });
+  const setBatch = (value: boolean) => publish({ batch: value });
+  const setBusy = (value: boolean) => publish({ busy: value });
+  const [view, setView] = useState<string>();
   const [picker, setPicker] = useState(false),
-    [busy, setBusy] = useState(false),
     [pausing, setPausing] = useState(false);
-  const running = useRef(false),
-    pause = useRef(false),
+  const running = useRef(busy),
     received = useRef<string>(undefined);
   const visible = batch ? jobs : single ? [single] : [];
   const add = (entries: GalleryEntry[]) => {
     if (!entries.length) return;
-    if (batch || entries.length > 1 || running.current) {
+    if (batch || entries.length > 1 || workspace.busy) {
       setJobs((current) => [...current, ...entries.map(makeJob)]);
       setBatch(true);
     } else setSingle(makeJob(entries[0]));
@@ -89,38 +108,56 @@ export function Upscale({
     setSingle((current) => (current?.id === id ? { ...current, ...changes } : current));
   };
   const run = async () => {
-    if (running.current) return;
+    if (workspace.busy) return;
     const queue = visible.filter((job) => job.status === "pending" || job.status === "failed");
     if (!queue.length) return;
     const fileId = resolveUpscaleModel(models, model, scale, noise);
     running.current = true;
-    pause.current = false;
     setBusy(true);
     setPausing(false);
+    const submitted = queue.map((job) => ({ ...job, id: crypto.randomUUID() }));
+    const replacements = new Map(queue.map((job, index) => [job.id, submitted[index]]));
+    setJobs((current) => current.map((job) => replacements.get(job.id) ?? job));
+    setSingle((current) => (current ? (replacements.get(current.id) ?? current) : current));
     try {
-      for (const job of queue) {
-        if (pause.current) break;
-        update(job.id, { status: "generating", progress: 0, error: undefined, scale });
-        const channel = new Channel<{ completed?: number; total?: number }>();
-        channel.onmessage = (event) => {
-          if (event.total) update(job.id, { progress: Math.round(((event.completed ?? 0) / event.total) * 100) });
-        };
-        try {
-          const result = await native<{ path: string; gallery?: GalleryEntry }>("upscale_run", {
-            assetId: job.input.asset.id,
-            modelId: fileId,
-            scale,
-            tileSize: tile,
-            destination: destination || null,
-            saveToGallery,
-            channel,
-          });
-          update(job.id, { status: "completed", progress: 100, path: result.path, assetId: result.gallery?.asset.id });
-          await refreshGallery().catch(onError);
-        } catch (error) {
-          update(job.id, { status: "failed", error: String(error) });
-        }
-      }
+      await Promise.all(
+        submitted.map(async (job) => {
+          update(job.id, { status: "queued", progress: 0, error: undefined, scale });
+          try {
+            const result = await runUpscale(
+              {
+                jobId: job.id,
+                assetId: job.input.asset.id,
+                modelId: fileId,
+                scale,
+                tileSize: tile,
+                destination: destination || null,
+                saveToGallery,
+              },
+              (event) => {
+                if (event.phase === "running") update(job.id, { status: "generating" });
+                if (event.total) update(job.id, { progress: Math.round(((event.completed ?? 0) / event.total) * 100) });
+              },
+            );
+            update(job.id, {
+              status: "completed",
+              progress: 100,
+              path: result.path,
+              assetId: result.gallery?.asset.id,
+              exportError: result.exportError,
+              error: result.galleryError,
+              destination,
+              modelId: fileId,
+            });
+          } catch (error) {
+            const cancelled = String(error) === "cancelled";
+            update(job.id, {
+              status: cancelled ? "cancelled" : "failed",
+              error: cancelled ? undefined : String(error),
+            });
+          }
+        }),
+      );
     } finally {
       running.current = false;
       setBusy(false);
@@ -131,11 +168,12 @@ export function Upscale({
     if (!job.path || job.saving) return;
     update(job.id, { saving: true });
     try {
-      const entry = await native<GalleryEntry>("upscale_save", {
+      const entry = await native<GalleryEntry & { exportError?: string }>("upscale_save", {
         path: job.path,
+        modelId: job.modelId,
         name: `${job.input.asset.name} ×${job.scale}`,
       });
-      update(job.id, { assetId: entry.asset.id });
+      update(job.id, { assetId: entry.asset.id, error: undefined, exportError: entry.exportError });
       await refreshGallery();
     } finally {
       update(job.id, { saving: false });
@@ -165,7 +203,29 @@ export function Upscale({
         </button>
       )}
       {job.assetId && <span className="muted">{t("saved")}</span>}
-      {job.status === "completed" && (
+      {job.exportError && job.path && (
+        <button
+          title={job.exportError}
+          onClick={() =>
+            void (async () => {
+              let directory = job.destination;
+              if (!directory) {
+                const selected = await open({ directory: true });
+                if (typeof selected !== "string") return;
+                directory = selected;
+              }
+              await native("upscale_export", { path: job.path, directory, jobId: job.id });
+              update(job.id, { exportError: undefined });
+            })().catch(onError)
+          }
+        >
+          {t("saveAs")} · {t("retry")}
+        </button>
+      )}
+      {["queued", "generating"].includes(job.status) && (
+        <button onClick={() => void cancelUpscale(job.id).catch(onError)}>{t("cancel")}</button>
+      )}
+      {["completed", "cancelled"].includes(job.status) && (
         <button
           disabled={busy}
           onClick={() => update(job.id, { status: "pending", path: undefined, assetId: undefined, progress: 0 })}
@@ -280,12 +340,14 @@ export function Upscale({
             <button
               disabled={pausing}
               onClick={() => {
-                pause.current = true;
                 setPausing(true);
+                void Promise.all(visible.filter((job) => job.status === "queued").map((job) => cancelUpscale(job.id)))
+                  .catch(onError)
+                  .finally(() => setPausing(false));
               }}
             >
               <PauseIcon />
-              {t("pauseQueue")}
+              {settingsText("stopQueued")}
             </button>
           ) : (
             <button className="primary-button" disabled={!model || !pending} onClick={() => void run().catch(onError)}>

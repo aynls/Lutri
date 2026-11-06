@@ -1,7 +1,10 @@
 mod cache;
+mod devices;
 mod graph;
+mod scheduler;
 mod worker;
 use crate::{assets, storage::Store};
+pub use scheduler::Scheduler;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
@@ -10,6 +13,29 @@ use std::{
     process::{Command, Stdio},
 };
 use tauri::{ipc::Channel, Manager};
+
+struct StagingCleanup {
+    control: std::sync::Arc<std::sync::Mutex<scheduler::Job>>,
+    output: PathBuf,
+    job: PathBuf,
+    complete: bool,
+}
+impl Drop for StagingCleanup {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.job);
+        if !self.complete {
+            if let Ok(mut task) = self.control.lock() {
+                if let Some(child) = task.child.as_mut() {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                }
+                task.child = None;
+            }
+            let _ = std::fs::remove_file(&self.output);
+            let _ = std::fs::remove_file(self.output.with_extension("thumb.png"));
+        }
+    }
+}
 
 #[derive(Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -81,6 +107,8 @@ pub fn upscale_models(app: tauri::AppHandle) -> Result<Vec<Value>, String> {
 #[tauri::command]
 pub async fn upscale_run(
     app: tauri::AppHandle,
+    job_id: Option<String>,
+    gpu_index: Option<i32>,
     asset_id: String,
     model_id: String,
     scale: u32,
@@ -89,7 +117,19 @@ pub async fn upscale_run(
     save_to_gallery: bool,
     channel: Channel<Value>,
 ) -> Result<Value, String> {
+    let id = job_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    uuid::Uuid::parse_str(&id).map_err(|_| "Invalid upscale job ID")?;
+    let scheduler = app.state::<Scheduler>();
+    let control = {
+        let store = app.state::<Store>();
+        let _admission = store.library_mutation.lock().map_err(|e| e.to_string())?;
+        scheduler.register(&id)?
+    };
+    let _ = channel.send(json!({"phase":"queued"}));
     tauri::async_runtime::spawn_blocking(move || {
+        let scheduler = app.state::<Scheduler>();
+        scheduler.acquire(&id, &control)?;
+        let _lease = scheduler::Lease(&scheduler, id.clone());
         if !(1..=4).contains(&scale) || !(32..=512).contains(&tile_size) {
             return Err("Invalid upscale parameters".into());
         }
@@ -111,7 +151,6 @@ pub async fn upscale_run(
             .map_err(|e| e.to_string())?;
         let entry: Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
         let root = resources(&app)?;
-        let id = uuid::Uuid::new_v4().to_string();
         let output = store.root.join("staging").join(format!("{id}.png"));
         let runtime = root.join("windows-x86_64/ncnn.dll");
         worker::check_runtime(&runtime)?;
@@ -127,7 +166,7 @@ pub async fn upscale_run(
             output_scale: scale,
             tile_size,
             pipeline_cache: None,
-            gpu_index: None,
+            gpu_index,
             architecture: if model_id.starts_with("realcugan") {
                 Architecture::CuganPro
             } else if model_id.contains("general") {
@@ -137,6 +176,12 @@ pub async fn upscale_run(
             },
         };
         let job_path = store.root.join("staging").join(format!("{id}.json"));
+        let mut cleanup = StagingCleanup {
+            control: control.clone(),
+            output: output.clone(),
+            job: job_path.clone(),
+            complete: false,
+        };
         std::fs::write(&job_path, serde_json::to_vec(&job).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
         let mut command = Command::new(std::env::current_exe().map_err(|e| e.to_string())?);
         command
@@ -149,9 +194,25 @@ pub async fn upscale_run(
             use std::os::windows::process::CommandExt;
             command.creation_flags(0x08000000);
         }
-        let mut child = command.spawn().map_err(|e| e.to_string())?;
+        if let Some(index) = gpu_index {
+            let devices = upscale_devices(app.clone())?;
+            if !devices.iter().any(|d| d["index"].as_i64() == Some(index as i64)) {
+                return Err("The selected GPU is unavailable".into());
+            }
+        }
+        let stdout = {
+            let mut task = control.lock().map_err(|e| e.to_string())?;
+            if task.cancelled {
+                return Err("cancelled".into());
+            }
+            let mut child = command.spawn().map_err(|e| e.to_string())?;
+            let stdout = child.stdout.take().ok_or("Worker output unavailable")?;
+            task.child = Some(child);
+            stdout
+        };
+        let _ = channel.send(json!({"phase":"running"}));
         let mut error = None;
-        for line in BufReader::new(child.stdout.take().ok_or("Worker output unavailable")?).lines() {
+        for line in BufReader::new(stdout).lines() {
             let line = line.map_err(|e| e.to_string())?;
             if let Ok(value) = serde_json::from_str::<Value>(&line) {
                 if let Some(message) = value["error"].as_str() {
@@ -160,37 +221,225 @@ pub async fn upscale_run(
                 let _ = channel.send(value);
             }
         }
-        let status = child.wait().map_err(|e| e.to_string())?;
+        let mut task = control.lock().map_err(|e| e.to_string())?;
+        let status = task
+            .child
+            .as_mut()
+            .ok_or("Worker unavailable")?
+            .wait()
+            .map_err(|e| e.to_string())?;
+        task.child = None;
+        if task.cancelled {
+            let _ = std::fs::remove_file(&output);
+            let _ = std::fs::remove_file(output.with_extension("thumb.png"));
+            let _ = std::fs::remove_file(&job_path);
+            return Err("cancelled".into());
+        }
+        task.committing = true;
+        drop(task);
+        let _ = std::fs::remove_file(&job_path);
         if !status.success() {
             return Err(error.unwrap_or_else(|| format!("Upscale worker exited: {status}")));
         }
+        cleanup.complete = true;
+        let explicit_destination = destination.is_some();
         let mut saved_path = output.clone();
+        let mut export_error: Option<String> = None;
         if let Some(directory) = destination {
-            saved_path = PathBuf::from(directory).join(format!("{id}.png"));
-            std::fs::copy(&output, &saved_path).map_err(|e| e.to_string())?;
+            let target = PathBuf::from(directory).join(format!("{id}.png"));
+            match copy_output(&output, &target) {
+                Ok(()) => saved_path = target,
+                Err(error) => export_error = Some(error.to_string()),
+            }
         }
-        let gallery = if save_to_gallery {
-            Some(assets::save_asset(
-                &store,
-                &std::fs::read(&output).map_err(|e| e.to_string())?,
+        let mut gallery_error = None;
+        let mut gallery = if save_to_gallery {
+            match save_output_asset(
+                &store, &output, &id,
                 format!("{} ×{scale}", entry["asset"]["name"].as_str().unwrap_or("Image")),
-                "generated",
-            )?)
+                &model_id,
+            ) {
+                Ok(entry) => Some(entry),
+                Err(error) => { gallery_error = Some(error); None }
+            }
         } else {
             None
         };
-        Ok(json!({"path":output,"exportedPath":saved_path,"gallery":gallery}))
+        if let Some(entry) = gallery.as_mut() {
+            entry["provenance"] = json!({"kind":"upscale","model":model_id});
+            let asset_id = entry["asset"]["id"].as_str().ok_or("Missing saved asset")?;
+            store.db.lock().map_err(|e| e.to_string())?.execute(
+                "UPDATE records SET body=?1 WHERE collection='gallery' AND id=?2",
+                rusqlite::params![entry.to_string(),asset_id],
+            ).map_err(|e|e.to_string())?;
+            if !explicit_destination {
+                if let Err(error) = crate::library::auto_export(&store, entry, "upscale") {
+                    if export_error.is_none() { export_error = Some(error); }
+                }
+            }
+        }
+        Ok(json!({"jobId":id,"path":output,"exportedPath":saved_path,"gallery":gallery,"exportError":export_error,"galleryError":gallery_error}))
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub fn upscale_save(store: tauri::State<Store>, path: String, name: String) -> Result<Value, String> {
-    assets::save_asset(
-        &store,
-        &std::fs::read(path).map_err(|e| e.to_string())?,
+pub fn upscale_save(
+    store: tauri::State<Store>,
+    path: String,
+    name: String,
+    model_id: Option<String>,
+) -> Result<Value, String> {
+    let source = PathBuf::from(path).canonicalize().map_err(|e| e.to_string())?;
+    let staging = store.root.join("staging").canonicalize().map_err(|e| e.to_string())?;
+    if !source.starts_with(staging) || source.extension().and_then(|v| v.to_str()) != Some("png") {
+        return Err("Unknown upscale output".into());
+    }
+    let id = source
+        .file_stem()
+        .and_then(|v| v.to_str())
+        .ok_or("Invalid upscale output")?;
+    uuid::Uuid::parse_str(id).map_err(|_| "Invalid upscale output ID")?;
+    let mut entry = save_output_asset(&store, &source, id, name, model_id.as_deref().unwrap_or("unknown"))?;
+    if let Err(error) = crate::library::auto_export(&store, &entry, "upscale") {
+        entry["exportError"] = json!(error);
+    }
+    Ok(entry)
+}
+
+fn save_output_asset(
+    store: &Store,
+    source: &std::path::Path,
+    id: &str,
+    name: String,
+    model_id: &str,
+) -> Result<Value, String> {
+    static SAVING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _saving = SAVING.lock().map_err(|e| e.to_string())?;
+    if let Ok(entry) = assets::entry(store, id) {
+        return Ok(entry);
+    }
+    let mut entry = assets::save_asset_with_id(
+        store,
+        &std::fs::read(source).map_err(|e| e.to_string())?,
         name,
         "generated",
-    )
+        id.into(),
+    )?;
+    entry["provenance"] = json!({"kind":"upscale","model":model_id});
+    store
+        .db
+        .lock()
+        .map_err(|e| e.to_string())?
+        .execute(
+            "UPDATE records SET body=?1 WHERE collection='gallery' AND id=?2",
+            rusqlite::params![entry.to_string(), id],
+        )
+        .map_err(|e| e.to_string())?;
+    Ok(entry)
+}
+
+#[tauri::command]
+pub fn upscale_configure(state: tauri::State<Scheduler>, concurrency: usize) -> Result<(), String> {
+    state.configure(concurrency)
+}
+
+#[tauri::command]
+pub fn upscale_cancel(state: tauri::State<Scheduler>, id: String) -> Result<bool, String> {
+    state.cancel(&id)
+}
+
+pub fn run_device_probe(path: &str) {
+    let result = devices::enumerate(std::path::Path::new(path));
+    match result {
+        Ok(devices) => println!("{}", json!({"devices":devices})),
+        Err(error) => println!("{}", json!({"error":error})),
+    }
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+    worker::exit_worker(0)
+}
+
+#[tauri::command]
+pub fn upscale_devices(app: tauri::AppHandle) -> Result<Vec<Value>, String> {
+    use std::io::Read;
+    let path = resources(&app)?.join("windows-x86_64/ncnn.dll");
+    let mut command = Command::new(std::env::current_exe().map_err(|e| e.to_string())?);
+    command
+        .arg("--upscale-devices")
+        .arg(path)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000);
+    }
+    let mut child = command.spawn().map_err(|e| e.to_string())?;
+    let started = std::time::Instant::now();
+    while child.try_wait().map_err(|e| e.to_string())?.is_none() {
+        if started.elapsed() > std::time::Duration::from_secs(15) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err("GPU device enumeration timed out".into());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(30));
+    }
+    let mut body = String::new();
+    child
+        .stdout
+        .take()
+        .ok_or("GPU probe output unavailable")?
+        .read_to_string(&mut body)
+        .map_err(|e| e.to_string())?;
+    let value: Value = body
+        .lines()
+        .rev()
+        .find_map(|line| serde_json::from_str(line).ok())
+        .ok_or("GPU probe did not respond")?;
+    if let Some(error) = value["error"].as_str() {
+        return Err(error.into());
+    }
+    Ok(value["devices"].as_array().cloned().unwrap_or_default())
+}
+
+#[tauri::command]
+pub fn upscale_export(
+    store: tauri::State<Store>,
+    path: String,
+    directory: String,
+    job_id: String,
+) -> Result<String, String> {
+    uuid::Uuid::parse_str(&job_id).map_err(|_| "Invalid upscale job ID")?;
+    let source = PathBuf::from(path).canonicalize().map_err(|e| e.to_string())?;
+    let staging = store.root.join("staging").canonicalize().map_err(|e| e.to_string())?;
+    if !source.starts_with(staging)
+        || source.file_name().and_then(|v| v.to_str()) != Some(format!("{job_id}.png").as_str())
+    {
+        return Err("Unknown upscale output".into());
+    }
+    let destination = PathBuf::from(directory).join(format!("{job_id}.png"));
+    copy_output(&source, &destination)?;
+    Ok(destination.to_string_lossy().into_owned())
+}
+
+fn copy_output(source: &std::path::Path, target: &std::path::Path) -> Result<(), String> {
+    if target.exists() {
+        if std::fs::read(source).map_err(|e| e.to_string())? == std::fs::read(target).map_err(|e| e.to_string())? {
+            return Ok(());
+        }
+        return Err("Output file already exists".into());
+    }
+    let mut output = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(target)
+        .map_err(|e| e.to_string())?;
+    if let Err(error) = std::fs::File::open(source).and_then(|mut input| std::io::copy(&mut input, &mut output)) {
+        drop(output);
+        let _ = std::fs::remove_file(target);
+        return Err(error.to_string());
+    }
+    Ok(())
 }

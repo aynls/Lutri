@@ -209,8 +209,8 @@ fn run_backend(job: &WorkerJob, exit_after_save: bool, vulkan: bool) -> Result<(
             let opt = (api.ncnn_net_get_option)(net.1);
             (api.ncnn_option_set_use_vulkan_compute)(opt, vulkan.into());
             (api.ncnn_option_set_num_threads)(opt, 2);
-            // Absent index keeps NCNN's own choice. An index it does not have
-            // leaves the device unset, and loading then uses that same default.
+            // The parent validated explicit indices against NCNN's device list.
+            // Absent index keeps NCNN's own choice.
             if let Some(index) = job.gpu_index {
                 let set_device: libloading::Symbol<unsafe extern "C" fn(Handle, c_int)> = api
                     ._library
