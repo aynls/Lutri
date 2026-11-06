@@ -29,7 +29,7 @@ import { missingPromptReferences } from "./domain/references";
 import { t } from "./i18n";
 import { validateDraft } from "./models/validateDraft";
 import { combinationById } from "./models";
-import { initialDraft } from "./models/shared";
+import { initialDraft, maxRequestCount } from "./models/shared";
 import { useApplication, loadApplication, saveDraft, removeFeed, getState, refreshGallery } from "./services/store";
 import { assetExists, imageUrl as assetImageUrl, importAsset, native } from "./services/native";
 import { ImageViewer } from "./gallery/ImageViewer";
@@ -373,7 +373,7 @@ export default function App() {
         return;
       }
       const submittedDraft = getState().draft;
-      if (validateDraft(submittedDraft).length) return;
+      if (validateDraft(submittedDraft, maxRequestCount(getState().preferences)).length) return;
       const missing = await Promise.all(
         submittedDraft.references.map(async (ref) => ({ ref, exists: await assetExists(ref.assetId) })),
       );
@@ -414,7 +414,7 @@ export default function App() {
   const maskReferenceEntry = maskReference
     ? state.gallery.find((entry) => entry.asset.id === maskReference.assetId)
     : undefined;
-  const validation = validateDraft(state.draft);
+  const validation = validateDraft(state.draft, maxRequestCount(state.preferences));
   const configuration = state.preferences.providers[combination.provider];
   const configured =
     credential &&
@@ -663,6 +663,7 @@ export default function App() {
                     <input
                       type="number"
                       min={1}
+                      max={maxRequestCount(state.preferences)}
                       value={state.draft.requestCount}
                       onChange={(e) => changeDraft({ ...state.draft, requestCount: Number(e.target.value) })}
                     />

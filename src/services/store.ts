@@ -26,6 +26,7 @@ export interface Preferences {
   cleanup: Record<"generated" | "imported", CleanupPolicy>;
   desktop?: { background: boolean; launchAtLogin: boolean; zoom: number };
   upscale?: { concurrency: number; gpuIndex: number | null };
+  generation?: { maxRequestCount: number };
   mcp?: { port: number; autoStart: boolean };
   outputs?: { directory?: string; generationAuto?: boolean; upscaleAuto?: boolean };
 }

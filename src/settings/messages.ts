@@ -22,6 +22,8 @@ const messages = {
   background: label("Keep running in tray", "关闭窗口后常驻托盘", "閉じた後もトレイに常駐"),
   login: label("Launch at login", "开机启动", "ログイン時に起動"),
   desktop: label("Desktop", "桌面", "デスクトップ"),
+  generation: label("Generation", "生成", "生成"),
+  maxRequests: label("Requests per batch", "单批请求上限", "最大リクエスト数"),
   port: label("Port", "端口", "ポート"),
   automaticMcp: label("Start MCP with Lutri", "随应用启动 MCP", "Lutri 起動時に MCP を開始"),
   start: label("Start", "启动", "開始"),

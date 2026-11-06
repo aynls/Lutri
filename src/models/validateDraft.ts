@@ -4,7 +4,7 @@ import { t } from "../i18n";
 import { c } from "../create/messages";
 import { orderedCreationDraft, validateCreation } from "./creation";
 
-export function validateDraft(draft: GenerationDraft): string[] {
+export function validateDraft(draft: GenerationDraft, maxRequests: number): string[] {
   const combination = combinationById(draft.combinationId);
   const errors = [...validateCreation(draft, combination), ...combination.validate(draft)];
   const supported = new Set(combination.fields.map((field) => field.key));
@@ -21,6 +21,7 @@ export function validateDraft(draft: GenerationDraft): string[] {
   )
     errors.push(`${c("maxEdge")}: 256–8192`);
   if (!Number.isSafeInteger(draft.requestCount) || draft.requestCount < 1) errors.push(`${t("requestCount")} ≥ 1`);
+  else if (draft.requestCount > maxRequests) errors.push(`${t("requestCount")} ≤ ${maxRequests}`);
   if (draft.references.length > combination.maxReferences)
     errors.push(`${t("references")} ≤ ${combination.maxReferences}`);
   if (draft.mask && !combination.mask) errors.push(t("unsupportedMask"));

@@ -2,6 +2,7 @@ import type { GenerationBatch, GenerationDraft, GenerationTask, Parameters } fro
 import { compilePrompt } from "../domain/references";
 import { validateDraft } from "../models/validateDraft";
 import { combinationById } from "../models";
+import { maxRequestCount } from "../models/shared";
 import { HttpError, send } from "../providers/transport";
 import { imageResults, responseMetadata, type RemoteImage } from "../providers/results";
 import { poll, recoveryFrom } from "../providers/recovery";
@@ -34,7 +35,7 @@ export function submitBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "
 
 async function createBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "manual") {
   const combination = combinationById(draft.combinationId);
-  const errors = validateDraft(draft);
+  const errors = validateDraft(draft, maxRequestCount(getState().preferences));
   if (!draft.prompt.trim() && !draft.parameters.layer_decomposition && !draft.parameters.structured_prompt)
     errors.push("prompt");
   if (errors.length) throw new Error(errors.join("\n"));

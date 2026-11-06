@@ -2,6 +2,12 @@ import type { GenerationDraft, Json, Parameters } from "../domain/types";
 import { locale } from "../i18n";
 import type { CompiledRequest, FieldDefinition, ModelCombination, ProviderId } from "./types";
 
+export const defaultMaxRequestCount = 20;
+export function maxRequestCount(preferences: { generation?: { maxRequestCount?: number } }): number {
+  const value = preferences.generation?.maxRequestCount;
+  return value !== undefined && Number.isSafeInteger(value) && value >= 1 ? value : defaultMaxRequestCount;
+}
+
 export const providerNames: Record<ProviderId, string> = {
   bfl: "Black Forest Labs",
   fal: "fal",

@@ -2,7 +2,7 @@ import { t } from "../i18n";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { GenerationDraft } from "../domain/types";
 import { combinations, combinationById } from "../models";
-import { initialDraft } from "../models/shared";
+import { initialDraft, maxRequestCount } from "../models/shared";
 import { assetData, importAsset, native } from "./native";
 import { execute, submitBatch, cancelBatch } from "./generation";
 import { getState, refreshGallery } from "./store";
@@ -11,7 +11,7 @@ import { loadUpscaleModels, resolveUpscaleModel, noiseOptions } from "../upscale
 import { runUpscale } from "../upscale/queue";
 
 const string = { type: "string" };
-const tools = [
+const buildTools = () => [
   {
     name: "list_models",
     description: "List model/provider combinations, fields, constraints and supported inputs.",
@@ -36,7 +36,7 @@ const tools = [
           description:
             "Reference id of the source image, required for explicit edit mode. Use a stable id in references.",
         },
-        requestCount: { type: "integer", minimum: 1 },
+        requestCount: { type: "integer", minimum: 1, maximum: maxRequestCount(getState().preferences) },
         inputPreparation: {
           type: "object",
           properties: { version: { const: 1 }, maxEdge: { type: "integer", minimum: 256, maximum: 8192 } },
@@ -306,7 +306,7 @@ export async function startMcp(port: number) {
     },
   );
   try {
-    connection = await native<{ url: string; token: string }>("mcp_start", { port, tools });
+    connection = await native<{ url: string; token: string }>("mcp_start", { port, tools: buildTools() });
     return connection;
   } catch (error) {
     unlisten();

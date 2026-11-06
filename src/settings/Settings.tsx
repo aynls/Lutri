@@ -12,7 +12,7 @@ import { McpSettings } from "./McpSettings";
 import { LlmSettings } from "./LlmSettings";
 import { localePreference, t, useLocale, type LocalePreference } from "../i18n";
 import { lt } from "../i18n/library";
-import { providerNames } from "../models/shared";
+import { maxRequestCount, providerNames } from "../models/shared";
 import type { ProviderId } from "../models/types";
 import { native } from "../services/native";
 import { getState, savePreferences, useApplication, type Preferences } from "../services/store";
@@ -164,6 +164,7 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
     }
   }, [requestedProvider]);
   const [devices, setDevices] = useState<{ index: number; name: string }[]>([]);
+  const [maxRequests, setMaxRequests] = useState(maxRequestCount(preferences));
   const [loadingDevices, setLoadingDevices] = useState(false);
   const attempt = (action: () => Promise<unknown>) => void action().catch(onError);
   const save = (next: Partial<Preferences>) => savePreferences({ ...getState().preferences, ...next });
@@ -286,6 +287,24 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
                 checked={desktop.launchAtLogin}
                 disabled={!desktop.background}
                 onChange={(event) => attempt(() => configureDesktop({ launchAtLogin: event.target.checked }))}
+              />
+            </label>
+          </section>
+          <section>
+            <h2>{text("generation")}</h2>
+            <label className="settings-row">
+              <span>{text("maxRequests")}</span>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={maxRequests}
+                onBlur={() => {
+                  if (Number.isInteger(maxRequests) && maxRequests >= 1)
+                    attempt(() => save({ generation: { maxRequestCount: maxRequests } }));
+                  else setMaxRequests(maxRequestCount(preferences));
+                }}
+                onChange={(event) => setMaxRequests(Number(event.target.value))}
               />
             </label>
           </section>
