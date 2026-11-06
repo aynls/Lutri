@@ -905,10 +905,18 @@ small {
 .file-button input {
   display: none;
 }
-.writer-results {
+.writer-results-area {
   flex: 1;
   padding: 24px;
   overflow: auto;
+  min-width: 0;
+}
+.writer-results-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+.writer-results {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
   gap: 20px;
@@ -922,8 +930,12 @@ small {
 }
 .writer-results article > header {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 18px;
+}
+.writer-results article > header strong {
+  flex: 1;
 }
 .writer-results article p {
   white-space: pre-wrap;

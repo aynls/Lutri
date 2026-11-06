@@ -234,31 +234,44 @@ export function Writers({
             </button>
           </div>
         </ResizablePanel>
-        <div className="writer-results">
-          {outputs.map((output) => (
-            <article key={output.id}>
-              <header>
-                <strong>{output.writer.name}</strong>
-                {output.busy ? <span className="spinner" /> : null}
-              </header>
-              {output.reasoning ? (
-                <details>
-                  <summary>{localize(label("Reasoning", "推理过程", "推論"))}</summary>
-                  <p>{output.reasoning}</p>
-                </details>
-              ) : null}
-              <p>{output.text}</p>
-              {output.error ? <p className="error-text">{output.error}</p> : null}
-              <footer>
-                <button disabled={output.busy} onClick={() => void run(output.writer, output.id)}>
-                  {localize(label("Rewrite", "重写", "書き直す"))}
-                </button>
-                <button disabled={!output.text || output.busy} onClick={() => onAccept(output.text)}>
-                  {localize(label("Use prompt", "使用提示词", "使用する"))}
-                </button>
-              </footer>
-            </article>
-          ))}
+        <div className="writer-results-area">
+          {outputs.length ? (
+            <div className="writer-results-actions">
+              <button onClick={() => setOutputs([])}>{localize(label("Clear all", "全部清空", "すべて消去"))}</button>
+            </div>
+          ) : null}
+          <div className="writer-results">
+            {outputs.map((output) => (
+              <article key={output.id}>
+                <header>
+                  <strong>{output.writer.name}</strong>
+                  {output.busy ? <span className="spinner" /> : null}
+                  <button
+                    aria-label={localize(label("Remove", "移除", "削除"))}
+                    onClick={() => setOutputs((current) => current.filter((item) => item.id !== output.id))}
+                  >
+                    ×
+                  </button>
+                </header>
+                {output.reasoning ? (
+                  <details>
+                    <summary>{localize(label("Reasoning", "推理过程", "推論"))}</summary>
+                    <p>{output.reasoning}</p>
+                  </details>
+                ) : null}
+                <p>{output.text}</p>
+                {output.error ? <p className="error-text">{output.error}</p> : null}
+                <footer>
+                  <button disabled={output.busy} onClick={() => void run(output.writer, output.id)}>
+                    {localize(label("Rewrite", "重写", "書き直す"))}
+                  </button>
+                  <button disabled={!output.text || output.busy} onClick={() => onAccept(output.text)}>
+                    {localize(label("Use prompt", "使用提示词", "使用する"))}
+                  </button>
+                </footer>
+              </article>
+            ))}
+          </div>
         </div>
       </div>
       {editing ? (
