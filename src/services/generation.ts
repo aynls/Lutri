@@ -149,12 +149,16 @@ async function downloadResults(task: GenerationTask) {
       } catch (error) {
         result.metadata = { ...result.metadata, provenance_error: sanitizeDiagnostic(error) };
       }
-      await refreshGallery();
       try {
         await native("asset_auto_export", { id: asset.asset.id, kind: "generation" });
         delete result.exportError;
       } catch (error) {
         result.exportError = sanitizeDiagnostic(error);
+      }
+      try {
+        await refreshGallery();
+      } catch (error) {
+        result.metadata = { ...result.metadata, gallery_refresh_error: sanitizeDiagnostic(error) };
       }
     } catch (error) {
       result.status = "failed";
