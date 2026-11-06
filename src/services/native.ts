@@ -9,6 +9,8 @@ const mutations = new Set([
   "asset_download",
   "asset_delete",
   "asset_provenance",
+  "assets_publish",
+  "staging_purge",
   "gallery_mutate",
   "library_migrate",
   "library_maintain",
@@ -32,8 +34,8 @@ export async function commit(changes: RecordChange[]) {
   if (changes.some((change) => change.collection === "gallery"))
     void emit("assets-changed", { source: getCurrentWindow().label }).catch(() => {});
 }
-export const importAsset = (source: { path?: string; dataUrl?: string; url?: string }) =>
-  native<GalleryEntry>("asset_import", source);
+export const importAsset = (source: { path?: string; dataUrl?: string; url?: string }, staged = false) =>
+  native<GalleryEntry>("asset_import", { ...source, staged });
 export const assetData = (id: string) => invoke<string>("asset_data", { id });
 export const assetExists = (id: string) => invoke<boolean>("asset_exists", { id });
 export const downloadAsset = (url: string, resultId: string) =>

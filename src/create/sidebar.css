@@ -120,7 +120,7 @@
   font-size: 11px;
 }
 .creation-panel .has-error input,
-.creation-panel .has-error select,
+.creation-panel .has-error .select-trigger,
 .creation-panel .has-error textarea,
 .creation-panel [aria-invalid="true"].prompt-editor {
   border-color: var(--danger);

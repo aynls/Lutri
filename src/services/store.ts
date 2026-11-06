@@ -72,6 +72,8 @@ export function useApplication() {
   }, getState);
 }
 let loading: Promise<void> | undefined;
+/** Asset IDs referenced by the last committed draft; staged assets lose library files once unreferenced. */
+let committedRelated = new Set<string>();
 export function loadApplication(): Promise<void> {
   return (loading ??= (async () => {
     const [gallery, masks, boards, tasks, batches, feed, drafts, preferences] = await Promise.all([
@@ -129,6 +131,8 @@ export function loadApplication(): Promise<void> {
       };
     });
     combinationById(draft.combinationId);
+    committedRelated = new Set(relatedAssetIds([], draft));
+    await native("staging_purge", { keep: relatedAssetIds(tasks, draft, feed) });
     const createdAt = new Map(tasks.map((task) => [task.id, task.createdAt]));
     feed.sort(
       (a, b) => (createdAt.get(b.taskId) ?? 0) - (createdAt.get(a.taskId) ?? 0) || a.resultIndex - b.resultIndex,
@@ -161,7 +165,10 @@ export function saveDraft(draft: GenerationDraft) {
   draftWrites = draftWrites
     .catch(() => {})
     .then(async () => {
-      const normalized = { ...draft, parameters: (await storeParameterAssets(draft.parameters)) as Parameters };
+      const normalized = {
+        ...draft,
+        parameters: (await storeParameterAssets(draft.parameters, "", new Map(), true)) as Parameters,
+      };
       await commit([{ collection: "draft", id: "current", value: normalized }]);
       if (state.draft === draft) updateState({ draft: normalized });
       const cached = new Set(state.gallery.map((entry) => entry.asset.id));
@@ -173,6 +180,20 @@ export function saveDraft(draft: GenerationDraft) {
             gallery: [...new Map([...state.gallery, ...entries].map((entry) => [entry.asset.id, entry])).values()],
           });
       }
+      const keep = new Set(relatedAssetIds([], normalized));
+      const stale = [...committedRelated].filter((id) => !keep.has(id));
+      committedRelated = keep;
+      if (!stale.length) return;
+      const orphans = (await native<GalleryEntry[]>("gallery_entries", { ids: stale })).filter((entry) => entry.staged);
+      const removed = new Set<string>();
+      for (const entry of orphans)
+        try {
+          await native("asset_delete", { id: entry.asset.id });
+          removed.add(entry.asset.id);
+        } catch {
+          committedRelated.add(entry.asset.id);
+        }
+      if (removed.size) updateState({ gallery: state.gallery.filter((entry) => !removed.has(entry.asset.id)) });
     });
   return draftWrites;
 }

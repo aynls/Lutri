@@ -46,6 +46,8 @@ pub fn run() {
             library::asset_provenance,
             library::asset_copy,
             library::asset_paste,
+            library::assets_publish,
+            library::staging_purge,
             library::asset_auto_export,
             library::library_stats,
             library::library_maintain,

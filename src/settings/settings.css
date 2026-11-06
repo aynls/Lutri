@@ -74,7 +74,7 @@
   line-height: 1.6;
 }
 .settings-row > input:not([type="checkbox"]),
-.settings-row > select,
+.settings-row > .select-trigger,
 .settings-row > .segmented-control {
   width: 280px;
   max-width: 55%;
@@ -313,7 +313,7 @@
     gap: 12px;
     flex-wrap: wrap;
   }
-  .settings-row > select,
+  .settings-row > .select-trigger,
   .settings-row > .segmented-control {
     width: 100%;
     max-width: 100%;

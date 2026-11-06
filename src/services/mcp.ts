@@ -230,6 +230,7 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
       return getState()
         .gallery.filter(
           (entry) =>
+            !entry.staged &&
             (!args.source || entry.source === args.source) &&
             (!args.query || entry.asset.id.toLowerCase().includes(String(args.query).toLowerCase())),
         )
@@ -250,10 +251,13 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
     case "get_image":
       return { image: await assetData(String(args.assetId)) };
     case "import_image": {
-      const entry = await importAsset({
-        path: typeof args.path === "string" ? args.path : undefined,
-        dataUrl: typeof args.dataUrl === "string" ? args.dataUrl : undefined,
-      });
+      const entry = await importAsset(
+        {
+          path: typeof args.path === "string" ? args.path : undefined,
+          dataUrl: typeof args.dataUrl === "string" ? args.dataUrl : undefined,
+        },
+        true,
+      );
       await refreshGallery();
       return entry;
     }

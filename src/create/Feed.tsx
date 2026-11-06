@@ -22,7 +22,6 @@ import { execute } from "../services/generation";
 import { removeFeed, useApplication } from "../services/store";
 import { c } from "./messages";
 import { TaskUsage } from "../history/TaskUsage";
-import { setViewerContext } from "../gallery/viewContext";
 
 export function Feed({
   onView,
@@ -31,7 +30,7 @@ export function Feed({
   onRelated,
   onError,
 }: {
-  onView: (id: string) => void;
+  onView: (id: string, ids?: string[]) => void;
   onReference: (entry: GalleryEntry) => void;
   onEdit: (entry: GalleryEntry) => void;
   onRelated: (id: string) => void;
@@ -134,13 +133,13 @@ export function Feed({
                         <button
                           className="image-button"
                           onClick={() => {
-                            setViewerContext(
+                            onView(
+                              asset.asset.id,
                               feed.flatMap((slot) => {
                                 const id = taskMap.get(slot.taskId)?.results[slot.resultIndex]?.assetId;
                                 return id ? [id] : [];
                               }),
                             );
-                            onView(asset.asset.id);
                           }}
                         >
                           <AssetImage entry={asset} />

@@ -12,7 +12,6 @@ import {
   XIcon,
 } from "@phosphor-icons/react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { listen } from "@tauri-apps/api/event";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { initializeDesktop } from "./services/desktop";
 import { useLocale } from "./i18n";
@@ -23,7 +22,6 @@ import { ModelSelector } from "./create/components/ModelSelector";
 import { CreationControl } from "./create/components/CreationControl";
 import { editTargetId } from "./models/creation";
 import type { ModelCombination } from "./models/types";
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { GalleryEntry, GenerationDraft } from "./domain/types";
 import { missingPromptReferences } from "./domain/references";
 import { t } from "./i18n";
@@ -42,7 +40,6 @@ import { c } from "./create/messages";
 import { InputPreparation } from "./create/components/InputPreparation";
 import { Dialog } from "./components/Dialog";
 import { chooseImages } from "./gallery/actions";
-import { takeViewerContext } from "./gallery/viewContext";
 import { RequestPreview } from "./create/components/RequestPreview";
 import { SavedStyles } from "./create/components/SavedStyles";
 import { Regions } from "./create/components/Regions";
@@ -74,6 +71,7 @@ let started = false;
 export default function App() {
   useLocale();
   const state = useApplication();
+  const [viewer, setViewer] = useState<{ assetId: string; ids: string[] }>();
   const [page, setPage] = useState<Page>("creation"),
     [error, setError] = useState(""),
     [picker, setPicker] = useState(false),
@@ -102,7 +100,7 @@ export default function App() {
       started = true;
       void loadApplication()
         .then(() => {
-          if (!new URLSearchParams(location.search).has("asset")) return resumeTasks();
+          return resumeTasks();
         })
         .then(() => initializeDesktop(onError))
         .catch(onError);
@@ -165,13 +163,14 @@ export default function App() {
     [page, writers],
   );
   useEffect(() => {
-    if (new URLSearchParams(location.search).has("asset")) return;
     const paste = (event: ClipboardEvent) => {
       if (!["creation", "upscale", "gallery"].includes(page) || document.querySelector("dialog[open]")) return;
       const files = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
       if (!files.length) return;
       event.preventDefault();
-      void importFiles(files).then(receiveImages).catch(onError);
+      void importFiles(files, page === "creation")
+        .then(receiveImages)
+        .catch(onError);
     };
     document.addEventListener("paste", paste, true);
     let disposed = false;
@@ -184,7 +183,9 @@ export default function App() {
         if (payload.type === "leave") setDragging(false);
         if (payload.type === "drop") {
           setDragging(false);
-          void importPaths(payload.paths).then(receiveImages).catch(onError);
+          void importPaths(payload.paths, page === "creation")
+            .then(receiveImages)
+            .catch(onError);
         }
       })
       .then((stop) => {
@@ -205,15 +206,8 @@ export default function App() {
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
   }, [onError]);
-  const view = (id: string) => {
-    const context = takeViewerContext(id);
-    const window = new WebviewWindow(`image-${crypto.randomUUID()}`, {
-      url: `index.html?asset=${encodeURIComponent(id)}&context=${context}`,
-      title: "Lutri",
-      width: 1100,
-      height: 800,
-    });
-    void window.once("tauri://error", (event) => onError(event.payload));
+  const view = (assetId: string, ids: string[] = [assetId]) => {
+    setViewer({ assetId, ids });
   };
   const addReferences = (entries: GalleryEntry[]) => {
     const draft = getState().draft;
@@ -237,28 +231,6 @@ export default function App() {
     setPage("creation");
   };
   const addReference = (entry: GalleryEntry) => addReferences([entry]);
-  useEffect(() => {
-    if (new URLSearchParams(location.search).has("asset")) return;
-    let disposed = false;
-    const unlistens: (() => void)[] = [];
-    const settle = (stop: () => void) => {
-      if (disposed) stop();
-      else unlistens.push(stop);
-    };
-    void listen<GalleryEntry>("viewer-use-reference", (event) => addReferences([event.payload]))
-      .then(settle)
-      .catch(onError);
-    void listen<GalleryEntry>("viewer-use-upscale", (event) => {
-      setUpscaleInput({ entries: [event.payload], nonce: crypto.randomUUID() });
-      setPage("upscale");
-    })
-      .then(settle)
-      .catch(onError);
-    return () => {
-      disposed = true;
-      unlistens.forEach((stop) => stop());
-    };
-  }, [onError]);
   const switchModel = async (next: ModelCombination) => {
     const current = getState().draft;
     if (
@@ -296,10 +268,10 @@ export default function App() {
       return;
     }
     if (source === "files") {
-      addReferences(await chooseImages());
+      addReferences(await chooseImages(true));
       return;
     }
-    const entry = await native<GalleryEntry>("asset_paste");
+    const entry = await native<GalleryEntry>("asset_paste", { staged: true });
     await refreshGallery();
     addReferences([entry]);
   };
@@ -401,10 +373,6 @@ export default function App() {
       setSubmitting(false);
     }
   };
-  const assetId = new URLSearchParams(location.search).get("asset");
-  if (assetId) {
-    return <ImageViewer assetId={assetId} />;
-  }
   const combination = combinationById(state.draft.combinationId),
     Form = combination.Form;
   const maskEntry = state.draft.mask
@@ -437,7 +405,7 @@ export default function App() {
     for (let parent = field.parentElement; parent; parent = parent.parentElement)
       if (parent instanceof HTMLDetailsElement) parent.open = true;
     field.scrollIntoView({ block: "center", behavior: "instant" });
-    field.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")?.focus();
+    field.querySelector<HTMLElement>('input:not([type="hidden"]), .select-trigger, textarea')?.focus();
   };
   return (
     <div className="app-shell">
@@ -758,7 +726,7 @@ export default function App() {
                 disabled={importBusy || !/^https?:\/\//i.test(imageUrl)}
                 onClick={() => {
                   setImportBusy(true);
-                  void importAsset({ url: imageUrl })
+                  void importAsset({ url: imageUrl }, true)
                     .then(async (entry) => {
                       await refreshGallery();
                       addReferences([entry]);
@@ -852,6 +820,40 @@ export default function App() {
           onError={onError}
         />
       </div>
+      {viewer && (
+        <ImageViewer
+          key={viewer.assetId}
+          assetId={viewer.assetId}
+          assetIds={viewer.ids}
+          onClose={() => setViewer(undefined)}
+          onReference={async (entry) => {
+            const draft = getState().draft;
+            if (draft.references.length >= combinationById(draft.combinationId).maxReferences)
+              throw new Error(c("tooMany"));
+            await saveDraft({
+              ...draft,
+              references: [
+                ...draft.references,
+                {
+                  id: crypto.randomUUID(),
+                  assetId: entry.asset.id,
+                  name: t("referenceAlias"),
+                  purpose: "reference",
+                },
+              ],
+            });
+            setWriters(false);
+            setPage("creation");
+            setViewer(undefined);
+          }}
+          onUpscale={(entry) => {
+            setWriters(false);
+            setUpscaleInput({ entries: [entry], nonce: crypto.randomUUID() });
+            setPage("upscale");
+            setViewer(undefined);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { Select } from "../components/Select";
 import { useEffect, useState } from "react";
 import {
   ArrowUpRightIcon,
@@ -247,25 +248,25 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
             </div>
             <label className="settings-row">
               <span>{text("language")}</span>
-              <select
+              <Select
                 value={localePreference()}
-                onChange={(event) => attempt(() => selectLocale(event.target.value as LocalePreference))}
+                onValueChange={(nextValue) => attempt(() => selectLocale(nextValue as LocalePreference))}
               >
                 <option value="system">{t("system")}</option>
                 <option value="zh">中文</option>
                 <option value="en">English</option>
                 <option value="ja">日本語</option>
-              </select>
+              </Select>
             </label>
             <label className="settings-row">
               <span>{text("zoom")}</span>
-              <select value={desktop.zoom} onChange={(event) => attempt(() => setZoom(Number(event.target.value)))}>
+              <Select value={desktop.zoom} onValueChange={(nextValue) => attempt(() => setZoom(Number(nextValue)))}>
                 {Array.from({ length: 16 }, (_, index) => (index + 5) / 10).map((value) => (
                   <option key={value} value={value}>
                     {Math.round(value * 100)}%
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           </section>
           <section>
@@ -414,17 +415,17 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
             </label>
             <label className="settings-row">
               <span>{text("gpu")}</span>
-              <select
+              <Select
                 value={upscale.gpuIndex ?? "auto"}
                 onFocus={() => {
                   if (!devices.length && !loadingDevices) refreshDevices();
                 }}
-                onChange={(event) =>
+                onValueChange={(nextValue) =>
                   attempt(() =>
                     save({
                       upscale: {
                         ...upscale,
-                        gpuIndex: event.target.value === "auto" ? null : Number(event.target.value),
+                        gpuIndex: nextValue === "auto" ? null : Number(nextValue),
                       },
                     }),
                   )
@@ -439,7 +440,7 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
                     {device.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <button disabled={loadingDevices} onClick={refreshDevices}>
               {text("refresh")}

@@ -18,6 +18,14 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.board-editor {
+  display: grid;
+  gap: 12px;
+}
+.board-editor > label {
+  font-size: 13px;
+  color: var(--muted);
+}
 .content-toolbar {
   padding: 12px 20px;
   border-bottom: 1px solid var(--line);
@@ -30,7 +38,7 @@
 .gallery-toolbar {
   flex-wrap: wrap;
 }
-.gallery-toolbar > select {
+.gallery-toolbar > .select-trigger {
   width: 118px;
   font-size: 12px;
 }
@@ -50,7 +58,7 @@
   min-width: 100px;
 }
 .filter-bar input,
-.filter-bar select {
+.filter-bar .select-trigger {
   font-size: 12px;
 }
 .selection-toolbar {
@@ -213,13 +221,17 @@
   flex-shrink: 0;
   font-size: 13px;
 }
-.gallery-selection-footer > select {
+.gallery-selection-footer > .select-trigger {
   width: 140px;
   font-size: 12px;
 }
 .gallery-selection-footer > .primary-button {
   margin-left: auto;
   min-width: 100px;
+}
+.asset-picker {
+  width: min(1600px, 94vw);
+  height: min(920px, 94vh);
 }
 .asset-picker .dialog-body {
   display: flex;
@@ -229,6 +241,7 @@
   flex-direction: column;
 }
 .viewer-toolbar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -262,6 +275,9 @@
   font-size: 13px;
 }
 .viewer-toolbar .button-row {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -277,12 +293,10 @@
 }
 .viewer-zoom-controls {
   min-width: 0;
-  margin-left: 12px;
-  border-left: 1px solid var(--line);
 }
 .viewer-zoom-controls .image-compare-toolbar {
   gap: 6px;
-  padding: 0 0 0 12px;
+  padding: 0;
   border: 0;
   background: transparent;
 }
@@ -382,5 +396,42 @@
   from {
     opacity: 0;
     transform: translateY(4px);
+  }
+}
+
+.viewer-dialog {
+  width: calc(100vw - 48px);
+  height: calc(100dvh - 48px);
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.viewer-dialog:not([open]) {
+  display: none;
+}
+.viewer-dialog::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+.viewer-dialog .viewer-toolbar {
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.viewer-dialog .error-banner {
+  position: absolute;
+}
+@media (max-width: 760px) {
+  .viewer-dialog {
+    width: calc(100vw - 16px);
+    height: calc(100dvh - 16px);
+  }
+  .viewer-dialog .viewer-details-bar {
+    max-width: 40%;
+    min-width: 0;
   }
 }

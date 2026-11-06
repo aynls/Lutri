@@ -26,10 +26,6 @@ export async function setZoom(zoom: number) {
   const value = Math.max(0.5, Math.min(2, Math.round(zoom * 10) / 10));
   await native("desktop_zoom", { zoom: value });
   localStorage.setItem("lutri.zoom", String(value));
-  if (new URLSearchParams(location.search).has("asset")) {
-    await emit("zoom-change-request", value);
-    return;
-  }
   const current = getState().preferences;
   await savePreferences({
     ...current,
@@ -39,24 +35,16 @@ export async function setZoom(zoom: number) {
 }
 
 export async function initializeDesktop(onError: (error: unknown) => void) {
-  const main = !new URLSearchParams(location.search).has("asset");
-  const exitListener = main
-    ? await listen("desktop-exit-request", () => {
-        void (async () => {
-          try {
-            await flushWrites();
-            if (connection) await stopMcp();
-          } finally {
-            await native("desktop_shutdown");
-          }
-        })().catch(onError);
-      })
-    : () => {};
-  const zoomListener = main
-    ? await listen<number>("zoom-change-request", ({ payload }) => {
-        void setZoom(payload).catch(onError);
-      })
-    : () => {};
+  const exitListener = await listen("desktop-exit-request", () => {
+    void (async () => {
+      try {
+        await flushWrites();
+        if (connection) await stopMcp();
+      } finally {
+        await native("desktop_shutdown");
+      }
+    })().catch(onError);
+  });
   const preferences = getState().preferences;
   setLocale(localePreference());
   const localeListener = await listen<LocalePreference>("locale-changed", ({ payload }) => setLocale(payload));
@@ -75,15 +63,13 @@ export async function initializeDesktop(onError: (error: unknown) => void) {
     assetTimer = setTimeout(() => void refreshGallery().catch(onError), 80);
   });
   await native("desktop_zoom", { zoom: preferences.desktop?.zoom ?? 1 }).catch(onError);
-  if (main) {
-    await native("desktop_configure", {
-      background: preferences.desktop?.background ?? false,
-      launchAtLogin: preferences.desktop?.launchAtLogin ?? false,
-      ...desktopLabels(),
-    }).catch(onError);
-    await native("upscale_configure", { concurrency: preferences.upscale?.concurrency ?? 1 }).catch(onError);
-    if (preferences.mcp?.autoStart && !connection) await startMcp(preferences.mcp.port).catch(onError);
-  }
+  await native("desktop_configure", {
+    background: preferences.desktop?.background ?? false,
+    launchAtLogin: preferences.desktop?.launchAtLogin ?? false,
+    ...desktopLabels(),
+  }).catch(onError);
+  await native("upscale_configure", { concurrency: preferences.upscale?.concurrency ?? 1 }).catch(onError);
+  if (preferences.mcp?.autoStart && !connection) await startMcp(preferences.mcp.port).catch(onError);
   const keyboard = (event: KeyboardEvent) => {
     if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing) return;
     if (!["+", "=", "-", "0"].includes(event.key)) return;
@@ -96,7 +82,6 @@ export async function initializeDesktop(onError: (error: unknown) => void) {
     localeListener();
     preferenceListener();
     exitListener();
-    zoomListener();
     assetListener();
     clearTimeout(assetTimer);
     window.removeEventListener("keydown", keyboard);

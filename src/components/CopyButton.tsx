@@ -5,11 +5,13 @@ import { t } from "../i18n";
 export function CopyButton({
   value,
   title = t("copyId"),
+  label,
   className,
   onError,
 }: {
   value: string;
   title?: string;
+  label?: string;
   className?: string;
   onError: (error: unknown) => void;
 }) {
@@ -32,7 +34,7 @@ export function CopyButton({
           .catch(onError)
       }
     >
-      {copied ? <CheckIcon /> : <CopyIcon />}
+      {label ? (copied ? t("copied") : label) : copied ? <CheckIcon /> : <CopyIcon />}
     </button>
   );
 }

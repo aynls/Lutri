@@ -6,6 +6,12 @@ export const select = (key: string, names: [string, string, string], options: re
   label: label(...names),
   kind: "select",
   options,
+  optionLabels: {
+    auto: label("Auto", "自动", "自動"),
+    low: label("Low", "低", "低"),
+    medium: label("Medium", "中", "中"),
+    high: label("High", "高", "高"),
+  },
 });
 export const number = (
   key: string,

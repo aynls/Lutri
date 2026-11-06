@@ -4,17 +4,17 @@ import { refreshGallery } from "../services/store";
 
 export const imageExtensions = ["png", "jpg", "jpeg", "webp", "gif", "bmp", "tif", "tiff", "svg"];
 export const isImagePath = (path: string) => imageExtensions.includes(path.split(".").pop()?.toLowerCase() ?? "");
-export async function importPaths(paths: string[]): Promise<GalleryEntry[]> {
+export async function importPaths(paths: string[], staged = false): Promise<GalleryEntry[]> {
   const entries: GalleryEntry[] = [];
   try {
-    for (const path of paths.filter(isImagePath)) entries.push(await importAsset({ path }));
+    for (const path of paths.filter(isImagePath)) entries.push(await importAsset({ path }, staged));
     return entries;
   } finally {
     await refreshGallery();
   }
 }
 
-export async function importFiles(files: File[]): Promise<GalleryEntry[]> {
+export async function importFiles(files: File[], staged = false): Promise<GalleryEntry[]> {
   const entries = await Promise.all(
     files
       .filter((file) => file.type.startsWith("image/"))
@@ -25,7 +25,7 @@ export async function importFiles(files: File[]): Promise<GalleryEntry[]> {
           reader.onerror = () => reject(reader.error);
           reader.readAsDataURL(file);
         });
-        return importAsset({ dataUrl });
+        return importAsset({ dataUrl }, staged);
       }),
   );
   await refreshGallery();

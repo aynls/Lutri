@@ -63,7 +63,8 @@
 }
 .compact-dialog {
   width: min(460px, 90vw);
-  height: auto;
+  height: fit-content;
+  max-height: 88vh;
 }
 .compact-dialog .dialog-body {
   padding: 24px;

@@ -1,3 +1,4 @@
+import { Select } from "../components/Select";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cancelUpscale, runUpscale } from "./queue";
 import { settingsText } from "../settings/messages";
@@ -22,6 +23,7 @@ import { refreshGallery } from "../services/store";
 import { PathPreview } from "../components/PathPreview";
 import { Dialog } from "../components/Dialog";
 import { ResizablePanel } from "../components/ResizablePanel";
+import { UpscaleModelSelector } from "./ModelSelector";
 
 import { loadUpscaleModels, resolveUpscaleModel, noiseOptions, type Noise, type UpscaleModel } from "./catalog";
 interface Job {
@@ -76,9 +78,25 @@ export function Upscale({
   const [view, setView] = useState<string>();
   const [picker, setPicker] = useState(false),
     [pausing, setPausing] = useState(false);
-  const running = useRef(busy),
+  const active = useRef(0),
     received = useRef<string>(undefined);
+  const resultsContainer = useRef<HTMLDivElement>(null);
+  const [columnCount, setColumnCount] = useState(1);
   const visible = batch ? jobs : single ? [single] : [];
+  useEffect(() => {
+    const observer = new ResizeObserver(([entry]) =>
+      setColumnCount(Math.max(1, Math.floor((entry.contentRect.width - 40 + 16) / 272))),
+    );
+    observer.observe(resultsContainer.current!);
+    return () => observer.disconnect();
+  }, []);
+  const columns: Job[][] = Array.from({ length: columnCount }, () => []);
+  const heights = Array<number>(columnCount).fill(0);
+  for (const job of jobs) {
+    const column = heights.indexOf(Math.min(...heights));
+    columns[column].push(job);
+    heights[column] += (256 * job.input.asset.height) / job.input.asset.width + 60 + (job.error ? 130 : 0);
+  }
   const add = (entries: GalleryEntry[]) => {
     if (!entries.length) return;
     if (batch || entries.length > 1 || workspace.busy) {
@@ -117,62 +135,65 @@ export function Upscale({
     setJobs((current) => current.map((job) => (job.id === id ? { ...job, ...changes } : job)));
     setSingle((current) => (current?.id === id ? { ...current, ...changes } : current));
   };
+  const execute = async (job: Job) => {
+    const fileId = resolveUpscaleModel(models, model, scale, noise);
+    update(job.id, { status: "queued", progress: 0, error: undefined, scale });
+    try {
+      const result = await runUpscale(
+        {
+          jobId: job.id,
+          assetId: job.input.asset.id,
+          modelId: fileId,
+          scale,
+          tileSize: tile,
+          destination: destination || null,
+          saveToGallery,
+        },
+        (event) => {
+          if (event.phase === "running") update(job.id, { status: "generating" });
+          if (event.total) update(job.id, { progress: Math.round(((event.completed ?? 0) / event.total) * 100) });
+        },
+      );
+      update(job.id, {
+        status: "completed",
+        progress: 100,
+        path: result.path,
+        assetId: result.gallery?.asset.id,
+        exportError: result.exportError,
+        error: result.galleryError,
+        destination,
+        modelId: fileId,
+      });
+    } catch (error) {
+      const cancelled = String(error) === "cancelled";
+      update(job.id, {
+        status: cancelled ? "cancelled" : "failed",
+        error: cancelled ? undefined : String(error),
+      });
+    }
+  };
+  const track = async (job: Job) => {
+    active.current += 1;
+    setBusy(true);
+    try {
+      await execute(job);
+    } finally {
+      active.current -= 1;
+      if (!active.current) {
+        setBusy(false);
+        setPausing(false);
+      }
+    }
+  };
   const run = async () => {
     if (workspace.busy) return;
     const queue = visible.filter((job) => job.status === "pending" || job.status === "failed");
     if (!queue.length) return;
-    const fileId = resolveUpscaleModel(models, model, scale, noise);
-    running.current = true;
-    setBusy(true);
-    setPausing(false);
     const submitted = queue.map((job) => ({ ...job, id: crypto.randomUUID() }));
     const replacements = new Map(queue.map((job, index) => [job.id, submitted[index]]));
     setJobs((current) => current.map((job) => replacements.get(job.id) ?? job));
     setSingle((current) => (current ? (replacements.get(current.id) ?? current) : current));
-    try {
-      await Promise.all(
-        submitted.map(async (job) => {
-          update(job.id, { status: "queued", progress: 0, error: undefined, scale });
-          try {
-            const result = await runUpscale(
-              {
-                jobId: job.id,
-                assetId: job.input.asset.id,
-                modelId: fileId,
-                scale,
-                tileSize: tile,
-                destination: destination || null,
-                saveToGallery,
-              },
-              (event) => {
-                if (event.phase === "running") update(job.id, { status: "generating" });
-                if (event.total) update(job.id, { progress: Math.round(((event.completed ?? 0) / event.total) * 100) });
-              },
-            );
-            update(job.id, {
-              status: "completed",
-              progress: 100,
-              path: result.path,
-              assetId: result.gallery?.asset.id,
-              exportError: result.exportError,
-              error: result.galleryError,
-              destination,
-              modelId: fileId,
-            });
-          } catch (error) {
-            const cancelled = String(error) === "cancelled";
-            update(job.id, {
-              status: cancelled ? "cancelled" : "failed",
-              error: cancelled ? undefined : String(error),
-            });
-          }
-        }),
-      );
-    } finally {
-      running.current = false;
-      setBusy(false);
-      setPausing(false);
-    }
+    await Promise.all(submitted.map(track));
   };
   const saveJob = async (job: Job) => {
     if (!job.path || job.saving) return;
@@ -195,6 +216,12 @@ export function Upscale({
     setJobs((current) => current.filter((job) => job.id !== id));
     setSingle((current) => (current?.id === id ? undefined : current));
   };
+  const retry = (job: Job) => {
+    const next: Job = { ...job, id: crypto.randomUUID(), status: "pending", path: undefined, assetId: undefined, progress: 0 };
+    setJobs((current) => current.map((entry) => (entry.id === job.id ? next : entry)));
+    setSingle((current) => (current?.id === job.id ? next : current));
+    if (workspace.busy) void track(next);
+  };
   const jobFooter = (job: Job) => (
     <footer className="upscale-job-footer">
       {job.status === "generating" && <progress max={100} value={job.progress} aria-label={t("processing")} />}
@@ -203,9 +230,6 @@ export function Upscale({
         {job.scale ? ` → ${job.input.asset.width * job.scale} × ${job.input.asset.height * job.scale}` : ""}
       </small>
       <div className="upscale-job-actions">
-        <span className={`status-badge status-${job.status}`}>
-          {job.status === "generating" ? `${t("processing")} ${job.progress}%` : t(job.status)}
-        </span>
         {job.path && !job.assetId && (
           <button
             disabled={job.saving}
@@ -237,20 +261,16 @@ export function Upscale({
           </button>
         )}
         {["queued", "generating"].includes(job.status) && (
-          <button
-            title={t("cancel")}
-            aria-label={t("cancel")}
-            onClick={() => void cancelUpscale(job.id).catch(onError)}
-          >
-            <StopIcon size={16} />
+          <button className="job-cancel" title={t("cancel")} onClick={() => void cancelUpscale(job.id).catch(onError)}>
+            <StopIcon size={14} />
+            {t("cancel")}
           </button>
         )}
-        {["completed", "cancelled"].includes(job.status) && (
+        {job.status === "cancelled" && (
           <button
-            disabled={busy}
             title={t("runAgain")}
             aria-label={t("runAgain")}
-            onClick={() => update(job.id, { status: "pending", path: undefined, assetId: undefined, progress: 0 })}
+            onClick={() => retry(job)}
           >
             <ArrowCounterClockwiseIcon size={16} />
           </button>
@@ -267,19 +287,14 @@ export function Upscale({
           </button>
           <button aria-pressed={batch} onClick={() => setBatch(true)}>
             {t("batch")}
-            {jobs.length ? ` · ${jobs.length}` : ""}
           </button>
         </div>
-        <label>
-          {t("model")}
-          <select value={model} disabled={busy} onChange={(event) => changeConfiguration(event.target.value, scale)}>
-            {models.map((entry) => (
-              <option key={entry.id} value={entry.id}>
-                {entry.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <UpscaleModelSelector
+          models={models}
+          value={model}
+          disabled={busy}
+          onChange={(id) => changeConfiguration(id, scale)}
+        />
         <label>
           {localize(label("Scale", "倍率", "倍率"))}
           <div className="segmented-control">
@@ -298,22 +313,22 @@ export function Upscale({
         {availableNoise.length > 0 && (
           <label>
             {localize(label("Denoise", "降噪", "ノイズ除去"))}
-            <select value={noise} disabled={busy} onChange={(event) => setNoise(event.target.value as Noise)}>
+            <Select value={noise} disabled={busy} onValueChange={(nextValue) => setNoise(nextValue as Noise)}>
               {availableNoise.map((option) => (
                 <option key={option.id} value={option.id}>
                   {localize(option.label)}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         <label>
           {localize(label("Tile size", "分块尺寸", "タイルサイズ"))}
-          <select value={tile} disabled={busy} onChange={(event) => setTile(Number(event.target.value))}>
+          <Select value={tile} disabled={busy} onValueChange={(nextValue) => setTile(Number(nextValue))}>
             {[32, 64, 128, 256, 512].map((value) => (
               <option key={value}>{value}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           {localize(label("Output folder", "输出位置", "出力先"))}
@@ -330,7 +345,7 @@ export function Upscale({
               }
             >
               <FolderOpenIcon />
-              {destination || t("saveAs")}
+              {destination || t("specifySavePath")}
             </button>
             {destination && (
               <button disabled={busy} title={t("clearDestination")} onClick={() => setDestination("")}>
@@ -392,35 +407,64 @@ export function Upscale({
           )}
         </div>
       </ResizablePanel>
-      <div className="upscale-results">
-        <div className={batch ? "upscale-grid" : "upscale-single"}>
-          {visible.map((job) => (
-            <article key={job.id}>
-              <button className="upscale-remove" disabled={busy} title={t("remove")} onClick={() => remove(job.id)}>
-                <XIcon />
-              </button>
-              {!batch ? (
-                <PathPreview before={job.input.path} after={job.path} />
-              ) : (
-                <button className="image-button" onClick={() => setView(job.id)}>
-                  <img loading="lazy" src={imageUrl(job.path ?? job.input.thumbnailPath)} alt={job.input.asset.id} />
-                </button>
-              )}
-              {batch && jobFooter(job)}
-              {job.error && <p className="error-text">{job.error}</p>}
-            </article>
-          ))}
-          {!visible.length && (
-            <div className="empty-state">
-              <ArrowUpRightIcon size={40} weight="thin" />
-              <p>{t("dropImages")}</p>
-              <div className="button-row">
-                <button onClick={() => void chooseImages().then(add).catch(onError)}>{t("import")}</button>
-                <button onClick={() => setPicker(true)}>{t("gallery")}</button>
+      <div className="upscale-results" ref={resultsContainer}>
+        {batch && visible.length ? (
+          <div className="upscale-grid">
+            {columns.map((column, index) => (
+              <div className="upscale-column" key={index}>
+                {column.map((job) => (
+                  <article key={job.id}>
+                    <button
+                      className="upscale-remove"
+                      disabled={busy}
+                      title={t("remove")}
+                      onClick={() => remove(job.id)}
+                    >
+                      <XIcon />
+                    </button>
+                    <button className="image-button" onClick={() => setView(job.id)}>
+                      <img
+                        loading="lazy"
+                        src={imageUrl(job.path ?? job.input.thumbnailPath)}
+                        alt={job.input.asset.id}
+                        style={{ aspectRatio: `${job.input.asset.width} / ${job.input.asset.height}` }}
+                      />
+                    </button>
+                    {jobFooter(job)}
+                    {job.error && <p className="error-text">{job.error}</p>}
+                  </article>
+                ))}
               </div>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className={batch ? "upscale-grid" : "upscale-single"}>
+            {single && !batch && (
+              <article>
+                <button
+                  className="upscale-remove"
+                  disabled={busy}
+                  title={t("remove")}
+                  onClick={() => remove(single.id)}
+                >
+                  <XIcon />
+                </button>
+                <PathPreview before={single.input.path} after={single.path} />
+                {single.error && <p className="error-text">{single.error}</p>}
+              </article>
+            )}
+            {!visible.length && (
+              <div className="empty-state">
+                <ArrowUpRightIcon size={40} weight="thin" />
+                <p>{t("dropImages")}</p>
+                <div className="button-row">
+                  <button onClick={() => void chooseImages().then(add).catch(onError)}>{t("import")}</button>
+                  <button onClick={() => setPicker(true)}>{t("gallery")}</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       {picker && (
         <AssetPicker

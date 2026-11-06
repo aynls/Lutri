@@ -24,7 +24,10 @@ pub struct GalleryQuery {
 }
 
 fn query_sql(query: &GalleryQuery) -> (String, Vec<SqlValue>) {
-    let mut clauses = vec!["collection='gallery'".to_string()];
+    let mut clauses = vec![
+        "collection='gallery'".to_string(),
+        "json_extract(body,'$.staged') IS NULL".to_string(),
+    ];
     let mut values = vec![];
     let mut add = |sql: &str, value: SqlValue| {
         clauses.push(sql.into());
@@ -174,14 +177,14 @@ pub fn gallery_facets(store: tauri::State<Store>) -> Result<Value, String> {
     ] {
         result["counts"][name] = json!(db
             .query_row(
-                &format!("SELECT count(*) FROM records WHERE collection='gallery' AND {condition}"),
+                &format!("SELECT count(*) FROM records WHERE collection='gallery' AND json_extract(body,'$.staged') IS NULL AND {condition}"),
                 [],
                 |row| row.get::<_, i64>(0)
             )
             .map_err(|e| e.to_string())?);
     }
     {
-        let mut stmt=db.prepare("SELECT value,count(*) FROM records,json_each(body,'$.boardIds') WHERE collection='gallery' GROUP BY value").map_err(|e|e.to_string())?;
+        let mut stmt=db.prepare("SELECT value,count(*) FROM records,json_each(body,'$.boardIds') WHERE collection='gallery' AND json_extract(body,'$.staged') IS NULL GROUP BY value").map_err(|e|e.to_string())?;
         for row in stmt
             .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)))
             .map_err(|e| e.to_string())?
@@ -191,14 +194,14 @@ pub fn gallery_facets(store: tauri::State<Store>) -> Result<Value, String> {
         }
     }
     for field in ["model", "provider"] {
-        let mut stmt=db.prepare(&format!("SELECT DISTINCT json_extract(body,'$.provenance.{field}') FROM records WHERE collection='gallery' AND json_extract(body,'$.provenance.{field}') IS NOT NULL ORDER BY 1")).map_err(|e|e.to_string())?;
+        let mut stmt=db.prepare(&format!("SELECT DISTINCT json_extract(body,'$.provenance.{field}') FROM records WHERE collection='gallery' AND json_extract(body,'$.staged') IS NULL AND json_extract(body,'$.provenance.{field}') IS NOT NULL ORDER BY 1")).map_err(|e|e.to_string())?;
         result[field] = json!(stmt
             .query_map([], |row| row.get::<_, String>(0))
             .map_err(|e| e.to_string())?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| e.to_string())?);
     }
-    let mut stmt=db.prepare("SELECT DISTINCT value FROM records,json_each(body,'$.tags') WHERE collection='gallery' ORDER BY value COLLATE NOCASE").map_err(|e|e.to_string())?;
+    let mut stmt=db.prepare("SELECT DISTINCT value FROM records,json_each(body,'$.tags') WHERE collection='gallery' AND json_extract(body,'$.staged') IS NULL ORDER BY value COLLATE NOCASE").map_err(|e|e.to_string())?;
     result["tags"] = json!(stmt
         .query_map([], |row| row.get::<_, String>(0))
         .map_err(|e| e.to_string())?
@@ -300,7 +303,7 @@ pub fn asset_copy(store: tauri::State<Store>, id: String) -> Result<(), String> 
 }
 
 #[tauri::command]
-pub fn asset_paste(store: tauri::State<Store>) -> Result<Value, String> {
+pub fn asset_paste(store: tauri::State<Store>, staged: Option<bool>) -> Result<Value, String> {
     let image = arboard::Clipboard::new()
         .map_err(|e| e.to_string())?
         .get_image()
@@ -315,7 +318,56 @@ pub fn asset_paste(store: tauri::State<Store>) -> Result<Value, String> {
     image::DynamicImage::ImageRgba8(rgba)
         .write_to(&mut bytes, image::ImageFormat::Png)
         .map_err(|e| e.to_string())?;
-    assets::save_asset(&store, &bytes.into_inner(), "imported")
+    assets::save_asset(&store, &bytes.into_inner(), "imported", staged == Some(true))
+}
+
+#[tauri::command]
+pub fn assets_publish(store: tauri::State<Store>, ids: Vec<String>) -> Result<(), String> {
+    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_millis() as u64;
+    store
+        .db
+        .lock()
+        .map_err(|e| e.to_string())?
+        .execute(
+            "UPDATE records SET body=json_set(json_remove(body,'$.staged'),'$.addedAt',?1) WHERE collection='gallery' AND json_extract(body,'$.staged')=1 AND id IN (SELECT value FROM json_each(?2))",
+            rusqlite::params![now, serde_json::to_string(&ids).map_err(|e| e.to_string())?],
+        )
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn staging_purge(store: tauri::State<Store>, keep: Vec<String>) -> Result<Vec<String>, String> {
+    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
+    let root = store.library.read().map_err(|e| e.to_string())?;
+    if !root.is_dir() {
+        return Ok(vec![]);
+    }
+    let ids = {
+        let db = store.db.lock().map_err(|e| e.to_string())?;
+        let mut stmt = db
+            .prepare(
+                "SELECT id FROM records WHERE collection='gallery' AND json_extract(body,'$.staged')=1 AND id NOT IN (SELECT value FROM json_each(?1))",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(
+                [serde_json::to_string(&keep).map_err(|e| e.to_string())?],
+                |row| row.get::<_, String>(0),
+            )
+            .map_err(|e| e.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?;
+        rows
+    };
+    for id in &ids {
+        assets::delete_asset_locked(&store, id, &root)?;
+    }
+    Ok(ids)
 }
 
 fn decode_image(path: &Path) -> Result<image::DynamicImage, String> {
@@ -338,7 +390,7 @@ fn decode_image(path: &Path) -> Result<image::DynamicImage, String> {
 fn rows(store: &Store) -> Result<Vec<Value>, String> {
     let db = store.db.lock().map_err(|e| e.to_string())?;
     let mut stmt = db
-        .prepare("SELECT body FROM records WHERE collection='gallery'")
+        .prepare("SELECT body FROM records WHERE collection='gallery' AND json_extract(body,'$.staged') IS NULL")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |row| row.get::<_, String>(0))

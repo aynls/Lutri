@@ -264,7 +264,7 @@ function MaskWorkspace({
       className="mask-workspace"
       onKeyDown={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest("input, textarea, select")) return;
+        if (target.closest("input, textarea, select, [role=combobox], [role=listbox]")) return;
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
           event.preventDefault();
           if (ready) event.shiftKey ? history.redo() : history.undo();

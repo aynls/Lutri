@@ -1,3 +1,4 @@
+import { Select } from "../../components/Select";
 import { useEffect, useId, useState } from "react";
 import type { Parameters } from "../../domain/types";
 import type { FieldDefinition, FormProps } from "../../models/types";
@@ -87,13 +88,13 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
       {custom && (
         <label className="frame-presets" htmlFor={id}>
           <span>{c("preset")}</span>
-          <select
+          <Select
             id={id}
             value={!current ? "" : presets.some(([w, h]) => `${w}x${h}` === current) ? current : "custom"}
-            onChange={(event) => {
-              if (event.target.value === "custom") return;
-              const parameters = event.target.value
-                ? parametersFor(...(event.target.value.split("x").map(Number) as [number, number]))
+            onValueChange={(nextValue) => {
+              if (nextValue === "custom") return;
+              const parameters = nextValue
+                ? parametersFor(...(nextValue.split("x").map(Number) as [number, number]))
                 : clean(draft.parameters);
               onChange({ ...draft, parameters });
             }}
@@ -107,7 +108,7 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
             <option value="custom" disabled>
               {c("custom")}
             </option>
-          </select>
+          </Select>
         </label>
       )}
       {width && height ? (

@@ -9,7 +9,7 @@ import { poll, recoveryFrom } from "../providers/recovery";
 import { assetData, assetExists, downloadAsset, native } from "./native";
 import { changeFeed, getState, refreshGallery, saveTask, updateState, mutateTasks } from "./store";
 import { prepareGenerationInputs } from "../create/prepareInputs";
-import { resolveParameterAssets, storeParameterAssets } from "./parameterAssets";
+import { resolveParameterAssets, storeParameterAssets, parameterAssetIds } from "./parameterAssets";
 import { sanitizeDiagnostic } from "../providers/diagnostics";
 import { deletingTaskIds } from "./taskLocks";
 import { submittedPrompt } from "../providers/submittedPrompt";
@@ -42,6 +42,9 @@ async function createBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "m
   if (!(await native<boolean>("credential_present", { provider: combination.provider })))
     throw new Error(`${combination.provider}: API key`);
   draft.parameters = (await storeParameterAssets(draft.parameters)) as Parameters;
+  await native("assets_publish", {
+    ids: [...draft.references.map((reference) => reference.assetId), ...parameterAssetIds(draft.parameters)],
+  });
   const now = Date.now();
   const batch: GenerationBatch = { id: crypto.randomUUID(), createdAt: now, origin, taskIds: [] };
   const tasks: GenerationTask[] = Array.from({ length: draft.requestCount }, () => ({
@@ -70,6 +73,7 @@ async function createBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "m
     ],
   );
   updateState({ batches: [batch, ...getState().batches], tasks: [...tasks, ...getState().tasks] });
+  await refreshGallery();
   for (const task of tasks) void execute(task.id, true).catch(() => {});
   return batch;
 }

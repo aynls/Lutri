@@ -87,7 +87,7 @@
 }
 .region-properties input,
 .region-properties textarea,
-.region-properties select {
+.region-properties .select-trigger {
   font-size: 13px;
   color: var(--text);
 }
@@ -179,7 +179,7 @@
   color: var(--muted);
   white-space: nowrap;
 }
-.layout-background-toolbar select {
+.layout-background-toolbar .select-trigger {
   width: 160px;
   font-size: 12px;
 }
@@ -420,7 +420,7 @@
   .layout-background-toolbar {
     gap: 10px;
   }
-  .layout-background-toolbar select {
+  .layout-background-toolbar .select-trigger {
     width: 120px;
   }
 }

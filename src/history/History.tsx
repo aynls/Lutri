@@ -1,3 +1,4 @@
+import { Select } from "../components/Select";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import {
@@ -161,11 +162,11 @@ export function History({
             aria-label={t("searchHistory")}
           />
         </div>
-        <select
+        <Select
           aria-label={t("allStatuses")}
           value={status}
-          onChange={(event) => {
-            setStatus(event.target.value);
+          onValueChange={(nextValue) => {
+            setStatus(nextValue);
             setPage(1);
           }}
         >
@@ -174,12 +175,12 @@ export function History({
           <option value="completed">{t("completed")}</option>
           <option value="failed">{t("failed")}</option>
           <option value="cancelled">{taskText("cancelled")}</option>
-        </select>
-        <select
+        </Select>
+        <Select
           aria-label={t("model")}
           value={model}
-          onChange={(event) => {
-            setModel(event.target.value);
+          onValueChange={(nextValue) => {
+            setModel(nextValue);
             setPage(1);
           }}
         >
@@ -193,7 +194,7 @@ export function History({
               }
             </option>
           ))}
-        </select>
+        </Select>
         <button onClick={() => setSelected(selection.length === visible.size ? [] : [...visible])}>
           {selection.length ? `${taskText("selecting")} ${selection.length}` : t("selectAll")}
         </button>

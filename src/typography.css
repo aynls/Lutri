@@ -15,7 +15,7 @@ body {
 }
 button,
 input,
-select,
+.select-trigger,
 textarea {
   font-family: inherit;
   line-height: 1.5;
@@ -32,21 +32,11 @@ input[type="number"],
   font-variant-numeric: tabular-nums;
 }
 input,
-select,
+.select-trigger,
 textarea {
   border-radius: 6px;
 }
-select {
-  appearance: none;
-  padding-right: 28px !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%238a7f74' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-}
-select option {
-  color: var(--text);
-  background: var(--surface);
-}
+
 ::-webkit-scrollbar {
   width: 7px;
   height: 7px;
@@ -174,7 +164,7 @@ h2 {
   color: var(--muted);
   gap: 7px;
 }
-.model-select select {
+.model-select .select-trigger {
   color: var(--text);
   font-size: 13px;
   font-weight: 450;
@@ -265,7 +255,7 @@ h2 {
   font-size: 13px;
 }
 .field input,
-.field select {
+.field .select-trigger {
   color: var(--text);
   padding: 7px 9px;
   font-weight: 450;

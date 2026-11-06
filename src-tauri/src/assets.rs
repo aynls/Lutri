@@ -12,12 +12,12 @@ pub fn decode_data_url(data: &str) -> Result<Vec<u8>, String> {
     STANDARD.decode(encoded).map_err(|e| e.to_string())
 }
 
-pub fn save_asset(store: &Store, bytes: &[u8], source: &str) -> Result<Value, String> {
-    save_asset_with_id(store, bytes, source, uuid::Uuid::new_v4().to_string())
+pub fn save_asset(store: &Store, bytes: &[u8], source: &str, staged: bool) -> Result<Value, String> {
+    save_image_with_id(store, bytes, source, uuid::Uuid::new_v4().to_string(), "gallery", staged)
 }
 
 pub(crate) fn save_asset_with_id(store: &Store, bytes: &[u8], source: &str, id: String) -> Result<Value, String> {
-    save_image_with_id(store, bytes, source, id, "gallery")
+    save_image_with_id(store, bytes, source, id, "gallery", false)
 }
 
 fn save_image_with_id(
@@ -26,6 +26,7 @@ fn save_image_with_id(
     source: &str,
     id: String,
     collection: &str,
+    staged: bool,
 ) -> Result<Value, String> {
     let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
     if let Ok(existing) = image_entry(store, &id) {
@@ -65,13 +66,16 @@ fn save_image_with_id(
         .thumbnail(480, 480)
         .save_with_format(&thumbnail, ImageFormat::Png)
         .map_err(|e| e.to_string())?;
-    let entry = json!({
+    let mut entry = json!({
         "asset": { "id": id, "mediaType": media_type, "width": width, "height": height },
         "path": path, "thumbnailPath": thumbnail, "source": source,
         "addedAt": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|e|e.to_string())?.as_millis() as u64,
         "favorite": false, "boardIds": [], "tags": [], "bytes":bytes.len(), "availability":"available",
         "provenance":{"kind":if source=="imported"{"import"}else{"generation"}}
     });
+    if staged {
+        entry["staged"] = json!(true);
+    }
     store
         .db
         .lock()
@@ -114,6 +118,7 @@ pub fn mask_save(store: tauri::State<Store>, data_url: String) -> Result<Value, 
         "imported",
         uuid::Uuid::new_v4().to_string(),
         "masks",
+        false,
     )
 }
 
@@ -123,6 +128,7 @@ pub async fn asset_import(
     path: Option<String>,
     data_url: Option<String>,
     url: Option<String>,
+    staged: Option<bool>,
 ) -> Result<Value, String> {
     let bytes = match (path, data_url, url) {
         (Some(path), _, _) => std::fs::read(path).map_err(|e| e.to_string())?,
@@ -140,7 +146,7 @@ pub async fn asset_import(
             .to_vec(),
         _ => return Err("Image source required".into()),
     };
-    save_asset(&store, &bytes, "imported")
+    save_asset(&store, &bytes, "imported", staged == Some(true))
 }
 
 #[tauri::command]

@@ -118,7 +118,7 @@ body {
 }
 button,
 input,
-select,
+.select-trigger,
 textarea {
   font: inherit;
   color: inherit;
@@ -145,7 +145,7 @@ button:disabled {
   outline: none;
 }
 input,
-select,
+.select-trigger,
 textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -277,7 +277,7 @@ small {
   display: grid;
   gap: 14px;
 }
-.model-select select {
+.model-select .select-trigger {
   font-weight: 550;
 }
 .section-heading {
@@ -429,7 +429,7 @@ small {
   color: var(--muted);
 }
 .field input,
-.field select {
+.field .select-trigger {
   font-size: 13px;
   padding: 7px;
 }
@@ -655,7 +655,7 @@ img.asset-image.loaded {
   font-size: 13px;
   border: 1px solid var(--line);
 }
-.content-toolbar select {
+.content-toolbar .select-trigger {
   max-width: 140px;
 }
 .gallery-grid {
@@ -1040,20 +1040,16 @@ img.asset-image.loaded {
   flex: 1;
   padding: 24px;
   overflow: auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
   gap: 20px;
-  align-content: start;
 }
 .upscale-grid article {
   background: var(--surface);
   border-radius: 7px;
   overflow: hidden;
   border: 1px solid var(--line);
-}
-.upscale-grid img {
-  aspect-ratio: 1;
-  object-fit: cover;
 }
 .upscale-single {
   flex: 1;
@@ -1106,7 +1102,7 @@ img.asset-image.loaded {
   padding: 15px 22px;
   align-items: center;
 }
-.mask-toolbar > select {
+.mask-toolbar > .select-trigger {
   width: 200px;
 }
 .mask-toolbar label {

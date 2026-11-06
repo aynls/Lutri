@@ -170,7 +170,7 @@ export function LlmSettings({ onError }: { onError: (error: unknown) => void }) 
         <div className="llm-heading">
           <h2>{localize(label("Custom specifications", "自定义规范", "カスタムガイド"))}</h2>
           <label className="file-button llm-import">
-            {t("import")}
+            {localize(label("Import Markdown spec", "导入Markdown规范", "Markdown ガイドを読み込む"))}
             <input
               type="file"
               accept=".md"

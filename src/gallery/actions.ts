@@ -6,9 +6,9 @@ import { imageExtensions, importPaths } from "./imports";
 
 export const copyAssetImage = (id: string) => native<void>("asset_copy", { id });
 
-export async function chooseImages(): Promise<GalleryEntry[]> {
+export async function chooseImages(staged = false): Promise<GalleryEntry[]> {
   const paths = await open({ multiple: true, filters: [{ name: "Images", extensions: imageExtensions }] });
-  return paths ? importPaths(paths) : [];
+  return paths ? importPaths(paths, staged) : [];
 }
 
 export async function favorite(entry: GalleryEntry) {

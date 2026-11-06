@@ -1,3 +1,4 @@
+import { Select } from "../../components/Select";
 import { useEffect, useState } from "react";
 import {
   ArrowCounterClockwiseIcon,
@@ -123,7 +124,7 @@ function SourceEditor({
       className="source-region-dialog"
       onClose={onClose}
       onKeyDown={(event) => {
-        if ((event.target as HTMLElement).closest("input, textarea, select")) return;
+        if ((event.target as HTMLElement).closest("input, textarea, select, [role=combobox], [role=listbox]")) return;
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
           event.preventDefault();
           event.shiftKey ? history.redo() : history.undo();
@@ -251,7 +252,7 @@ export function LayoutEditor({
       onClose={onClose}
       onKeyDown={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest("input, textarea, select, [contenteditable=true]")) return;
+        if (target.closest("input, textarea, select, [role=combobox], [role=listbox], [contenteditable=true]")) return;
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
           event.preventDefault();
           event.shiftKey ? history.redo() : history.undo();
@@ -375,15 +376,15 @@ export function LayoutEditor({
                 {!!draft.references.length && (
                   <label>
                     {t("operation")}
-                    <select
+                    <Select
                       value={operation(selected)}
-                      onChange={(event) => changeOperation(event.target.value as NonNullable<Region["operation"]>)}
+                      onValueChange={(nextValue) => changeOperation(nextValue as NonNullable<Region["operation"]>)}
                     >
                       <option value="place">{t("placeObject")}</option>
                       <option value="move">{t("moveObject")}</option>
                       <option value="anchor">{t("anchorObject")}</option>
                       <option value="remove">{t("removeObject")}</option>
-                    </select>
+                    </Select>
                   </label>
                 )}
                 <label>
@@ -410,11 +411,11 @@ export function LayoutEditor({
                   <section className="source-binding">
                     <label>
                       {t("source")}
-                      <select
+                      <Select
                         value={selected.referenceId ?? ""}
-                        onChange={(event) => {
+                        onValueChange={(nextValue) => {
                           update(selected.id, {
-                            referenceId: event.target.value,
+                            referenceId: nextValue,
                             source: [0, 0, 1000, 1000],
                             ...(operation(selected) === "anchor" ? { target: [0, 0, 1000, 1000] as Rectangle } : {}),
                           });
@@ -425,7 +426,7 @@ export function LayoutEditor({
                             {index + 1}. {reference.name}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                     <button className="source-preview" disabled={!source} onClick={() => setSourceEditor(true)}>
                       {source ? <AssetImage entry={source} thumbnail /> : <span>{t("missing")}</span>}
@@ -462,14 +463,14 @@ export function LayoutEditor({
           <div className="layout-background-toolbar">
             <label>
               {t("backgroundImage")}
-              <select value={background} onChange={(event) => setBackground(event.target.value)}>
+              <Select value={background} onValueChange={(nextValue) => setBackground(nextValue)}>
                 <option value="">{t("noBackground")}</option>
                 {draft.references.map((reference) => (
                   <option key={reference.id} value={reference.id}>
                     {reference.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             {background && (
               <label className="opacity-control">

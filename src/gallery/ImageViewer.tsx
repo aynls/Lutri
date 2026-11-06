@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { emitTo } from "@tauri-apps/api/event";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import {
   ArrowLeftIcon,
@@ -23,22 +21,44 @@ import { ResizablePanel } from "../components/ResizablePanel";
 import { RequestDetails } from "../history/RequestDetails";
 import { copyAssetImage, exportImages, favorite } from "./actions";
 
-import { getViewerContext } from "./viewContext";
 import { lt } from "../i18n/library";
 import type { GalleryEntry } from "../domain/types";
 
-export function ImageViewer({ assetId }: { assetId: string }) {
+export function ImageViewer({
+  assetId,
+  assetIds,
+  onClose,
+  onReference,
+  onUpscale,
+}: {
+  assetId: string;
+  assetIds: string[];
+  onClose: () => void;
+  onReference: (entry: GalleryEntry) => Promise<void>;
+  onUpscale: (entry: GalleryEntry) => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const element = dialog.current!;
+    const focus = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    element.showModal();
+    element.focus();
+    return () => {
+      element.close();
+      document.body.style.overflow = overflow;
+      if (focus instanceof HTMLElement && focus.isConnected) focus.focus({ preventScroll: true });
+    };
+  }, []);
   const { gallery, tasks, ready } = useApplication();
   const [current, setCurrent] = useState(assetId),
     [info, setInfo] = useState(true),
     [error, setError] = useState("");
-  const [ids] = useState(() => getViewerContext(assetId));
+  const [ids, setIds] = useState(() => Array.from(new Set(assetIds.includes(assetId) ? assetIds : [assetId])));
   const [loaded, setLoaded] = useState<GalleryEntry[]>([]);
   const [toolbarTarget, setToolbarTarget] = useState<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(true);
-  const ordered = ids.map(
-    (id) => loaded.find((entry) => entry.asset.id === id) ?? gallery.find((entry) => entry.asset.id === id),
-  );
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -46,7 +66,9 @@ export function ImageViewer({ assetId }: { assetId: string }) {
       .then((entries) => {
         if (active) setLoaded(entries);
       })
-      .catch(onError)
+      .catch((value) => {
+        if (active) onError(value);
+      })
       .finally(() => {
         if (active) setLoading(false);
       });
@@ -55,38 +77,45 @@ export function ImageViewer({ assetId }: { assetId: string }) {
     };
   }, [current, gallery]);
   const index = ids.indexOf(current),
-    entry =
-      ordered[index] ??
-      loaded.find((entry) => entry.asset.id === current) ??
-      gallery.find((entry) => entry.asset.id === current);
+    entry = loaded.find((entry) => entry.asset.id === current) ?? gallery.find((entry) => entry.asset.id === current);
   const task = tasks.find((task) => task.results.some((result) => result.assetId === current));
   const onError = (value: unknown) => setError(String(value));
   const attempt = (action: () => Promise<unknown>) => void action().catch(onError);
   const related = (id: string) => {
-    if (ids.includes(id)) {
-      setCurrent(id);
-      return;
-    }
-    const viewer = new WebviewWindow(`image-${crypto.randomUUID()}`, {
-      url: `index.html?asset=${encodeURIComponent(id)}`,
-      title: "Lutri",
-      width: 1200,
-      height: 800,
-    });
-    void viewer.once("tauri://error", (event) => onError(event.payload));
+    if (!ids.includes(id)) setIds((previous) => [...previous, id]);
+    setCurrent(id);
   };
-  useEffect(() => {
-    const key = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, button")) return;
-      if (event.key === "Escape") void getCurrentWindow().close().catch(onError);
-      if (event.key === "ArrowLeft" && index > 0) setCurrent(ids[index - 1]);
-      if (event.key === "ArrowRight" && index < ordered.length - 1) setCurrent(ids[index + 1]);
-    };
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
-  }, [index, gallery]);
-  return (
-    <div className="image-viewer viewer-workspace">
+  return createPortal(
+    <dialog
+      ref={dialog}
+      className="image-viewer viewer-workspace viewer-dialog"
+      aria-label={t("details")}
+      tabIndex={-1}
+      onCancel={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.defaultPrevented) return;
+        if (
+          event.target instanceof HTMLElement &&
+          event.target.closest(
+            'input, textarea, select, [role=combobox], [role=listbox], [contenteditable="true"], [role="slider"]',
+          )
+        )
+          return;
+        if (event.key === "ArrowLeft" && index > 0) {
+          event.preventDefault();
+          setCurrent(ids[index - 1]);
+        }
+        if (event.key === "ArrowRight" && index < ids.length - 1) {
+          event.preventDefault();
+          setCurrent(ids[index + 1]);
+        }
+      }}
+    >
       <header className="viewer-toolbar">
         <div className="button-row">
           <button
@@ -98,10 +127,10 @@ export function ImageViewer({ assetId }: { assetId: string }) {
             <ArrowLeftIcon />
           </button>
           <span>
-            {index < 0 ? "—" : index + 1} / {ordered.length}
+            {index < 0 ? "—" : index + 1} / {ids.length}
           </span>
           <button
-            disabled={index < 0 || index >= ordered.length - 1}
+            disabled={index < 0 || index >= ids.length - 1}
             title={lt("nextImage")}
             aria-label={lt("nextImage")}
             onClick={() => setCurrent(ids[index + 1])}
@@ -113,33 +142,10 @@ export function ImageViewer({ assetId }: { assetId: string }) {
         <span className="toolbar-spacer" />
         {entry && (
           <>
-            <button
-              className="viewer-reference-button"
-              onClick={() =>
-                attempt(async () => {
-                  const main = await WebviewWindow.getByLabel("main");
-                  if (!main) throw new Error("Main window unavailable");
-                  await emitTo("main", "viewer-use-reference", entry);
-                  await main.unminimize();
-                  await main.setFocus();
-                })
-              }
-            >
+            <button className="viewer-reference-button" onClick={() => attempt(() => onReference(entry))}>
               {t("useReference")}
             </button>
-            <button
-              title={t("upscale")}
-              aria-label={t("upscale")}
-              onClick={() =>
-                attempt(async () => {
-                  const main = await WebviewWindow.getByLabel("main");
-                  if (!main) throw new Error("Main window unavailable");
-                  await emitTo("main", "viewer-use-upscale", entry);
-                  await main.unminimize();
-                  await main.setFocus();
-                })
-              }
-            >
+            <button title={t("upscale")} aria-label={t("upscale")} onClick={() => onUpscale(entry)}>
               <ArrowUpRightIcon />
             </button>
             <button
@@ -172,7 +178,7 @@ export function ImageViewer({ assetId }: { assetId: string }) {
         <button title={t("details")} aria-label={t("details")} aria-pressed={info} onClick={() => setInfo(!info)}>
           <InfoIcon />
         </button>
-        <button title={t("close")} aria-label={t("close")} onClick={() => attempt(() => getCurrentWindow().close())}>
+        <button title={t("close")} aria-label={t("close")} onClick={onClose}>
           <XIcon />
         </button>
       </header>
@@ -182,6 +188,7 @@ export function ImageViewer({ assetId }: { assetId: string }) {
             key={current}
             before={{ dataUrl: imageUrl(entry.path), ...entry.asset }}
             toolbarTarget={toolbarTarget}
+            showLoading
           />
         ) : (
           <div className="empty-state">{ready && !loading ? t("missing") : <span className="spinner" />}</div>
@@ -192,7 +199,7 @@ export function ImageViewer({ assetId }: { assetId: string }) {
             storageKey="lutri.viewer.inspector"
             initialWidth={320}
             minWidth={240}
-            maxWidth={480}
+            maxWidth={600}
             side="right"
           >
             <div className="viewer-details-scroll">
@@ -236,6 +243,7 @@ export function ImageViewer({ assetId }: { assetId: string }) {
           </button>
         </div>
       )}
-    </div>
+    </dialog>,
+    document.body,
   );
 }

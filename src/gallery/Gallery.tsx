@@ -1,3 +1,4 @@
+import { Select } from "../components/Select";
 import { Fragment, useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import {
@@ -20,7 +21,6 @@ import { CopyButton } from "../components/CopyButton";
 import { ResizablePanel } from "../components/ResizablePanel";
 import { chooseImages, copyAssetImage, exportImages, favorite } from "./actions";
 import { lt } from "../i18n/library";
-import { setViewerContext } from "./viewContext";
 export { chooseImages, favorite } from "./actions";
 
 export function Gallery({
@@ -34,7 +34,7 @@ export function Gallery({
   onPick,
   limit = Infinity,
 }: {
-  onView: (id: string) => void;
+  onView: (id: string, ids?: string[]) => void;
   onReference: (entry: GalleryEntry) => void;
   onEdit?: (entry: GalleryEntry) => void;
   onRelated: (id: string) => void;
@@ -200,10 +200,12 @@ export function Gallery({
     setSelected(records.map((entry) => entry.asset.id));
   };
   const view = async (id: string) => {
-    setViewerContext(await native<string[]>("gallery_ids", { query }));
-    onView(id);
+    onView(id, await native<string[]>("gallery_ids", { query }));
   };
   const board = boards.find((entry) => entry.id === filter);
+  const duplicateBoardName = boards.some(
+    (entry) => entry.id !== boardEditor?.id && entry.name === boardEditor?.name.trim(),
+  );
   const attempt = (action: () => Promise<unknown>) => {
     setBusy(true);
     setNotice("");
@@ -285,12 +287,12 @@ export function Gallery({
     if (failed.length) throw new Error(failed.join("\n"));
   };
   const importImages = async () => {
-    const imported = await chooseImages();
+    const imported = await chooseImages(picker);
     if (picker && imported.length) onPick ? onPick(imported.slice(0, limit)) : onReference(imported[0]);
     else if (imported.length) setNotice(`${t("importedCount")} · ${imported.length}`);
   };
   const saveBoard = async () => {
-    if (!boardEditor?.name.trim()) return;
+    if (!boardEditor?.name.trim() || duplicateBoardName) return;
     const value = { id: boardEditor.id ?? crypto.randomUUID(), name: boardEditor.name.trim() };
     await commit([{ collection: "boards", id: value.id, value }]);
     const current = getState().boards;
@@ -360,11 +362,11 @@ export function Gallery({
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
-          <select aria-label={t("filters")} value={sort} onChange={(event) => setSort(event.target.value)}>
+          <Select aria-label={t("filters")} value={sort} onValueChange={(nextValue) => setSort(nextValue)}>
             <option value="newest">{t("newest")}</option>
             <option value="oldest">{t("oldest")}</option>
             <option value="size">{lt("size")}</option>
-          </select>
+          </Select>
           <button aria-pressed={filters} onClick={() => setFilters(!filters)} title={t("filters")}>
             <FunnelSimpleIcon />
           </button>
@@ -399,22 +401,22 @@ export function Gallery({
             </label>
             <label>
               {t("orientation")}
-              <select value={orientation} onChange={(event) => setOrientation(event.target.value)}>
+              <Select value={orientation} onValueChange={(nextValue) => setOrientation(nextValue)}>
                 {(["all", "landscape", "portrait", "square"] as const).map((value) => (
                   <option key={value} value={value}>
                     {t(value)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             {(["kind", "model", "provider", "availability"] as const).map((field) => (
               <label key={field}>
                 {field === "model" || field === "provider" ? t(field) : lt(field)}
-                <select
+                <Select
                   value={{ kind, model, provider, availability }[field]}
-                  onChange={(event) =>
+                  onValueChange={(nextValue) =>
                     ({ kind: setKind, model: setModel, provider: setProvider, availability: setAvailability })[field](
-                      event.target.value,
+                      nextValue,
                     )
                   }
                 >
@@ -437,17 +439,17 @@ export function Gallery({
                           : value}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             ))}
             <label>
               {lt("tags")}
-              <select value={tag} onChange={(event) => setTag(event.target.value)}>
+              <Select value={tag} onValueChange={(nextValue) => setTag(nextValue)}>
                 <option value="">{t("all")}</option>
                 {facets.tags.map((value) => (
                   <option key={value}>{value}</option>
                 ))}
-              </select>
+              </Select>
             </label>
             {tag && (
               <>
@@ -601,7 +603,7 @@ export function Gallery({
                             {onUpscale && <button onClick={() => onUpscale(entry)}>{t("upscale")}</button>}
                             <button onClick={() => onRelated(entry.asset.id)}>{t("related")}</button>
                             <button onClick={() => attempt(() => exportImages([entry]))}>{t("saveAs")}</button>
-                            <CopyButton value={entry.asset.id} onError={onError} />
+                            <CopyButton value={entry.asset.id} label={t("copyId")} onError={onError} />
                             <button className="danger-button" onClick={() => attempt(() => deleteEntry(entry))}>
                               {t("delete")}
                             </button>
@@ -621,7 +623,7 @@ export function Gallery({
           )}
           {!entries.length && !loading && (
             <div className="empty-state">
-              <p>{gallery.length ? t("noMatches") : t("empty")}</p>
+              <p>{gallery.some((entry) => !entry.staged) ? t("noMatches") : t("empty")}</p>
               <button onClick={() => attempt(importImages)}>
                 <PlusIcon />
                 {t("import")}
@@ -661,12 +663,12 @@ export function Gallery({
               >
                 {selectedEntries.every((entry) => entry.favorite) ? t("removeFavorite") : t("favorites")}
               </button>
-              <select
+              <Select
                 aria-label={t("addToBoard")}
                 value=""
                 disabled={busy || !boards.length}
-                onChange={(event) => {
-                  const id = event.target.value;
+                onValueChange={(nextValue) => {
+                  const id = nextValue;
                   attempt(() => mutateEntries("board", id));
                 }}
               >
@@ -676,7 +678,7 @@ export function Gallery({
                     {entry.name}
                   </option>
                 ))}
-              </select>
+              </Select>
               {board && (
                 <button disabled={busy} onClick={() => attempt(() => mutateEntries("unboard", board.id))}>
                   {t("removeFromBoard")}
@@ -699,12 +701,12 @@ export function Gallery({
                 </button>
               )}
               {board && (
-                <select
+                <Select
                   value=""
                   aria-label={lt("move")}
                   disabled={busy}
-                  onChange={(event) => {
-                    const value = event.target.value;
+                  onValueChange={(nextValue) => {
+                    const value = nextValue;
                     attempt(async () => {
                       await native("gallery_mutate", { ids: selection, action: "move", value, from: board.id });
                       setSelected([]);
@@ -720,7 +722,7 @@ export function Gallery({
                         {value.name}
                       </option>
                     ))}
-                </select>
+                </Select>
               )}
               <span className="toolbar-spacer" />
               <button className="danger-button" disabled={busy} onClick={() => attempt(deleteSelected)}>
@@ -745,7 +747,7 @@ export function Gallery({
                     if (editor.kind === "url") {
                       const url = new URL(editor.value.trim());
                       if (!["https:", "http:"].includes(url.protocol)) throw new Error(lt("invalidUrl"));
-                      const entry = await importAsset({ url: url.href });
+                      const entry = await importAsset({ url: url.href }, picker);
                       if (picker) onPick?.([entry]);
                     } else {
                       const ids =
@@ -788,7 +790,7 @@ export function Gallery({
               <button onClick={() => setBoardEditor(undefined)}>{t("cancel")}</button>
               <button
                 className="primary-button"
-                disabled={busy || !boardEditor.name.trim()}
+                disabled={busy || !boardEditor.name.trim() || duplicateBoardName}
                 onClick={() => attempt(saveBoard)}
               >
                 {t("save")}
@@ -797,18 +799,28 @@ export function Gallery({
           }
         >
           <form
+            className="board-editor"
             onSubmit={(event) => {
               event.preventDefault();
               attempt(saveBoard);
             }}
           >
-            <input
-              autoFocus
-              aria-label={t("nameOrder")}
-              maxLength={100}
-              value={boardEditor.name}
-              onChange={(event) => setBoardEditor({ ...boardEditor, name: event.target.value })}
-            />
+            <label>
+              {t("boardName")}
+              <input
+                autoFocus
+                aria-invalid={duplicateBoardName || undefined}
+                aria-describedby={duplicateBoardName ? "board-name-error" : undefined}
+                maxLength={100}
+                value={boardEditor.name}
+                onChange={(event) => setBoardEditor({ ...boardEditor, name: event.target.value })}
+              />
+            </label>
+            {duplicateBoardName && (
+              <small className="field-error error-text" id="board-name-error" role="alert">
+                {t("boardNameTaken")}
+              </small>
+            )}
           </form>
         </Dialog>
       )}

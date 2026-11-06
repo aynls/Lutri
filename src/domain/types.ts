@@ -19,6 +19,7 @@ export interface StoredImage {
 export interface GalleryEntry extends StoredImage {
   source: "generated" | "imported";
   addedAt: number;
+  staged?: boolean;
   favorite: boolean;
   boardIds: string[];
   bytes?: number;

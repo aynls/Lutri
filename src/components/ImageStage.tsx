@@ -14,12 +14,14 @@ export function ImageStage({
   beforeLabel = t("before"),
   afterLabel = t("after"),
   toolbarTarget,
+  showLoading = false,
 }: {
   before: PreviewImage;
   after?: PreviewImage | null;
   beforeLabel?: string;
   afterLabel?: string;
   toolbarTarget?: HTMLElement | null;
+  showLoading?: boolean;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const layers = useRef<(HTMLDivElement | null)[]>([]);
@@ -27,6 +29,7 @@ export function ImageStage({
   const size = useRef({ width: 0, height: 0 });
   const fitMode = useRef(true);
   const drag = useRef<{ id: number; x: number; y: number; tx: number; ty: number } | null>(null);
+  const [decodedUrl, setDecodedUrl] = useState("");
   const [unavailable, setUnavailable] = useState(false);
   useEffect(() => setUnavailable(false), [before.dataUrl, after?.dataUrl]);
   const [split, setSplit] = useState(50);
@@ -188,6 +191,23 @@ export function ImageStage({
             src={(after ?? before).dataUrl}
             alt={after ? afterLabel : beforeLabel}
             draggable={false}
+            style={showLoading && decodedUrl !== reference.dataUrl ? { visibility: "hidden" } : undefined}
+            onLoad={
+              showLoading
+                ? (event) => {
+                    const image = event.currentTarget;
+                    const url = reference.dataUrl;
+                    void image
+                      .decode()
+                      .then(() => {
+                        if (image.isConnected) setDecodedUrl(url);
+                      })
+                      .catch(() => {
+                        if (image.isConnected) setUnavailable(true);
+                      });
+                  }
+                : undefined
+            }
             onError={() => setUnavailable(true)}
           />
         </div>
@@ -250,6 +270,11 @@ export function ImageStage({
               </span>
             </div>
           </>
+        )}
+        {showLoading && !unavailable && decodedUrl !== reference.dataUrl && (
+          <div className="preview-unavailable" role="status" aria-busy="true">
+            <span className="spinner" />
+          </div>
         )}
         {unavailable && <div className="preview-unavailable">{t("missing")}</div>}
       </div>

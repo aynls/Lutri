@@ -1,3 +1,4 @@
+import { Select } from "../../components/Select";
 import { useId, useEffect, useRef, useState } from "react";
 import { DiceFiveIcon } from "@phosphor-icons/react";
 import type { Json } from "../../domain/types";
@@ -84,10 +85,10 @@ export function ParameterField({
           </button>
         </span>
       ) : field.kind === "select" ? (
-        <select
+        <Select
           id={id}
           value={String(value ?? (field.options?.includes("auto") ? "auto" : ""))}
-          onChange={(event) => update(event.target.value || undefined)}
+          onValueChange={(nextValue) => update(nextValue || undefined)}
         >
           {!field.options?.includes("auto") && <option value="">{t("automatic")}</option>}
           {field.options?.map((option) => (
@@ -95,7 +96,7 @@ export function ParameterField({
               {field.optionLabels?.[option] ? localize(field.optionLabels[option]) : option}
             </option>
           ))}
-        </select>
+        </Select>
       ) : field.kind === "seed" ? (
         <div className="field-inline">
           <input

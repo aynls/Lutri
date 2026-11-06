@@ -1,3 +1,4 @@
+import { Select } from "../../components/Select";
 import { useState } from "react";
 import { CaretDownIcon, CheckIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import { combinations } from "../../models";
@@ -39,9 +40,9 @@ export function ModelSelector({
       </label>
       <label>
         {t("provider")}
-        <select
+        <Select
           value={value.id}
-          onChange={(event) => onChange(combinations.find((entry) => entry.id === event.target.value)!)}
+          onValueChange={(nextValue) => onChange(combinations.find((entry) => entry.id === nextValue)!)}
         >
           {combinations
             .filter((entry) => entry.model === value.model)
@@ -50,7 +51,7 @@ export function ModelSelector({
                 {providerNames[entry.provider]}
               </option>
             ))}
-        </select>
+        </Select>
       </label>
       {open && (
         <Dialog title={t("model")} className="model-dialog" onClose={() => setOpen(false)}>

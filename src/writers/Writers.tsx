@@ -1,3 +1,4 @@
+import { Select } from "../components/Select";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownIcon, ArrowUpIcon, DotsSixVerticalIcon, XIcon, GearSixIcon } from "@phosphor-icons/react";
 import type { GenerationDraft, GalleryEntry } from "../domain/types";
@@ -124,10 +125,10 @@ export function Writers({
       return;
     }
     if (source === "files") {
-      addReferences(await chooseImages());
+      addReferences(await chooseImages(true));
       return;
     }
-    const entry = await native<GalleryEntry>("asset_paste");
+    const entry = await native<GalleryEntry>("asset_paste", { staged: true });
     await refreshGallery();
     addReferences([entry]);
   };
@@ -362,12 +363,12 @@ export function Writers({
                   {localize(label("No models selected", "尚未添加模型", "モデルが未選択"))}
                 </span>
               )}
-              <select
+              <Select
                 aria-label={localize(label("Add model", "添加模型", "モデルを追加"))}
                 value=""
                 disabled={!writers.length}
-                onChange={(event) => {
-                  const id = event.target.value;
+                onValueChange={(nextValue) => {
+                  const id = nextValue;
                   if (id) setQueue((current) => [...current, { id: crypto.randomUUID(), writerId: id }]);
                 }}
               >
@@ -379,7 +380,7 @@ export function Writers({
                     {writer.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="section-heading">
               <span>{localize(label("Specifications", "附加规范", "追加ガイド"))}</span>
@@ -405,10 +406,10 @@ export function Writers({
                 />
               </label>
             </div>
-            <select
+            <Select
               aria-label={localize(label("Specifications", "附加规范", "追加ガイド"))}
               value={selected}
-              onChange={(event) => setSelected(event.target.value)}
+              onValueChange={(nextValue) => setSelected(nextValue)}
             >
               <option value="">{localize(label("None", "无", "なし"))}</option>
               {specs
@@ -429,7 +430,7 @@ export function Writers({
                     ))}
                 </optgroup>
               )}
-            </select>
+            </Select>
           </div>
           <footer className="submit-panel writer-submit">
             <button
@@ -513,7 +514,7 @@ export function Writers({
                 disabled={importBusy || !/^https?:\/\//i.test(imageUrl)}
                 onClick={() => {
                   setImportBusy(true);
-                  void importAsset({ url: imageUrl })
+                  void importAsset({ url: imageUrl }, true)
                     .then(async (entry) => {
                       await refreshGallery();
                       addReferences([entry]);

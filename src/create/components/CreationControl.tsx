@@ -1,3 +1,4 @@
+import { Select } from "../../components/Select";
 import { useId } from "react";
 import type { FormProps } from "../../models/types";
 import { creationMode } from "../../models/creation";
@@ -12,12 +13,12 @@ export function CreationControl({ combination, draft, onChange }: FormProps) {
     <section className="creation-mode-fields">
       <div className="field" data-field="creationMode">
         <label htmlFor={id}>{c("creationMode")}</label>
-        <select
+        <Select
           id={id}
           value={mode}
           title={combination.creationControl === "prompt" ? c("promptControlled") : undefined}
-          onChange={(event) => {
-            const next = event.target.value as typeof mode;
+          onValueChange={(nextValue) => {
+            const next = nextValue as typeof mode;
             onChange({
               ...draft,
               creationMode: next,
@@ -33,15 +34,15 @@ export function CreationControl({ combination, draft, onChange }: FormProps) {
           </option>
           <option value="edit">{c("editMode")}</option>
           <option value="auto">{t("automatic")}</option>
-        </select>
+        </Select>
       </div>
       {mode === "edit" && draft.references.length > 0 && (
         <div className="field" data-field="editTargetId">
           <label htmlFor={`${id}-source`}>{t("editTarget")}</label>
-          <select
+          <Select
             id={`${id}-source`}
             value={draft.editTargetId ?? draft.references[0]?.id}
-            onChange={(event) => onChange({ ...draft, editTargetId: event.target.value })}
+            onValueChange={(nextValue) => onChange({ ...draft, editTargetId: nextValue })}
           >
             {draft.editTargetId && !draft.references.some((ref) => ref.id === draft.editTargetId) && (
               <option value={draft.editTargetId}>{t("missing")}</option>
@@ -51,7 +52,7 @@ export function CreationControl({ combination, draft, onChange }: FormProps) {
                 {index + 1}. {ref.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
     </section>

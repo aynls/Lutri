@@ -1,3 +1,4 @@
+import { Select } from "../../components/Select";
 import { useEffect, useState } from "react";
 import { commit, readRecords } from "../../services/native";
 import { useApplication } from "../../services/store";
@@ -46,10 +47,10 @@ export function SavedStyles({ combination, draft, onChange }: FormProps) {
     <div className="saved-styles">
       <label>
         {c("savedStyles")}
-        <select
+        <Select
           value={selected?.id ?? ""}
-          onChange={(event) => {
-            const style = available.find((entry) => entry.id === event.target.value);
+          onValueChange={(nextValue) => {
+            const style = available.find((entry) => entry.id === nextValue);
             if (style) onChange({ ...draft, parameters: { ...draft.parameters, style_id: style.styleId } });
           }}
         >
@@ -59,21 +60,21 @@ export function SavedStyles({ combination, draft, onChange }: FormProps) {
               {style.name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       {!!returned.length && (
-        <select
+        <Select
           aria-label={c("style")}
           value=""
-          onChange={(event) =>
-            onChange({ ...draft, parameters: { ...draft.parameters, style_id: event.target.value } })
+          onValueChange={(nextValue) =>
+            onChange({ ...draft, parameters: { ...draft.parameters, style_id: nextValue } })
           }
         >
           <option value="">{t("results")}</option>
           {returned.map((id) => (
             <option key={id}>{id}</option>
           ))}
-        </select>
+        </Select>
       )}
       <div className="field-inline">
         <input
