@@ -249,11 +249,13 @@ export function changeFeed(transform: (feed: FeedSlot[]) => FeedSlot[], changes:
           .map((slot) => ({ collection: "feed", id: slot.id })),
       ]);
       updateState({ feed: next });
+      if (previous.some((slot) => !next.some((entry) => entry.id === slot.id))) {
+        const { purgeHiddenTasks } = await import("./history");
+        await purgeHiddenTasks();
+      }
     });
   return feedWrites;
 }
-export async function removeFeed(ids: string[]) {
-  await changeFeed((feed) => feed.filter((slot) => !ids.includes(slot.id)));
-  const { purgeHiddenTasks } = await import("./history");
-  await purgeHiddenTasks();
+export function removeFeed(ids: string[]) {
+  return changeFeed((feed) => feed.filter((slot) => !ids.includes(slot.id)));
 }
