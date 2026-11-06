@@ -196,10 +196,30 @@
 .upscale-panel .upscale-job-spec {
   flex-basis: 100%;
 }
-.preview-dialog .upscale-job-footer {
+.upscale-viewer-details .upscale-job-footer {
   background: transparent;
   border-top: 0;
-  padding: 12px 20px;
+  padding: 0;
+  gap: 10px;
+}
+.upscale-viewer-details {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.upscale-viewer-details .upscale-job-spec {
+  flex-basis: 100%;
+}
+.upscale-viewer-details .upscale-job-footer > progress {
+  position: static;
+}
+.upscale-viewer-details .error-text {
+  max-height: 160px;
+  overflow: auto;
+  margin-top: 12px;
+}
+.upscale-job-status {
+  font-size: 11px;
 }
 .upscale-workspace article > .error-text {
   padding: 12px;

@@ -231,6 +231,20 @@ export default function App() {
     setPage("creation");
   };
   const addReference = (entry: GalleryEntry) => addReferences([entry]);
+  const useImageAsReference = async (entry: GalleryEntry) => {
+    const draft = getState().draft;
+    if (draft.references.length >= combinationById(draft.combinationId).maxReferences) throw new Error(c("tooMany"));
+    await saveDraft({
+      ...draft,
+      references: [
+        ...draft.references,
+        { id: crypto.randomUUID(), assetId: entry.asset.id, name: t("referenceAlias"), purpose: "reference" },
+      ],
+    });
+    setWriters(false);
+    setPage("creation");
+    setViewer(undefined);
+  };
   const switchModel = async (next: ModelCombination) => {
     const current = getState().draft;
     if (
@@ -689,7 +703,7 @@ export default function App() {
         ) : null}
         {page === "settings" ? <Settings onError={onError} /> : null}
         <div className="upscale-host" hidden={page !== "upscale"}>
-          <Upscale onError={onError} incoming={upscaleInput} />
+          <Upscale onError={onError} incoming={upscaleInput} onReference={useImageAsReference} />
         </div>
       </main>
       {error
@@ -823,29 +837,13 @@ export default function App() {
       {viewer && (
         <ImageViewer
           key={viewer.assetId}
-          assetId={viewer.assetId}
-          assetIds={viewer.ids}
+          initialId={viewer.assetId}
+          items={Array.from(new Set(viewer.ids.includes(viewer.assetId) ? viewer.ids : [viewer.assetId])).map((id) => ({
+            id,
+            assetId: id,
+          }))}
           onClose={() => setViewer(undefined)}
-          onReference={async (entry) => {
-            const draft = getState().draft;
-            if (draft.references.length >= combinationById(draft.combinationId).maxReferences)
-              throw new Error(c("tooMany"));
-            await saveDraft({
-              ...draft,
-              references: [
-                ...draft.references,
-                {
-                  id: crypto.randomUUID(),
-                  assetId: entry.asset.id,
-                  name: t("referenceAlias"),
-                  purpose: "reference",
-                },
-              ],
-            });
-            setWriters(false);
-            setPage("creation");
-            setViewer(undefined);
-          }}
+          onReference={useImageAsReference}
           onUpscale={(entry) => {
             setWriters(false);
             setUpscaleInput({ entries: [entry], nonce: crypto.randomUUID() });

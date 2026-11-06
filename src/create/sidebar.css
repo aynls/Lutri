@@ -63,7 +63,8 @@
   color: var(--muted);
 }
 .creation-section > .parameter-fields,
-.creation-section > .frame-controls {
+.creation-section > .frame-controls,
+.creation-section > .input-preparation-setting {
   padding: 4px 0 8px;
 }
 .frame-controls {
@@ -331,12 +332,6 @@
 }
 .result-actions {
   flex-wrap: wrap;
-}
-.result-card > .task-usage-summary {
-  display: block;
-  padding: 0 12px 8px;
-  font-size: 10px;
-  color: var(--muted);
 }
 @container (max-width: 320px) {
   .creation-panel .field:not(.field-json) {

@@ -236,15 +236,44 @@
 }
 .mcp-heading {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
+  margin-bottom: 16px;
+}
+.settings-panel .mcp-heading h2 {
+  margin-bottom: 0;
 }
 .mcp-status {
   color: var(--muted);
   font-size: 12px;
 }
 .mcp-status.is-running {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
   color: var(--accent);
+  font-weight: 600;
+}
+.mcp-status.is-running::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+  animation: mcp-status-breathe 2s ease-in-out infinite;
+}
+@keyframes mcp-status-breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mcp-status.is-running::before {
+    animation: none;
+  }
 }
 .mcp-connection {
   display: grid;

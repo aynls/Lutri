@@ -21,7 +21,6 @@ import { copyAssetImage, exportImages, favorite } from "../gallery/actions";
 import { execute } from "../services/generation";
 import { removeFeed, useApplication } from "../services/store";
 import { c } from "./messages";
-import { TaskUsage } from "../history/TaskUsage";
 
 export function Feed({
   onView,
@@ -224,7 +223,6 @@ export function Feed({
                         />
                       </div>
                     ) : null}
-                    <TaskUsage task={task} result={result} compact />
                   </article>
                 );
               })}

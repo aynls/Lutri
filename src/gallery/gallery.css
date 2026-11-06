@@ -173,7 +173,7 @@
   opacity: 0;
 }
 .gallery-card:hover .favorite,
-.gallery-card:focus-within .favorite {
+.gallery-card:has(:focus-visible) .favorite {
   opacity: 1;
 }
 .gallery-actions {
@@ -187,7 +187,7 @@
   pointer-events: none;
 }
 .gallery-card:hover .gallery-actions,
-.gallery-card:focus-within .gallery-actions,
+.gallery-card:has(:focus-visible) .gallery-actions,
 .gallery-card:has(.action-menu[open]) .gallery-actions {
   opacity: 1;
   pointer-events: auto;

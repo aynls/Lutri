@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import {
@@ -16,6 +16,7 @@ import { useApplication } from "../services/store";
 import { native, imageUrl } from "../services/native";
 import { t } from "../i18n";
 import { ImageStage } from "../components/ImageStage";
+import { PathPreview } from "../components/PathPreview";
 import { CopyButton } from "../components/CopyButton";
 import { ResizablePanel } from "../components/ResizablePanel";
 import { RequestDetails } from "../history/RequestDetails";
@@ -24,18 +25,28 @@ import { copyAssetImage, exportImages, favorite } from "./actions";
 import { lt } from "../i18n/library";
 import type { GalleryEntry } from "../domain/types";
 
+export interface ImageViewerItem {
+  id: string;
+  assetId?: string;
+  preview?: { before: string; after?: string };
+  resolveEntry?: () => Promise<GalleryEntry>;
+  details?: ReactNode;
+}
+
 export function ImageViewer({
-  assetId,
-  assetIds,
+  initialId,
+  items,
   onClose,
   onReference,
   onUpscale,
+  onNavigate,
 }: {
-  assetId: string;
-  assetIds: string[];
+  initialId: string;
+  items: ImageViewerItem[];
   onClose: () => void;
   onReference: (entry: GalleryEntry) => Promise<void>;
-  onUpscale: (entry: GalleryEntry) => void;
+  onUpscale?: (entry: GalleryEntry) => void;
+  onNavigate?: (id: string) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -52,17 +63,34 @@ export function ImageViewer({
     };
   }, []);
   const { gallery, tasks, ready } = useApplication();
-  const [current, setCurrent] = useState(assetId),
+  const [selected, setSelected] = useState(initialId),
     [info, setInfo] = useState(true),
     [error, setError] = useState("");
-  const [ids, setIds] = useState(() => Array.from(new Set(assetIds.includes(assetId) ? assetIds : [assetId])));
+  const [relatedItems, setRelatedItems] = useState<ImageViewerItem[]>([]);
+  const sources = [...new Map([...items, ...relatedItems].map((item) => [item.id, item])).values()];
+  const ids = sources.map((item) => item.id);
+  const current = ids.includes(selected) ? selected : initialId;
+  const setCurrent = (id: string) => {
+    setSelected(id);
+    setError("");
+    onNavigate?.(id);
+  };
+  const source = sources.find((item) => item.id === current);
+  const assetId = source?.assetId;
   const [loaded, setLoaded] = useState<GalleryEntry[]>([]);
   const [toolbarTarget, setToolbarTarget] = useState<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState(false);
+  const actionLock = useRef(false);
   useEffect(() => {
+    if (!assetId) {
+      setLoaded([]);
+      setLoading(false);
+      return;
+    }
     let active = true;
     setLoading(true);
-    void native<GalleryEntry[]>("gallery_entries", { ids: [current] })
+    void native<GalleryEntry[]>("gallery_entries", { ids: [assetId] })
       .then((entries) => {
         if (active) setLoaded(entries);
       })
@@ -75,14 +103,31 @@ export function ImageViewer({
     return () => {
       active = false;
     };
-  }, [current, gallery]);
+  }, [assetId, gallery]);
   const index = ids.indexOf(current),
-    entry = loaded.find((entry) => entry.asset.id === current) ?? gallery.find((entry) => entry.asset.id === current);
-  const task = tasks.find((task) => task.results.some((result) => result.assetId === current));
+    entry = loaded.find((entry) => entry.asset.id === assetId) ?? gallery.find((entry) => entry.asset.id === assetId);
+  const path = entry?.path ?? source?.preview?.after ?? source?.preview?.before;
+  const task = tasks.find((task) => task.results.some((result) => result.assetId === assetId));
   const onError = (value: unknown) => setError(String(value));
   const attempt = (action: () => Promise<unknown>) => void action().catch(onError);
+  const withEntry = (action: (entry: GalleryEntry) => unknown | Promise<unknown>) => {
+    if (actionLock.current) return;
+    actionLock.current = true;
+    setActing(true);
+    setError("");
+    attempt(async () => {
+      try {
+        const resolved = source?.resolveEntry ? await source.resolveEntry() : entry;
+        if (!resolved) throw new Error(t("missing"));
+        await action(resolved);
+      } finally {
+        actionLock.current = false;
+        setActing(false);
+      }
+    });
+  };
   const related = (id: string) => {
-    if (!ids.includes(id)) setIds((previous) => [...previous, id]);
+    if (!ids.includes(id)) setRelatedItems((previous) => [...previous, { id, assetId: id }]);
     setCurrent(id);
   };
   return createPortal(
@@ -99,6 +144,7 @@ export function ImageViewer({
       onKeyDown={(event) => {
         event.stopPropagation();
         if (event.defaultPrevented) return;
+        if (actionLock.current) return;
         if (
           event.target instanceof HTMLElement &&
           event.target.closest(
@@ -119,7 +165,7 @@ export function ImageViewer({
       <header className="viewer-toolbar">
         <div className="button-row">
           <button
-            disabled={index <= 0}
+            disabled={acting || index <= 0}
             title={lt("previousImage")}
             aria-label={lt("previousImage")}
             onClick={() => setCurrent(ids[index - 1])}
@@ -130,7 +176,7 @@ export function ImageViewer({
             {index < 0 ? "—" : index + 1} / {ids.length}
           </span>
           <button
-            disabled={index < 0 || index >= ids.length - 1}
+            disabled={acting || index < 0 || index >= ids.length - 1}
             title={lt("nextImage")}
             aria-label={lt("nextImage")}
             onClick={() => setCurrent(ids[index + 1])}
@@ -140,39 +186,60 @@ export function ImageViewer({
         </div>
         <div className="viewer-zoom-controls" ref={setToolbarTarget} />
         <span className="toolbar-spacer" />
-        {entry && (
+        {(entry || source?.resolveEntry) && (
           <>
-            <button className="viewer-reference-button" onClick={() => attempt(() => onReference(entry))}>
+            <button className="viewer-reference-button" disabled={acting} onClick={() => withEntry(onReference)}>
               {t("useReference")}
             </button>
-            <button title={t("upscale")} aria-label={t("upscale")} onClick={() => onUpscale(entry)}>
-              <ArrowUpRightIcon />
-            </button>
-            <button
-              title={entry.favorite ? t("removeFavorite") : t("favorites")}
-              aria-label={entry.favorite ? t("removeFavorite") : t("favorites")}
-              aria-pressed={entry.favorite}
-              onClick={() => attempt(() => favorite(entry))}
-            >
-              <HeartIcon weight={entry.favorite ? "fill" : "regular"} />
-            </button>
-            <button
-              title={lt("copyImage")}
-              aria-label={lt("copyImage")}
-              onClick={() => attempt(() => copyAssetImage(entry.asset.id))}
-            >
-              <CopyIcon />
-            </button>
-            <button title={t("saveAs")} aria-label={t("saveAs")} onClick={() => attempt(() => exportImages([entry]))}>
-              <DownloadSimpleIcon />
-            </button>
-            <button
-              title={t("reveal")}
-              aria-label={t("reveal")}
-              onClick={() => attempt(() => revealItemInDir(entry.path))}
-            >
-              <FolderOpenIcon />
-            </button>
+            {onUpscale && (
+              <button
+                disabled={acting}
+                title={t("upscale")}
+                aria-label={t("upscale")}
+                onClick={() => withEntry(onUpscale)}
+              >
+                <ArrowUpRightIcon />
+              </button>
+            )}
+            {entry && (
+              <>
+                <button
+                  disabled={acting}
+                  title={entry?.favorite ? t("removeFavorite") : t("favorites")}
+                  aria-label={entry?.favorite ? t("removeFavorite") : t("favorites")}
+                  aria-pressed={entry?.favorite ?? false}
+                  onClick={() => withEntry(favorite)}
+                >
+                  <HeartIcon weight={entry?.favorite ? "fill" : "regular"} />
+                </button>
+                <button
+                  title={lt("copyImage")}
+                  aria-label={lt("copyImage")}
+                  disabled={acting}
+                  onClick={() => withEntry((resolved) => copyAssetImage(resolved.asset.id))}
+                >
+                  <CopyIcon />
+                </button>
+                <button
+                  disabled={acting}
+                  title={t("saveAs")}
+                  aria-label={t("saveAs")}
+                  onClick={() => withEntry((resolved) => exportImages([resolved]))}
+                >
+                  <DownloadSimpleIcon />
+                </button>
+              </>
+            )}
+            {path && (
+              <button
+                title={t("reveal")}
+                aria-label={t("reveal")}
+                disabled={acting}
+                onClick={() => attempt(() => revealItemInDir(path))}
+              >
+                <FolderOpenIcon />
+              </button>
+            )}
           </>
         )}
         <button title={t("details")} aria-label={t("details")} aria-pressed={info} onClick={() => setInfo(!info)}>
@@ -183,7 +250,9 @@ export function ImageViewer({
         </button>
       </header>
       <div className="viewer-body">
-        {entry ? (
+        {source?.preview ? (
+          <PathPreview key={current} {...source.preview} toolbarTarget={toolbarTarget} />
+        ) : entry ? (
           <ImageStage
             key={current}
             before={{ dataUrl: imageUrl(entry.path), ...entry.asset }}
@@ -203,6 +272,7 @@ export function ImageViewer({
             side="right"
           >
             <div className="viewer-details-scroll">
+              {source?.details}
               {entry && (
                 <section className="viewer-asset-details">
                   <dl className="viewer-asset-metadata">
@@ -223,8 +293,8 @@ export function ImageViewer({
                     <div>
                       <dt>{lt("assetId")}</dt>
                       <dd className="asset-id">
-                        <code>{current}</code>
-                        <CopyButton value={current} onError={onError} />
+                        <code>{entry.asset.id}</code>
+                        <CopyButton value={entry.asset.id} onError={onError} />
                       </dd>
                     </div>
                   </dl>

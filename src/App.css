@@ -964,8 +964,8 @@ img.asset-image.loaded {
   gap: 20px;
 }
 .writer-results-column {
-  width: 290px;
-  flex-shrink: 0;
+  flex: 0 1 435px;
+  min-width: 0;
 }
 .writer-results article {
   background: var(--surface);
@@ -973,6 +973,7 @@ img.asset-image.loaded {
   margin-bottom: 20px;
   border: 1px solid var(--line);
   border-radius: 7px;
+  overflow-wrap: anywhere;
 }
 .writer-results article > header {
   display: flex;
@@ -982,11 +983,36 @@ img.asset-image.loaded {
 }
 .writer-results article > header strong {
   flex: 1;
+  min-width: 0;
 }
 .writer-results article p {
   white-space: pre-wrap;
   line-height: 1.7;
   font-size: 14px;
+}
+.writer-result-prompt {
+  position: relative;
+}
+.writer-result-copy {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 6px;
+  font-size: 18px;
+  color: var(--muted);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+.writer-results article:hover .writer-result-copy,
+.writer-results article:has(:focus-visible) .writer-result-copy {
+  opacity: 1;
+}
+.writer-result-copy:hover {
+  color: var(--accent);
 }
 .writer-results details {
   margin-bottom: 18px;
@@ -1138,7 +1164,7 @@ img.asset-image.loaded {
 }
 .prompt-editor {
   min-height: 140px;
-  max-height: 400px;
+  max-height: 600px;
   overflow: auto;
   resize: vertical;
   white-space: pre-wrap;
@@ -1226,6 +1252,7 @@ img.asset-image.loaded {
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
+  width: max-content;
   max-width: 80%;
   gap: 2px;
   padding: 3px;
@@ -1238,7 +1265,7 @@ img.asset-image.loaded {
   transition: opacity 140ms ease;
 }
 .result-image:hover .result-actions,
-.result-image:focus-within .result-actions {
+.result-image:has(:focus-visible) .result-actions {
   opacity: 1;
 }
 @media (hover: none) {
@@ -1270,6 +1297,7 @@ img.asset-image.loaded {
 }
 .result-prompt-wrap {
   position: relative;
+  padding-bottom: 8px;
 }
 .result-prompt-copy {
   position: absolute;
@@ -1286,13 +1314,13 @@ img.asset-image.loaded {
   transition: opacity 140ms ease;
 }
 .result-prompt-wrap:hover .result-prompt-copy,
-.result-prompt-wrap:focus-within .result-prompt-copy {
+.result-prompt-wrap:has(:focus-visible) .result-prompt-copy {
   opacity: 1;
 }
 .result-prompt-copy:hover {
   color: var(--accent);
 }
-.result-card:focus-within .card-remove {
+.result-card:has(:focus-visible) .card-remove {
   opacity: 1;
 }
 .model-trigger {

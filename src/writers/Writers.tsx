@@ -7,6 +7,7 @@ import { importAsset, native, commit, readRecords } from "../services/native";
 import { streamChat } from "./stream";
 import { builtInSpecifications, type Specification } from "./specifications";
 import { ResizablePanel } from "../components/ResizablePanel";
+import { CopyButton } from "../components/CopyButton";
 
 import type { Writer } from "./types";
 import { refreshGallery, useApplication } from "../services/store";
@@ -61,7 +62,7 @@ export function Writers({
   const [columnCount, setColumnCount] = useState(1);
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) =>
-      setColumnCount(Math.max(1, Math.floor((entry.contentRect.width + 20) / 310))),
+      setColumnCount(Math.max(1, Math.floor((entry.contentRect.width + 20) / 455))),
     );
     observer.observe(resultsArea.current!);
     return () => observer.disconnect();
@@ -76,7 +77,7 @@ export function Writers({
       for (const line of `${output.text}\n${output.error ?? ""}`.split("\n"))
         lines += Math.max(
           1,
-          Math.ceil([...line].reduce((width, char) => width + (char.charCodeAt(0) > 0xff ? 2 : 1), 0) / 34),
+          Math.ceil([...line].reduce((width, char) => width + (char.charCodeAt(0) > 0xff ? 2 : 1), 0) / 56),
         );
       heights[column] += 150 + lines * 24 + (output.reasoning ? 38 : 0);
     }
@@ -474,7 +475,17 @@ export function Writers({
                         <p>{output.reasoning}</p>
                       </details>
                     ) : null}
-                    <p>{output.text}</p>
+                    <div className="writer-result-prompt">
+                      <p>{output.text}</p>
+                      {output.text.trim() ? (
+                        <CopyButton
+                          className="writer-result-copy"
+                          value={output.text}
+                          title={t("copyPrompt")}
+                          onError={onError}
+                        />
+                      ) : null}
+                    </div>
                     {output.error ? <p className="error-text">{output.error}</p> : null}
                     <footer>
                       <button disabled={output.busy} onClick={() => void run(output.writer, output.id)}>

@@ -18,10 +18,10 @@ import type { GalleryEntry } from "../domain/types";
 import { label, localize, t } from "../i18n";
 import { chooseImages } from "../gallery/actions";
 import { AssetPicker } from "../gallery/AssetPicker";
+import { ImageViewer } from "../gallery/ImageViewer";
 import { imageUrl, native } from "../services/native";
 import { refreshGallery } from "../services/store";
 import { PathPreview } from "../components/PathPreview";
-import { Dialog } from "../components/Dialog";
 import { ResizablePanel } from "../components/ResizablePanel";
 import { UpscaleModelSelector } from "./ModelSelector";
 
@@ -39,6 +39,7 @@ interface Job {
   scale?: number;
   modelId?: string;
   saving?: boolean;
+  referencing?: boolean;
 }
 let workspace: { single?: Job; jobs: Job[]; batch: boolean; busy: boolean } = { jobs: [], batch: false, busy: false };
 const listeners = new Set<() => void>();
@@ -54,12 +55,15 @@ const subscribe = (listener: () => void) => {
 };
 const snapshot = () => workspace;
 const makeJob = (input: GalleryEntry): Job => ({ id: crypto.randomUUID(), input, progress: 0, status: "pending" });
+const savingJobs = new Map<string, Promise<GalleryEntry>>();
 export function Upscale({
   onError,
   incoming,
+  onReference,
 }: {
   onError: (error: unknown) => void;
   incoming?: { entries: GalleryEntry[]; nonce: string };
+  onReference: (entry: GalleryEntry) => Promise<void>;
 }) {
   const [models, setModels] = useState<UpscaleModel[]>([]),
     [model, setModel] = useState("");
@@ -191,23 +195,42 @@ export function Upscale({
     if (!queue.length) return;
     const submitted = queue.map((job) => ({ ...job, id: crypto.randomUUID() }));
     const replacements = new Map(queue.map((job, index) => [job.id, submitted[index]]));
+    setView((current) => (current ? (replacements.get(current)?.id ?? current) : current));
     setJobs((current) => current.map((job) => replacements.get(job.id) ?? job));
     setSingle((current) => (current ? (replacements.get(current.id) ?? current) : current));
     await Promise.all(submitted.map(track));
   };
-  const saveJob = async (job: Job) => {
-    if (!job.path || job.saving) return;
-    update(job.id, { saving: true });
-    try {
-      const entry = await native<GalleryEntry & { exportError?: string }>("upscale_save", {
-        path: job.path,
-        modelId: job.modelId,
-      });
-      update(job.id, { assetId: entry.asset.id, error: undefined, exportError: entry.exportError });
-      await refreshGallery();
-    } finally {
-      update(job.id, { saving: false });
-    }
+  const saveJob = (job: Job): Promise<GalleryEntry> => {
+    const existing = savingJobs.get(job.id);
+    if (existing) return existing;
+    const saving = (async () => {
+      const latest =
+        workspace.jobs.find((entry) => entry.id === job.id) ??
+        (workspace.single?.id === job.id ? workspace.single : job);
+      if (latest.assetId) {
+        const [entry] = await native<GalleryEntry[]>("gallery_entries", { ids: [latest.assetId] });
+        if (entry) return entry;
+      }
+      if (!latest.path) throw new Error(t("missing"));
+      update(job.id, { saving: true });
+      try {
+        const entry = await native<GalleryEntry & { exportError?: string }>("upscale_save", {
+          path: latest.path,
+          modelId: latest.modelId,
+        });
+        update(job.id, {
+          assetId: entry.asset.id,
+          error: undefined,
+          exportError: entry.exportError ?? latest.exportError,
+        });
+        await refreshGallery();
+        return entry;
+      } finally {
+        update(job.id, { saving: false });
+      }
+    })().finally(() => savingJobs.delete(job.id));
+    savingJobs.set(job.id, saving);
+    return saving;
   };
   const viewed = [...jobs, ...(single ? [single] : [])].find((job) => job.id === view);
   const pending = visible.filter((job) => job.status === "pending" || job.status === "failed").length;
@@ -217,19 +240,39 @@ export function Upscale({
     setSingle((current) => (current?.id === id ? undefined : current));
   };
   const retry = (job: Job) => {
-    const next: Job = { ...job, id: crypto.randomUUID(), status: "pending", path: undefined, assetId: undefined, progress: 0 };
+    const next = makeJob(job.input);
+    if (view === job.id) setView(next.id);
     setJobs((current) => current.map((entry) => (entry.id === job.id ? next : entry)));
     setSingle((current) => (current?.id === job.id ? next : current));
-    if (workspace.busy) void track(next);
+    void track(next).catch(onError);
   };
-  const jobFooter = (job: Job) => (
+  const referenceJob = async (job: Job) => {
+    const latest = workspace.jobs.find((entry) => entry.id === job.id) ?? workspace.single;
+    if (latest?.referencing) return;
+    update(job.id, { referencing: true });
+    try {
+      await onReference(await saveJob(job));
+    } finally {
+      update(job.id, { referencing: false });
+    }
+  };
+  const jobFooter = (job: Job, inViewer = false) => (
     <footer className="upscale-job-footer">
       {job.status === "generating" && <progress max={100} value={job.progress} aria-label={t("processing")} />}
       <small className="upscale-job-spec" title={job.input.asset.id}>
         {job.input.asset.width} × {job.input.asset.height}
         {job.scale ? ` → ${job.input.asset.width * job.scale} × ${job.input.asset.height * job.scale}` : ""}
       </small>
+      <span className="upscale-job-status">
+        {t(job.status === "generating" ? "processing" : job.status)}
+        {job.status === "generating" ? ` · ${job.progress}%` : ""}
+      </span>
       <div className="upscale-job-actions">
+        {job.path && !inViewer && (
+          <button disabled={job.saving || job.referencing} onClick={() => void referenceJob(job).catch(onError)}>
+            {t("useReference")}
+          </button>
+        )}
         {job.path && !job.assetId && (
           <button
             disabled={job.saving}
@@ -266,12 +309,8 @@ export function Upscale({
             {t("cancel")}
           </button>
         )}
-        {job.status === "cancelled" && (
-          <button
-            title={t("runAgain")}
-            aria-label={t("runAgain")}
-            onClick={() => retry(job)}
-          >
+        {(job.status === "cancelled" || job.status === "failed") && (
+          <button disabled={!model} title={t("runAgain")} aria-label={t("runAgain")} onClick={() => retry(job)}>
             <ArrowCounterClockwiseIcon size={16} />
           </button>
         )}
@@ -378,7 +417,7 @@ export function Upscale({
             {batch && doneCount > 0 && (
               <button
                 className="queue-clear"
-                disabled={busy}
+                disabled={busy || jobs.some((job) => job.saving || job.referencing)}
                 onClick={() => setJobs((current) => current.filter((job) => job.status !== "completed"))}
               >
                 {t("clearCompleted")} · {doneCount}
@@ -416,13 +455,13 @@ export function Upscale({
                   <article key={job.id}>
                     <button
                       className="upscale-remove"
-                      disabled={busy}
+                      disabled={busy || job.saving || job.referencing}
                       title={t("remove")}
                       onClick={() => remove(job.id)}
                     >
                       <XIcon />
                     </button>
-                    <button className="image-button" onClick={() => setView(job.id)}>
+                    <button className="image-button" aria-label={t("details")} onClick={() => setView(job.id)}>
                       <img
                         loading="lazy"
                         src={imageUrl(job.path ?? job.input.thumbnailPath)}
@@ -443,7 +482,7 @@ export function Upscale({
               <article>
                 <button
                   className="upscale-remove"
-                  disabled={busy}
+                  disabled={busy || single.saving || single.referencing}
                   title={t("remove")}
                   onClick={() => remove(single.id)}
                 >
@@ -477,14 +516,29 @@ export function Upscale({
         />
       )}
       {viewed && (
-        <Dialog
-          title={t("upscale")}
+        <ImageViewer
+          initialId={viewed.id}
+          items={(batch ? jobs : single ? [single] : []).map((job) => ({
+            id: job.id,
+            assetId: job.path ? job.assetId : job.input.asset.id,
+            preview: { before: job.input.path, after: job.path },
+            resolveEntry: job.path ? () => saveJob(job) : undefined,
+            details: (
+              <section className="upscale-viewer-details">
+                {jobFooter(job, true)}
+                {job.error && <p className="error-text">{job.error}</p>}
+              </section>
+            ),
+          }))}
           onClose={() => setView(undefined)}
-          className="preview-dialog"
-          footer={jobFooter(viewed)}
-        >
-          <PathPreview key={viewed.id} before={viewed.input.path} after={viewed.path} />
-        </Dialog>
+          onNavigate={(id) => {
+            if (visible.some((job) => job.id === id)) setView(id);
+          }}
+          onReference={async (entry) => {
+            await onReference(entry);
+            setView(undefined);
+          }}
+        />
       )}
     </div>
   );
