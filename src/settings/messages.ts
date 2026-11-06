@@ -1,0 +1,32 @@
+import { label, localize } from "../i18n";
+const messages = {
+  appearance: label("Appearance", "外观", "外観"),
+  language: label("Language", "语言", "言語"),
+  zoom: label("Interface scale", "界面缩放", "表示倍率"),
+  configured: label("Configured", "已配置", "設定済み"),
+  unconfigured: label("Not configured", "未配置", "未設定"),
+  check: label("Check connection", "检查连接", "接続を確認"),
+  checked: label("Authentication verified", "认证通过", "認証確認済み"),
+  unsupported: label("Connection check unavailable", "不支持连接检查", "接続確認は未対応"),
+  checking: label("Checking…", "检查中…", "確認中…"),
+  concurrency: label("Concurrent tasks", "并发任务数", "同時実行数"),
+  gpu: label("GPU", "GPU", "GPU"),
+  refresh: label("Refresh devices", "刷新设备", "デバイスを更新"),
+  background: label("Keep running in tray", "关闭窗口后常驻托盘", "閉じた後もトレイに常駐"),
+  login: label("Launch at login", "开机启动", "ログイン時に起動"),
+  desktop: label("Desktop", "桌面", "デスクトップ"),
+  port: label("Port", "端口", "ポート"),
+  automaticMcp: label("Start MCP with Lutri", "随应用启动 MCP", "Lutri 起動時に MCP を開始"),
+  start: label("Start", "启动", "開始"),
+  stop: label("Stop", "停止", "停止"),
+  copyConfig: label("Copy configuration", "复制配置", "設定をコピー"),
+  rotate: label("Rotate token", "更换令牌", "トークンを更新"),
+  rotateConfirm: label(
+    "Existing client configurations will stop working. Rotate token?",
+    "现有客户端配置将失效。更换令牌？",
+    "既存のクライアント設定が無効になります。更新しますか？",
+  ),
+  cleanupCount: label("Counted assets", "计入数量", "対象の画像数"),
+  stopQueued: label("Stop queued tasks", "停止排队任务", "待機タスクを停止"),
+};
+export const settingsText = (key: keyof typeof messages) => localize(messages[key]);

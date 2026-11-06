@@ -1,8 +1,40 @@
+import { useSyncExternalStore } from "react";
 import type { Localized } from "../models/types";
 
 export type Locale = "en" | "zh" | "ja";
-const language = navigator.language.toLowerCase();
-export const locale: Locale = language.startsWith("zh") ? "zh" : language.startsWith("ja") ? "ja" : "en";
+export type LocalePreference = Locale | "system";
+const resolve = (choice: LocalePreference): Locale => {
+  const language = navigator.language.toLowerCase();
+  return choice === "system" ? (language.startsWith("zh") ? "zh" : language.startsWith("ja") ? "ja" : "en") : choice;
+};
+const readLocale = (): LocalePreference => {
+  const choice = localStorage.getItem("lutri.locale");
+  return choice === "en" || choice === "zh" || choice === "ja" ? choice : "system";
+};
+export let locale: Locale = resolve(readLocale());
+const subscribers = new Set<() => void>();
+export function setLocale(choice: LocalePreference) {
+  localStorage.setItem("lutri.locale", choice);
+  locale = resolve(choice);
+  document.documentElement.lang = locale === "zh" ? "zh-CN" : locale;
+  subscribers.forEach((listener) => listener());
+}
+export const localePreference = readLocale;
+window.addEventListener("storage", (event) => {
+  if (event.key === "lutri.locale") setLocale(readLocale());
+});
+window.addEventListener("languagechange", () => setLocale(readLocale()));
+export function useLocale() {
+  return useSyncExternalStore(
+    (listener) => {
+      subscribers.add(listener);
+      return () => {
+        subscribers.delete(listener);
+      };
+    },
+    () => `${locale}:${readLocale()}`,
+  );
+}
 export const localize = (value: Localized) => value[locale];
 export const label = (en: string, zh: string, ja: string): Localized => ({ en, zh, ja });
 
@@ -205,6 +237,7 @@ const messages = {
   downloading: ["Downloading", "正在下载", "ダウンロード中"],
   "download-failed": ["Download failed", "下载失败", "ダウンロード失敗"],
   completed: ["Completed", "已完成", "完了"],
+  cancelled: ["Cancelled", "已取消", "キャンセル済み"],
   failed: ["Failed", "生成失败", "失敗"],
   pending: ["Pending", "等待中", "待機中"],
   saved: ["Saved", "已保存", "保存済み"],

@@ -30,6 +30,36 @@ pub fn credential_remove(provider: String) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+pub async fn credential_check(provider: String) -> Result<(), String> {
+    // Only authenticated read-only operations; never generate an image to probe credentials.
+    let (url, header, prefix) = match provider.as_str() {
+        "openrouter" => ("https://openrouter.ai/api/v1/key", "Authorization", "Bearer "),
+        "google" => (
+            "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1",
+            "x-goog-api-key",
+            "",
+        ),
+        _ => return Err("unsupported".into()),
+    };
+    let secret = credential(&provider)?.get_password().map_err(|e| e.to_string())?;
+    let response = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .map_err(|e| e.to_string())?
+        .get(url)
+        .header(header, format!("{prefix}{secret}"))
+        .send()
+        .await
+        .map_err(|_| "Connection failed")?;
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        Err(format!("HTTP {}", response.status().as_u16()))
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpRequest {

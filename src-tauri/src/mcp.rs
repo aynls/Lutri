@@ -17,7 +17,7 @@ pub struct Bridge {
     pending: Mutex<HashMap<String, oneshot::Sender<Value>>>,
     tools: Mutex<Vec<Value>>,
     server: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
-    token: String,
+    token: Mutex<String>,
 }
 impl Bridge {
     pub fn new() -> Result<Self, String> {
@@ -35,7 +35,7 @@ impl Bridge {
             pending: Mutex::new(HashMap::new()),
             tools: Mutex::new(vec![]),
             server: Mutex::new(None),
-            token,
+            token: Mutex::new(token),
         })
     }
 }
@@ -48,7 +48,8 @@ struct ServerState {
 }
 async fn handle(State(state): State<ServerState>, headers: HeaderMap, Json(message): Json<Value>) -> Response {
     let auth = headers.get("authorization").and_then(|v| v.to_str().ok());
-    if auth != Some(format!("Bearer {}", state.bridge.token).as_str()) {
+    let token = state.bridge.token.lock().unwrap().clone();
+    if auth != Some(format!("Bearer {token}").as_str()) {
         return StatusCode::UNAUTHORIZED.into_response();
     }
     if let Some(origin) = headers.get("origin") {
@@ -130,7 +131,9 @@ pub async fn mcp_start(app: tauri::AppHandle, port: u16, tools: Vec<Value>) -> R
         let _ = axum::serve(listener, router).await;
     });
     *bridge.server.lock().map_err(|e| e.to_string())? = Some(server);
-    Ok(json!({"url":format!("http://127.0.0.1:{port}/mcp"),"token":bridge.token}))
+    Ok(
+        json!({"url":format!("http://127.0.0.1:{port}/mcp"),"token":bridge.token.lock().map_err(|e| e.to_string())?.clone()}),
+    )
 }
 
 #[tauri::command]
@@ -147,4 +150,15 @@ pub fn mcp_reply(bridge: tauri::State<Arc<Bridge>>, id: String, result: Value) -
         let _ = sender.send(result);
     }
     Ok(())
+}
+
+#[tauri::command]
+pub fn mcp_rotate_token(bridge: tauri::State<Arc<Bridge>>) -> Result<String, String> {
+    let token = format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple());
+    keyring::Entry::new("app.lutri.studio", "mcp")
+        .map_err(|e| e.to_string())?
+        .set_password(&token)
+        .map_err(|e| e.to_string())?;
+    *bridge.token.lock().map_err(|e| e.to_string())? = token.clone();
+    Ok(token)
 }
