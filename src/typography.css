@@ -113,36 +113,13 @@ h2 {
   width: 100%;
   height: 100%;
 }
-.brand-dark {
-  display: none;
-}
-:root[data-theme="dark"] .brand-dark {
-  display: block;
-}
-:root[data-theme="dark"] .brand-light {
-  display: none;
-}
 .model-icon {
   display: inline-block;
   object-fit: contain;
   flex-shrink: 0;
 }
 .model-icon.monochrome {
-  filter: brightness(0);
-}
-:root[data-theme="dark"] .model-icon.monochrome {
   filter: brightness(0) invert(0.88);
-}
-@media (prefers-color-scheme: dark) {
-  :root[data-theme="system"] .model-icon.monochrome {
-    filter: brightness(0) invert(0.88);
-  }
-  :root[data-theme="system"] .brand-dark {
-    display: block;
-  }
-  :root[data-theme="system"] .brand-light {
-    display: none;
-  }
 }
 .workspace-header {
   height: 56px;

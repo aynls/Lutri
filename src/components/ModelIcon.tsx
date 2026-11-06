@@ -29,8 +29,7 @@ export function ModelIcon({ family, size = 22 }: { family: string; size?: number
 export function BrandMark() {
   return (
     <span className="brand-mark" aria-hidden="true">
-      <img className="brand-light" src="/brand/mark.svg" alt="" />
-      <img className="brand-dark" src="/brand/mark-dark.svg" alt="" />
+      <img src="/brand/mark-dark.svg" alt="" />
     </span>
   );
 }

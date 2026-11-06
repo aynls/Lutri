@@ -17,11 +17,12 @@ import { commit, readRecords, native, type RecordChange } from "./native";
 import { cleanGallery } from "./cleanup";
 import { storeParameterAssets, parameterAssetIds } from "./parameterAssets";
 import type { Parameters } from "../domain/types";
+import type { Accent, Palette } from "../appearance";
 
 export interface Preferences {
   id: "preferences";
-  theme: "system" | "light" | "dark";
-  accent?: "clay" | "graphite" | "indigo" | "moss";
+  palette?: Palette;
+  accent?: Accent;
   providers: Record<string, { endpoint?: string; deployment?: string }>;
   cleanup: Record<"generated" | "imported", CleanupPolicy>;
   desktop?: { background: boolean; launchAtLogin: boolean; zoom: number };
@@ -52,7 +53,6 @@ let state: ApplicationState = {
   draft: initialDraft(combinations[0]),
   preferences: {
     id: "preferences",
-    theme: "system",
     providers: {},
     cleanup: { generated: { enabled: false, capacity: 200 }, imported: { enabled: false, capacity: 200 } },
   },

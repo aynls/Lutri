@@ -88,29 +88,172 @@
 }
 .accent-swatches {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 10px;
 }
 .accent-swatch {
   position: relative;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
   padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  transition: box-shadow 120ms ease;
+}
+.settings-page .accent-swatch {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.accent-swatch:hover,
+.accent-swatch[aria-pressed="true"] {
+  box-shadow:
+    0 0 0 3px var(--bg),
+    0 0 0 4px var(--accent);
+}
+.accent-swatch svg {
+  visibility: hidden;
+}
+.accent-swatch[aria-pressed="true"] svg {
+  visibility: visible;
+}
+.theme-picker {
+  display: grid;
+  gap: 14px;
+  padding: 14px 0 24px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.theme-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.settings-page .theme-option {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px;
   border: 1px solid var(--line);
-  border-radius: 50%;
-  transition: transform 120ms ease;
-}
-.accent-swatch:hover {
-  transform: scale(1.12);
-}
-.accent-swatch[aria-pressed="true"]::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+  border-radius: 9px;
   background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+.settings-page .theme-option:hover {
+  border-color: var(--muted);
+}
+.settings-page .theme-option[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.theme-option-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 4px 4px;
+  font-size: 12px;
+}
+.theme-option-label svg {
+  flex-shrink: 0;
+  color: var(--accent);
+  visibility: hidden;
+}
+.theme-option[aria-pressed="true"] .theme-option-label svg {
+  visibility: visible;
+}
+.theme-preview {
+  display: flex;
+  height: 96px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  pointer-events: none;
+}
+.theme-preview-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  width: 22px;
+  flex-shrink: 0;
+  padding-top: 12px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+.theme-preview-nav i {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--muted);
+  opacity: 0.5;
+}
+.theme-preview-nav i:first-child {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  opacity: 1;
+}
+.theme-preview-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 40%;
+  flex-shrink: 0;
+  padding: 12px 7px 9px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+.theme-preview-heading {
+  width: 65%;
+  height: 3px;
+  background: var(--text);
+  opacity: 0.55;
+  border-radius: 2px;
+}
+.theme-preview-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.theme-preview-action {
+  height: 10px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.theme-preview-workspace {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  padding: 9px;
+}
+.theme-preview-image {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 62px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.settings-page .theme-option:focus-visible,
+.settings-page .accent-swatch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+@media (max-width: 1100px) {
+  .theme-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .accent-swatches {
+    justify-content: flex-start;
+  }
 }
 .settings-page input[role="switch"] {
   appearance: none;
@@ -146,7 +289,7 @@
 }
 .settings-page input[role="switch"]:checked::before {
   transform: translateX(14px);
-  background: var(--surface);
+  background: var(--on-accent);
 }
 .settings-page input:disabled {
   opacity: 0.4;
@@ -171,7 +314,7 @@
   background: var(--raised);
 }
 .settings-page .button-row .settings-primary-button {
-  color: var(--surface);
+  color: var(--on-accent);
   background: var(--accent);
   border-color: var(--accent);
 }

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { applyAppearance } from "./appearance";
 import { createPortal } from "react-dom";
 import {
   ApertureIcon,
@@ -50,6 +51,7 @@ import { Writers } from "./writers/Writers";
 import { Upscale } from "./upscale/Upscale";
 import { MaskEditor } from "./create/components/MaskEditor";
 import { importFiles, importPaths, isImagePath } from "./gallery/imports";
+import "./themes.css";
 import "./App.css";
 import "./components/studio.css";
 import "./gallery/gallery.css";
@@ -106,10 +108,10 @@ export default function App() {
         .catch(onError);
     }
   }, [onError]);
-  useEffect(() => {
-    document.documentElement.dataset.theme = state.preferences.theme;
-    document.documentElement.dataset.accent = state.preferences.accent ?? "clay";
-  }, [state.preferences.theme, state.preferences.accent]);
+  useLayoutEffect(
+    () => applyAppearance(state.preferences.palette, state.preferences.accent),
+    [state.preferences.palette, state.preferences.accent],
+  );
   useEffect(() => {
     let disposed = false;
     setCredential(undefined);

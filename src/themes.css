@@ -1,0 +1,95 @@
+/* Shared dark palettes for the application and its miniature previews. */
+:root,
+.theme-preview[data-palette="sand"] {
+  --bg: #1c1a18;
+  --panel: #292623;
+  --surface: #25221f;
+  --raised: #332f2b;
+  --text: #eee8df;
+  --muted: #a69b8e;
+  --line: #403a33;
+}
+:root[data-palette="neutral"],
+.theme-preview[data-palette="neutral"] {
+  --bg: #181818;
+  --panel: #262626;
+  --surface: #212121;
+  --raised: #303030;
+  --text: #e9e9e9;
+  --muted: #a0a0a0;
+  --line: #3b3b3b;
+}
+:root[data-palette="mist"],
+.theme-preview[data-palette="mist"] {
+  --bg: #171d24;
+  --panel: #252f3a;
+  --surface: #202831;
+  --raised: #2d3946;
+  --text: #e4ebf3;
+  --muted: #9aaabd;
+  --line: #394858;
+}
+:root[data-palette="celadon"],
+.theme-preview[data-palette="celadon"] {
+  --bg: #19201c;
+  --panel: #27332b;
+  --surface: #222c25;
+  --raised: #303e34;
+  --text: #e5eee5;
+  --muted: #9cab9e;
+  --line: #3a4a3e;
+}
+
+:root,
+[data-accent="clay"] {
+  --accent: #d99b7b;
+}
+[data-accent="graphite"] {
+  --accent: #b8b8b8;
+}
+[data-accent="indigo"] {
+  --accent: #a5afdf;
+}
+[data-accent="moss"] {
+  --accent: #adbf8c;
+}
+[data-accent="amber"] {
+  --accent: #dabb78;
+}
+[data-accent="teal"] {
+  --accent: #87c4b9;
+}
+[data-accent="violet"] {
+  --accent: #c3a6de;
+}
+[data-accent="rose"] {
+  --accent: #db9bb1;
+}
+:root,
+.theme-preview {
+  --canvas-paper: var(--surface);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  --selected-text: var(--accent);
+}
+:root {
+  font-size: 14px;
+  color-scheme: dark;
+  --on-accent: #181a1c;
+  --danger: #e29b8b;
+  --on-danger: #181a1c;
+  --danger-soft: color-mix(in srgb, var(--danger) 9%, transparent);
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.4), 0 2px 7px rgb(0 0 0 / 0.25);
+  --shadow-md: 0 4px 24px rgb(0 0 0 / 0.45);
+  --shadow: 0 16px 60px rgb(0 0 0 / 0.33);
+  --backdrop: rgb(0 0 0 / 0.5);
+  --glass-bg: color-mix(in srgb, var(--surface) 86%, transparent);
+  --glass-blur: saturate(1.15) blur(14px);
+  background: var(--bg);
+  color: var(--text);
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-bg: var(--surface);
+    --glass-blur: none;
+  }
+}

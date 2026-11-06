@@ -1,9 +1,11 @@
 import { Select } from "../components/Select";
 import { useEffect, useState } from "react";
+import { accents, palettes } from "../appearance";
 import {
   ArrowUpRightIcon,
   ChatCircleTextIcon,
   CaretRightIcon,
+  CheckIcon,
   HardDrivesIcon,
   MonitorIcon,
   PlugsIcon,
@@ -209,40 +211,54 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
         >
           <section>
             <h2>{text("appearance")}</h2>
-            <div className="settings-row">
-              <span>{t("theme")}</span>
-              <div className="segmented-control">
-                {(["system", "light", "dark"] as const).map((theme) => (
+            <div className="theme-picker" role="group" aria-labelledby="theme-style-label">
+              <span id="theme-style-label">{text("themeStyle")}</span>
+              <div className="theme-options">
+                {palettes.map(({ id, label }) => (
                   <button
-                    key={theme}
-                    aria-pressed={preferences.theme === theme}
-                    onClick={() => attempt(() => save({ theme }))}
+                    key={id}
+                    className="theme-option"
+                    aria-pressed={(preferences.palette ?? "sand") === id}
+                    onClick={() => attempt(() => save({ palette: id }))}
                   >
-                    {t(theme)}
+                    <span className="theme-preview" data-palette={id} aria-hidden="true">
+                      <span className="theme-preview-nav">
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                      <span className="theme-preview-panel">
+                        <span className="theme-preview-heading" />
+                        <span className="theme-preview-input" />
+                        <span className="theme-preview-action" />
+                      </span>
+                      <span className="theme-preview-workspace">
+                        <span className="theme-preview-image" />
+                      </span>
+                    </span>
+                    <span className="theme-option-label">
+                      {text(label)}
+                      <CheckIcon size={14} weight="bold" aria-hidden="true" />
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
             <div className="settings-row">
-              <span>{text("accentColor")}</span>
-              <div className="accent-swatches">
-                {(
-                  [
-                    ["clay", "#a45b3e", "accentClay"],
-                    ["graphite", "#59544e", "accentGraphite"],
-                    ["indigo", "#5b6394", "accentIndigo"],
-                    ["moss", "#687d4b", "accentMoss"],
-                  ] as const
-                ).map(([accent, color, name]) => (
+              <span id="accent-color-label">{text("accentColor")}</span>
+              <div className="accent-swatches" role="group" aria-labelledby="accent-color-label">
+                {accents.map(({ id: accent, label }) => (
                   <button
                     key={accent}
                     className="accent-swatch"
-                    style={{ background: color }}
-                    title={text(name)}
-                    aria-label={text(name)}
+                    data-accent={accent}
+                    title={text(label)}
+                    aria-label={text(label)}
                     aria-pressed={(preferences.accent ?? "clay") === accent}
                     onClick={() => attempt(() => save({ accent }))}
-                  />
+                  >
+                    <CheckIcon size={14} weight="bold" aria-hidden="true" />
+                  </button>
                 ))}
               </div>
             </div>
