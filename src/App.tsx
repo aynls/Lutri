@@ -265,14 +265,9 @@ export default function App() {
       addReferences(await chooseImages());
       return;
     }
-    const content = await navigator.clipboard.read();
-    const files: File[] = [];
-    for (const item of content) {
-      const type = item.types.find((type) => type.startsWith("image/"));
-      if (type) files.push(new File([await item.getType(type)], "Clipboard.png", { type }));
-    }
-    if (!files.length) throw new Error(c("noClipboard"));
-    addReferences(await importFiles(files));
+    const entry = await native<GalleryEntry>("asset_paste", { name: c("clipboard") });
+    await refreshGallery();
+    addReferences([entry]);
   };
   const applyEdit = (entry: GalleryEntry, keep: boolean) => {
     const current = getState().draft,

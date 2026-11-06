@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import type { Parameters } from "../../domain/types";
 import type { FieldDefinition, FormProps } from "../../models/types";
 import { c } from "../messages";
@@ -77,6 +77,11 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
       : encoded
         ? String(draft.parameters[encoded.key] ?? "")
         : "";
+  const [sides, setSides] = useState<[string, string]>(["", ""]);
+  useEffect(() => {
+    const match = current.match(/^(\d+)\s*[x×*]\s*(\d+)$/);
+    setSides(match ? [match[1], match[2]] : ["", ""]);
+  }, [current]);
   return (
     <div className="frame-controls">
       {custom && (
@@ -115,7 +120,6 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
       {encoded ? (
         <div className="frame-dimensions">
           {["width", "height"].map((key, index) => {
-            const match = current.match(/^(\d+)\s*[x×*]\s*(\d+)$/);
             return (
               <label key={key}>
                 <span>{key === "width" ? "W" : "H"}</span>
@@ -123,15 +127,21 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
                   type="number"
                   min={1}
                   step={1}
-                  value={match?.[index + 1] ?? ""}
+                  value={sides[index]}
+                  required={sides.some(Boolean)}
                   placeholder={c("automatic")}
                   onChange={(event) => {
-                    const sides = match ? [match[1], match[2]] : ["1024", "1024"];
-                    sides[index] = event.target.value;
+                    const next: [string, string] = [...sides];
+                    next[index] = event.target.value;
+                    setSides(next);
                     const parameters = { ...draft.parameters };
-                    if (sides.every(Boolean)) parameters[encoded.key] = sides.join("x");
-                    else delete parameters[encoded.key];
-                    onChange({ ...draft, parameters });
+                    if (next.every(Boolean)) {
+                      parameters[encoded.key] = next.join("x");
+                      onChange({ ...draft, parameters });
+                    } else if (next.every((side) => !side)) {
+                      delete parameters[encoded.key];
+                      onChange({ ...draft, parameters });
+                    }
                   }}
                 />
               </label>
