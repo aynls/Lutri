@@ -1,0 +1,168 @@
+name: Build release draft
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing version tag (for example v0.2.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }} x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - platform: linux
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Check release version
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          const tauri = JSON.parse(readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+          if (pkg.version !== tauri.version || process.env.RELEASE_TAG !== `v${tauri.version}`) {
+            throw new Error('The tag must be v<version> and match package.json and tauri.conf.json.');
+          }
+          NODE
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl wget file pkg-config \
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
+            libssl-dev libdbus-1-dev libxdo-dev libgomp1 libvulkan1 libfuse2 xdg-utils
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.target }}
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build installers
+        run: npm run app:build -- --target ${{ matrix.target }} --ci
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.platform }}-x64
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe
+            src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+            src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+          overwrite: true
+
+  release:
+    name: Create release draft
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*-x64
+          path: installers
+          merge-multiple: true
+
+      - name: Create draft and upload assets
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            const path = require('node:path');
+            const tag = process.env.RELEASE_TAG;
+            const repo = context.repo;
+            async function filesIn(directory) {
+              const entries = await fs.readdir(directory, { withFileTypes: true });
+              const groups = await Promise.all(entries.map(entry => {
+                const file = path.join(directory, entry.name);
+                return entry.isDirectory() ? filesIn(file) : [file];
+              }));
+              return groups.flat();
+            }
+            const files = (await filesIn('installers')).filter(file => /(?:-setup\.exe|\.deb|\.AppImage)$/.test(file));
+            for (const suffix of ['-setup.exe', '.deb', '.AppImage']) {
+              if (!files.some(file => file.endsWith(suffix))) {
+                throw new Error(`Missing installer: ${suffix}`);
+              }
+            }
+            const releases = await github.paginate(github.rest.repos.listReleases, { ...repo, per_page: 100 });
+            let release = releases.find(item => item.tag_name === tag);
+            if (release && !release.draft) {
+              throw new Error(`${tag} is already published; refusing to replace its assets.`);
+            }
+            if (!release) {
+              // Require an existing tag even when the workflow was manually dispatched.
+              await github.rest.git.getRef({ ...repo, ref: `tags/${tag}` });
+              release = (await github.rest.repos.createRelease({
+                ...repo,
+                tag_name: tag,
+                name: `Lutri ${tag}`,
+                draft: true,
+                prerelease: tag.includes('-'),
+                generate_release_notes: true,
+              })).data;
+            }
+            const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
+              ...repo, release_id: release.id, per_page: 100,
+            });
+            for (const file of files) {
+              const name = path.basename(file);
+              const existing = assets.find(asset => asset.name === name);
+              if (existing) {
+                await github.rest.repos.deleteReleaseAsset({ ...repo, asset_id: existing.id });
+              }
+              await github.rest.repos.uploadReleaseAsset({
+                ...repo,
+                release_id: release.id,
+                name,
+                data: await fs.readFile(file),
+                headers: { 'content-type': 'application/octet-stream' },
+              });
+            }
+            await core.summary.addLink(`Lutri ${tag} release draft`, release.html_url).write();
