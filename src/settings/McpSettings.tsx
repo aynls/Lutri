@@ -35,7 +35,7 @@ export function McpSettings({ onError }: { onError: (error: unknown) => void }) 
           disabled={!!current || busy}
           onChange={(event) => setPort(Number(event.target.value))}
           onBlur={() => {
-            if (Number.isInteger(port) && port >= 1024 && port <= 65535) attempt(() => save({ port }));
+            if (Number.isInteger(port) && port >= 1024 && port <= 65535) void save({ port }).catch(onError);
             else setPort(preferences.mcp?.port ?? 39632);
           }}
         />

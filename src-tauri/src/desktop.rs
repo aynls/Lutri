@@ -11,6 +11,7 @@ use tauri_plugin_autostart::ManagerExt;
 pub struct Desktop {
     background: AtomicBool,
     exiting: AtomicBool,
+    frontend_ready: AtomicBool,
     open: MenuItem<tauri::Wry>,
     quit: MenuItem<tauri::Wry>,
 }
@@ -20,12 +21,30 @@ fn request_exit(app: &tauri::AppHandle) {
         if desktop.exiting.swap(true, Ordering::SeqCst) {
             return;
         }
+        if !desktop.frontend_ready.load(Ordering::SeqCst) {
+            if let Some(scheduler) = app.try_state::<Scheduler>() {
+                scheduler.shutdown();
+            }
+            app.exit(0);
+            return;
+        }
     }
     if app.emit_to("main", "desktop-exit-request", ()).is_err() {
         if let Some(scheduler) = app.try_state::<Scheduler>() {
             scheduler.shutdown();
         }
         app.exit(0);
+    } else {
+        // A crashed/unresponsive WebView must not make the native Quit action
+        // permanently inert. Normally JS flushes writes and exits immediately.
+        let handle = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(10));
+            if let Some(scheduler) = handle.try_state::<Scheduler>() {
+                scheduler.shutdown();
+            }
+            handle.exit(0);
+        });
     }
 }
 
@@ -75,6 +94,7 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(Desktop {
         background: AtomicBool::new(background),
         exiting: AtomicBool::new(false),
+        frontend_ready: AtomicBool::new(false),
         open,
         quit,
     });
@@ -113,6 +133,7 @@ pub fn desktop_configure(
         return Err("Background mode is required for launch at login".into());
     }
     let desktop = app.state::<Desktop>();
+    desktop.frontend_ready.store(true, Ordering::SeqCst);
     if launch_at_login {
         app.autolaunch().enable()
     } else {
