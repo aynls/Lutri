@@ -22,29 +22,27 @@
   align-items: center;
   background: var(--panel);
 }
+.history-batch > header strong {
+  font-size: 12px;
+  font-weight: 500;
+}
 .history-batch > header > div {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
 }
 .history-task {
   align-items: flex-start;
   gap: 14px;
+  transition: background-color 140ms ease;
 }
-.request-index {
-  font-size: 11px;
-  color: var(--muted);
-  padding-top: 3px;
-  font-variant-numeric: tabular-nums;
+.history-task:hover {
+  background: var(--raised);
 }
-.request-index input {
-  width: 14px;
-  margin: 0 0 8px;
-}
-.request-index {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.history-task > .task-select {
+  align-self: center;
+  margin: 0;
+  flex-shrink: 0;
 }
 .history-batch > header {
   flex-wrap: wrap;
@@ -71,48 +69,85 @@
 .history-task-heading {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-  font-size: 12px;
+  font-size: 13px;
+}
+.history-task-heading .spinner {
+  width: 13px;
+  height: 13px;
+  border-width: 1.5px;
 }
 .history-info .history-prompt {
   display: -webkit-box;
-  -webkit-line-clamp: 6;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
-  max-height: 160px;
   overflow: hidden;
-  line-height: 1.7;
+  line-height: 1.6;
+}
+.history-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
 }
 .history-task-actions {
   display: flex;
-  gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
+  gap: 2px;
+  margin-left: auto;
 }
 .history-task-actions button {
-  margin: 0;
+  padding: 4px;
+  color: var(--muted);
 }
-.history-task-actions small {
-  margin-left: auto;
-  font-size: 11px;
+.history-task-actions button:hover {
+  color: var(--text);
+}
+.task-delete:hover {
+  color: var(--danger);
+}
+.history-info .error-text {
+  margin: 6px 0 0;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .history-images {
+  display: flex;
+  gap: 6px;
   max-width: 34%;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 .history-images > button {
-  width: 86px;
-  height: 86px;
+  width: 52px;
+  height: 52px;
   flex-shrink: 0;
+  padding: 0;
   background: var(--panel);
+  border-radius: 4px;
+  overflow: hidden;
 }
 .history-images img {
-  width: 86px;
-  height: 86px;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .history-images .missing-image {
   font-size: 11px;
   min-height: 0;
+  height: 100%;
+}
+.history-images-more {
+  font-size: 12px;
+  color: var(--muted);
 }
 .pagination {
   padding: 10px;
