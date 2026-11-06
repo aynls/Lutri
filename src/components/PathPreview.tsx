@@ -3,7 +3,7 @@ import { imageUrl } from "../services/native";
 import { t } from "../i18n";
 import { ImageStage, type PreviewImage } from "./ImageStage";
 
-export function PathPreview({ before, after, name }: { before: string; after?: string; name: string }) {
+export function PathPreview({ before, after }: { before: string; after?: string }) {
   const [images, setImages] = useState<PreviewImage[]>(),
     [error, setError] = useState(false);
   useEffect(() => {
@@ -15,7 +15,7 @@ export function PathPreview({ before, after, name }: { before: string; after?: s
         const image = new Image();
         image.src = imageUrl(path);
         await image.decode();
-        return { dataUrl: image.src, name, width: image.naturalWidth, height: image.naturalHeight };
+        return { dataUrl: image.src, width: image.naturalWidth, height: image.naturalHeight };
       }),
     )
       .then((value) => {
@@ -27,7 +27,7 @@ export function PathPreview({ before, after, name }: { before: string; after?: s
     return () => {
       disposed = true;
     };
-  }, [before, after, name]);
+  }, [before, after]);
   return images ? (
     <ImageStage before={images[0]} after={images[1]} />
   ) : (

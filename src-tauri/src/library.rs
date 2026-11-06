@@ -47,10 +47,7 @@ fn query_sql(query: &GalleryQuery) -> (String, Vec<SqlValue>) {
         }
     }
     if let Some(search) = query.search.as_ref().filter(|v| !v.trim().is_empty()) {
-        add(
-            "instr(lower(id || ' ' || json_extract(body,'$.asset.name')), lower(?)) > 0",
-            search.trim().to_string().into(),
-        );
+        add("instr(lower(id), lower(?)) > 0", search.trim().to_string().into());
     }
     for (bound, sql) in [
         (&query.from, "json_extract(body,'$.addedAt') >= ?"),
@@ -99,7 +96,6 @@ fn query_sql(query: &GalleryQuery) -> (String, Vec<SqlValue>) {
     }
     let sort = match query.sort.as_deref() {
         Some("oldest") => "json_extract(body,'$.addedAt') ASC, id ASC",
-        Some("name") => "json_extract(body,'$.asset.name') COLLATE NOCASE ASC, id ASC",
         Some("size") => "json_extract(body,'$.bytes') IS NULL, json_extract(body,'$.bytes') DESC, id ASC",
         _ => "json_extract(body,'$.addedAt') DESC, id ASC",
     };
@@ -304,7 +300,7 @@ pub fn asset_copy(store: tauri::State<Store>, id: String) -> Result<(), String> 
 }
 
 #[tauri::command]
-pub fn asset_paste(store: tauri::State<Store>, name: String) -> Result<Value, String> {
+pub fn asset_paste(store: tauri::State<Store>) -> Result<Value, String> {
     let image = arboard::Clipboard::new()
         .map_err(|e| e.to_string())?
         .get_image()
@@ -319,7 +315,7 @@ pub fn asset_paste(store: tauri::State<Store>, name: String) -> Result<Value, St
     image::DynamicImage::ImageRgba8(rgba)
         .write_to(&mut bytes, image::ImageFormat::Png)
         .map_err(|e| e.to_string())?;
-    assets::save_asset(&store, &bytes.into_inner(), name, "imported")
+    assets::save_asset(&store, &bytes.into_inner(), "imported")
 }
 
 fn decode_image(path: &Path) -> Result<image::DynamicImage, String> {

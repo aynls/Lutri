@@ -7,7 +7,7 @@ export const isImagePath = (path: string) => imageExtensions.includes(path.split
 export async function importPaths(paths: string[]): Promise<GalleryEntry[]> {
   const entries: GalleryEntry[] = [];
   try {
-    for (const path of paths.filter(isImagePath)) entries.push(await importAsset(path.split(/[\\/]/).pop()!, { path }));
+    for (const path of paths.filter(isImagePath)) entries.push(await importAsset({ path }));
     return entries;
   } finally {
     await refreshGallery();
@@ -25,7 +25,7 @@ export async function importFiles(files: File[]): Promise<GalleryEntry[]> {
           reader.onerror = () => reject(reader.error);
           reader.readAsDataURL(file);
         });
-        return importAsset(file.name || "Image", { dataUrl });
+        return importAsset({ dataUrl });
       }),
   );
   await refreshGallery();

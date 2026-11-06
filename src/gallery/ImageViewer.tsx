@@ -91,7 +91,6 @@ export function ImageViewer({ assetId }: { assetId: string }) {
             <ArrowRightIcon />
           </button>
         </div>
-        <strong>{entry?.asset.name ?? "Lutri"}</strong>
         <span className="toolbar-spacer" />
         {entry && (
           <>
@@ -130,7 +129,6 @@ export function ImageViewer({ assetId }: { assetId: string }) {
             <div className="inspector-scroll">
               {entry && (
                 <section>
-                  <h2>{entry.asset.name}</h2>
                   <p>
                     {entry.asset.width} × {entry.asset.height} · {entry.asset.mediaType.split("/")[1].toUpperCase()}
                   </p>

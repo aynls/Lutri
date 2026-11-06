@@ -5,7 +5,6 @@ export type Parameters = Record<string, Json>;
 /** File location and library membership belong to GalleryEntry, not Asset. */
 export interface Asset {
   id: AssetId;
-  name: string;
   mediaType: string;
   width: number;
   height: number;

@@ -77,7 +77,7 @@ export function Gallery({
     const heights = Array<number>(columnCount).fill(0);
     let previousDay: string | null = null;
     const cards = entries.map((entry) => {
-      const day = sort === "name" || sort === "size" ? null : new Date(entry.addedAt).toDateString();
+      const day = sort === "size" ? null : new Date(entry.addedAt).toDateString();
       let headingTop: number | undefined;
       if (day !== null && day !== previousDay) {
         headingTop = Math.max(...heights);
@@ -222,7 +222,7 @@ export function Gallery({
         try {
           await native("asset_delete", { id: entry.asset.id });
         } catch (error) {
-          failed.push(`${entry.asset.name}: ${String(error)}`);
+          failed.push(`${entry.asset.id}: ${String(error)}`);
         }
       }
     } finally {
@@ -310,7 +310,6 @@ export function Gallery({
           <select aria-label={t("filters")} value={sort} onChange={(event) => setSort(event.target.value)}>
             <option value="newest">{t("newest")}</option>
             <option value="oldest">{t("oldest")}</option>
-            <option value="name">{t("nameOrder")}</option>
             <option value="size">{lt("size")}</option>
           </select>
           <button aria-pressed={filters} onClick={() => setFilters(!filters)} title={t("filters")}>
@@ -509,7 +508,7 @@ export function Gallery({
                       <button
                         className="image-button"
                         style={{ aspectRatio: position.ratio }}
-                        aria-label={entry.asset.name}
+                        aria-label={entry.asset.id}
                         onClick={(event) => {
                           if (selecting) toggle(entry.asset.id, event.shiftKey);
                           else attempt(() => view(entry.asset.id));
@@ -520,7 +519,7 @@ export function Gallery({
                       {selecting && (
                         <input
                           type="checkbox"
-                          aria-label={entry.asset.name}
+                          aria-label={entry.asset.id}
                           checked={selection.includes(entry.asset.id)}
                           onChange={() => toggle(entry.asset.id)}
                         />
@@ -690,7 +689,7 @@ export function Gallery({
                     if (editor.kind === "url") {
                       const url = new URL(editor.value.trim());
                       if (!["https:", "http:"].includes(url.protocol)) throw new Error(lt("invalidUrl"));
-                      const entry = await importAsset(url.pathname.split("/").pop() || "Image", { url: url.href });
+                      const entry = await importAsset({ url: url.href });
                       if (picker) onPick?.([entry]);
                     } else {
                       const ids =

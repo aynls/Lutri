@@ -25,7 +25,7 @@ export function AssetImage({ entry, thumbnail = false }: { entry: GalleryEntry; 
       loading="lazy"
       decoding="async"
       src={imageUrl(thumbnail ? entry.thumbnailPath : entry.path)}
-      alt={entry.asset.name}
+      alt={entry.asset.id}
       onError={() => setMissing(true)}
     />
   );

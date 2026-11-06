@@ -1,4 +1,5 @@
-import { ArrowUpIcon, ArrowDownIcon, ArrowLineUpIcon, PlusIcon, XIcon } from "@phosphor-icons/react";
+import { useRef, useState } from "react";
+import { ArrowUpIcon, ArrowDownIcon, ArrowLineUpIcon, PlusIcon, XIcon, PencilSimpleIcon } from "@phosphor-icons/react";
 import type { GalleryEntry, GenerationDraft } from "../../domain/types";
 import { removeReference } from "../../domain/references";
 import { t } from "../../i18n";
@@ -80,15 +81,13 @@ export function References({
               <div className="reference-information">
                 <div className="reference-name">
                   <small>{index + 1}.</small>
-                  <input
-                    aria-label={t("rename")}
-                    value={reference.name}
-                    title={reference.name}
-                    onChange={(event) =>
+                  <ReferenceAlias
+                    name={reference.name}
+                    onRename={(name) =>
                       onChange({
                         ...draft,
                         references: draft.references.map((entry) =>
-                          entry.id === reference.id ? { ...entry, name: event.target.value } : entry,
+                          entry.id === reference.id ? { ...entry, name } : entry,
                         ),
                       })
                     }
@@ -158,5 +157,54 @@ export function References({
         </button>
       </div>
     </section>
+  );
+}
+
+function ReferenceAlias({ name, onRename }: { name: string; onRename: (name: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(name);
+  const cancelled = useRef(false);
+  return editing ? (
+    <input
+      autoFocus
+      aria-label={t("rename")}
+      value={value}
+      onFocus={(event) => event.currentTarget.select()}
+      onChange={(event) => setValue(event.target.value)}
+      onBlur={() => {
+        if (!cancelled.current) onRename(value.trim() || t("referenceAlias"));
+        setEditing(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.currentTarget.blur();
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          cancelled.current = true;
+          setEditing(false);
+        }
+      }}
+    />
+  ) : (
+    <>
+      <button
+        className="reference-rename"
+        type="button"
+        aria-label={t("rename")}
+        title={t("rename")}
+        onClick={() => {
+          setValue(name);
+          cancelled.current = false;
+          setEditing(true);
+        }}
+      >
+        <PencilSimpleIcon />
+      </button>
+      <span className="reference-alias" title={name}>
+        {name}
+      </span>
+    </>
   );
 }

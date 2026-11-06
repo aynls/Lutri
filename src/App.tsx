@@ -144,7 +144,7 @@ export default function App() {
             ...entries.map((entry) => ({
               id: crypto.randomUUID(),
               assetId: entry.asset.id,
-              name: entry.asset.name,
+              name: t("referenceAlias"),
               purpose: "reference" as const,
             })),
           ],
@@ -217,7 +217,7 @@ export default function App() {
         ...entries.map((entry) => ({
           id: crypto.randomUUID(),
           assetId: entry.asset.id,
-          name: entry.asset.name,
+          name: t("referenceAlias"),
           purpose: "reference" as const,
         })),
       ],
@@ -267,7 +267,7 @@ export default function App() {
       addReferences(await chooseImages());
       return;
     }
-    const entry = await native<GalleryEntry>("asset_paste", { name: c("clipboard") });
+    const entry = await native<GalleryEntry>("asset_paste");
     await refreshGallery();
     addReferences([entry]);
   };
@@ -281,7 +281,7 @@ export default function App() {
     const reference = current.references.find((ref) => ref.assetId === entry.asset.id) ?? {
       id: crypto.randomUUID(),
       assetId: entry.asset.id,
-      name: entry.asset.name,
+      name: t("referenceAlias"),
       purpose: "reference" as const,
     };
     const references = [reference, ...(keep ? current.references.filter((ref) => ref.id !== reference.id) : [])];
@@ -695,7 +695,7 @@ export default function App() {
                 disabled={importBusy || !/^https?:\/\//i.test(imageUrl)}
                 onClick={() => {
                   setImportBusy(true);
-                  void importAsset("URL", { url: imageUrl })
+                  void importAsset({ url: imageUrl })
                     .then(async (entry) => {
                       await refreshGallery();
                       addReferences([entry]);

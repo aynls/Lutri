@@ -9,11 +9,11 @@ export async function storeParameterAssets(value: Json, key = "", known = new Ma
     /^https?:\/\//.test(value) &&
     ["image", "images", "image_url", "image_urls", "fileUri"].includes(key)
   ) {
-    const entry = await importAsset("Conversation image", { url: value });
+    const entry = await importAsset({ url: value });
     return { $asset: entry.asset.id, encoding: "data-url" };
   }
   if (typeof value === "string" && value.startsWith("data:image/")) {
-    const entry = await importAsset("Conversation image", { dataUrl: value });
+    const entry = await importAsset({ dataUrl: value });
     return { $asset: entry.asset.id, encoding: "data-url" };
   }
   if (Array.isArray(value)) return Promise.all(value.map((item) => storeParameterAssets(item, key, known)));
@@ -21,7 +21,7 @@ export async function storeParameterAssets(value: Json, key = "", known = new Ma
   const mime = value.mimeType ?? value.mime_type;
   if (typeof mime === "string" && mime.startsWith("image/") && typeof value.data === "string") {
     const dataUrl = `data:${mime};base64,${value.data}`;
-    const assetId = known.get(dataUrl) ?? (await importAsset("Conversation image", { dataUrl })).asset.id;
+    const assetId = known.get(dataUrl) ?? (await importAsset({ dataUrl })).asset.id;
     return { ...value, data: { $asset: assetId, encoding: "base64" } };
   }
   return Object.fromEntries(

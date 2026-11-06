@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { GenerationDraft } from "../domain/types";
 import { combinations, combinationById } from "../models";
@@ -80,7 +81,7 @@ const tools = [
   },
   {
     name: "find_assets",
-    description: "Find gallery assets by asset ID, filename or source.",
+    description: "Find gallery assets by asset ID or source.",
     inputSchema: {
       type: "object",
       properties: { query: string, source: { enum: ["generated", "imported"] } },
@@ -102,8 +103,7 @@ const tools = [
     description: "Copy a local image or Base64 data URL into reference materials and return its asset ID.",
     inputSchema: {
       type: "object",
-      properties: { path: string, dataUrl: string, name: string },
-      required: ["name"],
+      properties: { path: string, dataUrl: string },
       additionalProperties: false,
     },
   },
@@ -159,7 +159,7 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
       draft.references = (draft.references ?? []).map((ref) => ({
         ...ref,
         id: ref.id ?? crypto.randomUUID(),
-        name: ref.name ?? ref.assetId,
+        name: ref.name ?? t("referenceAlias"),
         purpose: ref.purpose ?? "reference",
       }));
       return submitBatch(draft, "mcp");
@@ -188,13 +188,12 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
       return getState().gallery.filter(
         (entry) =>
           (!args.source || entry.source === args.source) &&
-          (!args.query ||
-            `${entry.asset.id} ${entry.asset.name}`.toLowerCase().includes(String(args.query).toLowerCase())),
+          (!args.query || entry.asset.id.toLowerCase().includes(String(args.query).toLowerCase())),
       );
     case "get_image":
       return { image: await assetData(String(args.assetId)) };
     case "import_image": {
-      const entry = await importAsset(String(args.name), {
+      const entry = await importAsset({
         path: typeof args.path === "string" ? args.path : undefined,
         dataUrl: typeof args.dataUrl === "string" ? args.dataUrl : undefined,
       });

@@ -32,9 +32,9 @@ export async function commit(changes: RecordChange[]) {
   if (changes.some((change) => change.collection === "gallery"))
     void emit("assets-changed", { source: getCurrentWindow().label }).catch(() => {});
 }
-export const importAsset = (name: string, source: { path?: string; dataUrl?: string; url?: string }) =>
-  native<GalleryEntry>("asset_import", { name, ...source });
+export const importAsset = (source: { path?: string; dataUrl?: string; url?: string }) =>
+  native<GalleryEntry>("asset_import", source);
 export const assetData = (id: string) => invoke<string>("asset_data", { id });
 export const assetExists = (id: string) => invoke<boolean>("asset_exists", { id });
-export const downloadAsset = (url: string, name: string, resultId: string) =>
-  native<GalleryEntry>("asset_download", { url, name, resultId });
+export const downloadAsset = (url: string, resultId: string) =>
+  native<GalleryEntry>("asset_download", { url, resultId });

@@ -365,3 +365,16 @@
     grid-column: 1 / -1;
   }
 }
+
+.reference-alias {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.reference-name .reference-rename {
+  padding: 3px;
+  flex-shrink: 0;
+}

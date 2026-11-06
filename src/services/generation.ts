@@ -132,11 +132,7 @@ async function downloadResults(task: GenerationTask) {
     result.status = "downloading";
     await saveTask({ ...task, results: [...task.results] });
     try {
-      const asset = await downloadAsset(
-        result.url,
-        `${combinationById(task.draft.combinationId).label} · ${result.index + 1}`,
-        result.id,
-      );
+      const asset = await downloadAsset(result.url, result.id);
       result.assetId = asset.asset.id;
       result.status = "saved";
       delete result.error;

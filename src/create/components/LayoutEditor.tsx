@@ -119,7 +119,7 @@ function SourceEditor({
   const history = useEditHistory(value);
   return (
     <Dialog
-      title={`${t("pickSource")} · ${entry.asset.name}`}
+      title={t("pickSource")}
       className="source-region-dialog"
       onClose={onClose}
       onKeyDown={(event) => {

@@ -12,24 +12,17 @@ pub fn decode_data_url(data: &str) -> Result<Vec<u8>, String> {
     STANDARD.decode(encoded).map_err(|e| e.to_string())
 }
 
-pub fn save_asset(store: &Store, bytes: &[u8], name: String, source: &str) -> Result<Value, String> {
-    save_asset_with_id(store, bytes, name, source, uuid::Uuid::new_v4().to_string())
+pub fn save_asset(store: &Store, bytes: &[u8], source: &str) -> Result<Value, String> {
+    save_asset_with_id(store, bytes, source, uuid::Uuid::new_v4().to_string())
 }
 
-pub(crate) fn save_asset_with_id(
-    store: &Store,
-    bytes: &[u8],
-    name: String,
-    source: &str,
-    id: String,
-) -> Result<Value, String> {
-    save_image_with_id(store, bytes, name, source, id, "gallery")
+pub(crate) fn save_asset_with_id(store: &Store, bytes: &[u8], source: &str, id: String) -> Result<Value, String> {
+    save_image_with_id(store, bytes, source, id, "gallery")
 }
 
 fn save_image_with_id(
     store: &Store,
     bytes: &[u8],
-    name: String,
     source: &str,
     id: String,
     collection: &str,
@@ -73,7 +66,7 @@ fn save_image_with_id(
         .save_with_format(&thumbnail, ImageFormat::Png)
         .map_err(|e| e.to_string())?;
     let entry = json!({
-        "asset": { "id": id, "name": name, "mediaType": media_type, "width": width, "height": height },
+        "asset": { "id": id, "mediaType": media_type, "width": width, "height": height },
         "path": path, "thumbnailPath": thumbnail, "source": source,
         "addedAt": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|e|e.to_string())?.as_millis() as u64,
         "favorite": false, "boardIds": [], "tags": [], "bytes":bytes.len(), "availability":"available",
@@ -118,7 +111,6 @@ pub fn mask_save(store: tauri::State<Store>, data_url: String) -> Result<Value, 
     save_image_with_id(
         &store,
         &decode_data_url(&data_url)?,
-        "Mask.png".into(),
         "imported",
         uuid::Uuid::new_v4().to_string(),
         "masks",
@@ -131,7 +123,6 @@ pub async fn asset_import(
     path: Option<String>,
     data_url: Option<String>,
     url: Option<String>,
-    name: String,
 ) -> Result<Value, String> {
     let bytes = match (path, data_url, url) {
         (Some(path), _, _) => std::fs::read(path).map_err(|e| e.to_string())?,
@@ -149,16 +140,11 @@ pub async fn asset_import(
             .to_vec(),
         _ => return Err("Image source required".into()),
     };
-    save_asset(&store, &bytes, name, "imported")
+    save_asset(&store, &bytes, "imported")
 }
 
 #[tauri::command]
-pub async fn asset_download(
-    store: tauri::State<'_, Store>,
-    url: String,
-    name: String,
-    result_id: String,
-) -> Result<Value, String> {
+pub async fn asset_download(store: tauri::State<'_, Store>, url: String, result_id: String) -> Result<Value, String> {
     let result_id = uuid::Uuid::parse_str(&result_id)
         .map_err(|e| e.to_string())?
         .to_string();
@@ -183,7 +169,7 @@ pub async fn asset_download(
             .map_err(|e| e.to_string())?
             .to_vec()
     };
-    let result = save_asset_with_id(&store, &bytes, name, "generated", result_id)?;
+    let result = save_asset_with_id(&store, &bytes, "generated", result_id)?;
     if let Some(id) = url.strip_prefix("staged:") {
         let id = uuid::Uuid::parse_str(id).map_err(|e| e.to_string())?;
         let _ = std::fs::remove_file(store.root.join("staging").join(id.to_string()));

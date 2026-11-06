@@ -256,7 +256,6 @@ pub async fn upscale_run(
         let mut gallery = if save_to_gallery {
             match save_output_asset(
                 &store, &output, &id,
-                format!("{} ×{scale}", entry["asset"]["name"].as_str().unwrap_or("Image")),
                 &model_id,
             ) {
                 Ok(entry) => Some(entry),
@@ -285,12 +284,7 @@ pub async fn upscale_run(
 }
 
 #[tauri::command]
-pub fn upscale_save(
-    store: tauri::State<Store>,
-    path: String,
-    name: String,
-    model_id: Option<String>,
-) -> Result<Value, String> {
+pub fn upscale_save(store: tauri::State<Store>, path: String, model_id: Option<String>) -> Result<Value, String> {
     let source = PathBuf::from(path).canonicalize().map_err(|e| e.to_string())?;
     let staging = store.root.join("staging").canonicalize().map_err(|e| e.to_string())?;
     if !source.starts_with(staging) || source.extension().and_then(|v| v.to_str()) != Some("png") {
@@ -301,20 +295,14 @@ pub fn upscale_save(
         .and_then(|v| v.to_str())
         .ok_or("Invalid upscale output")?;
     uuid::Uuid::parse_str(id).map_err(|_| "Invalid upscale output ID")?;
-    let mut entry = save_output_asset(&store, &source, id, name, model_id.as_deref().unwrap_or("unknown"))?;
+    let mut entry = save_output_asset(&store, &source, id, model_id.as_deref().unwrap_or("unknown"))?;
     if let Err(error) = crate::library::auto_export(&store, &entry, "upscale") {
         entry["exportError"] = json!(error);
     }
     Ok(entry)
 }
 
-fn save_output_asset(
-    store: &Store,
-    source: &std::path::Path,
-    id: &str,
-    name: String,
-    model_id: &str,
-) -> Result<Value, String> {
+fn save_output_asset(store: &Store, source: &std::path::Path, id: &str, model_id: &str) -> Result<Value, String> {
     static SAVING: std::sync::Mutex<()> = std::sync::Mutex::new(());
     let _saving = SAVING.lock().map_err(|e| e.to_string())?;
     if let Ok(entry) = assets::entry(store, id) {
@@ -323,7 +311,6 @@ fn save_output_asset(
     let mut entry = assets::save_asset_with_id(
         store,
         &std::fs::read(source).map_err(|e| e.to_string())?,
-        name,
         "generated",
         id.into(),
     )?;

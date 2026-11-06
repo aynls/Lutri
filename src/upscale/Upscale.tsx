@@ -171,7 +171,6 @@ export function Upscale({
       const entry = await native<GalleryEntry & { exportError?: string }>("upscale_save", {
         path: job.path,
         modelId: job.modelId,
-        name: `${job.input.asset.name} ×${job.scale}`,
       });
       update(job.id, { assetId: entry.asset.id, error: undefined, exportError: entry.exportError });
       await refreshGallery();
@@ -188,7 +187,7 @@ export function Upscale({
   const jobFooter = (job: Job) => (
     <footer className="upscale-job-footer">
       <div>
-        <strong title={job.input.asset.name}>{job.input.asset.name}</strong>
+        <strong title={job.input.asset.id}>{job.input.asset.id}</strong>
         <small>
           {job.input.asset.width} × {job.input.asset.height}
           {job.scale ? ` → ${job.input.asset.width * job.scale} × ${job.input.asset.height * job.scale}` : ""}
@@ -381,10 +380,10 @@ export function Upscale({
                 <XIcon />
               </button>
               {!batch ? (
-                <PathPreview before={job.input.path} after={job.path} name={job.input.asset.name} />
+                <PathPreview before={job.input.path} after={job.path} />
               ) : (
                 <button className="image-button" onClick={() => setView(job.id)}>
-                  <img loading="lazy" src={imageUrl(job.path ?? job.input.thumbnailPath)} alt={job.input.asset.name} />
+                  <img loading="lazy" src={imageUrl(job.path ?? job.input.thumbnailPath)} alt={job.input.asset.id} />
                 </button>
               )}
               {job.status === "generating" && <progress max={100} value={job.progress} aria-label={t("processing")} />}
@@ -416,12 +415,12 @@ export function Upscale({
       )}
       {viewed && (
         <Dialog
-          title={viewed.input.asset.name}
+          title={t("upscale")}
           onClose={() => setView(undefined)}
           className="preview-dialog"
           footer={jobFooter(viewed)}
         >
-          <PathPreview key={viewed.id} before={viewed.input.path} after={viewed.path} name={viewed.input.asset.name} />
+          <PathPreview key={viewed.id} before={viewed.input.path} after={viewed.path} />
         </Dialog>
       )}
     </div>

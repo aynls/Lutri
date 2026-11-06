@@ -3,7 +3,6 @@ import { ArrowsHorizontal, Minus, Plus } from "@phosphor-icons/react";
 import { t } from "../i18n";
 export interface PreviewImage {
   dataUrl: string;
-  name: string;
   width: number;
   height: number;
 }

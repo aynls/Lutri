@@ -403,7 +403,7 @@ function MaskWorkspace({
             transform: `translate(${view.view.tx}px, ${view.view.ty}px) scale(${view.view.scale})`,
           }}
         >
-          <img src={imageUrl(entry.path)} alt={entry.asset.name} draggable={false} onError={() => setMissing(true)} />
+          <img src={imageUrl(entry.path)} alt={entry.asset.id} draggable={false} onError={() => setMissing(true)} />
           <canvas ref={overlay} style={{ opacity }} />
           {preview && (
             <div
@@ -428,7 +428,7 @@ function MaskWorkspace({
       </div>
       <footer className="editor-footer">
         <span className="muted">
-          {entry.asset.name} · {width} × {height}
+          {entry.asset.id} · {width} × {height}
         </span>
         <span className="toolbar-spacer" />
         <button onClick={onClose}>{t("cancel")}</button>
