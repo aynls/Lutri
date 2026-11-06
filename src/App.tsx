@@ -425,7 +425,7 @@ export default function App() {
           <GearSixIcon size={20} />
           <span>{t("settings")}</span>
         </button>
-        <span className="version">Lutri / 0.1</span>
+        <span className="version">Lutri / 0.2</span>
       </nav>
       <main className="workspace">
         <header className="workspace-header">

@@ -71,7 +71,7 @@ async fn handle(State(state): State<ServerState>, headers: HeaderMap, Json(messa
     let id = id.unwrap();
     let result = match method {
         "initialize" => {
-            json!({"protocolVersion":"2025-06-18","capabilities":{"tools":{}},"serverInfo":{"name":"lutri","version":"0.1.0"}})
+            json!({"protocolVersion":"2025-06-18","capabilities":{"tools":{}},"serverInfo":{"name":"lutri","version":"0.2.0"}})
         }
         "ping" => json!({}),
         "tools/list" => json!({"tools":state.bridge.tools.lock().unwrap().clone()}),
