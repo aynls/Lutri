@@ -74,26 +74,27 @@
 .gallery-scroll {
   flex: 1;
   overflow: auto;
+  scrollbar-gutter: stable;
   padding: 8px 20px 80px;
 }
 .gallery-date {
-  grid-column: 1 / -1;
+  position: absolute;
+  left: 0;
+  right: 0;
   font-size: 12px;
   font-weight: 550;
   color: var(--muted);
-  margin: 10px 0 -8px;
+  line-height: 20px;
+  margin: 0;
 }
-.gallery-date:first-child {
-  margin-top: 4px;
-}
-.gallery-grid {
-  gap: 16px;
+.gallery-masonry {
+  position: relative;
 }
 .gallery-card {
   border: 1px solid transparent;
   padding: 4px;
   border-radius: 8px;
-  position: relative;
+  position: absolute;
 }
 .gallery-card.is-selected {
   background: var(--accent-soft);
@@ -103,10 +104,25 @@
   z-index: 10;
 }
 .gallery-image {
+  aspect-ratio: auto;
   border: 1px solid var(--line);
+}
+.gallery-image .image-button {
+  position: relative;
+  height: auto;
+}
+.gallery-image img,
+.gallery-image .missing-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 .gallery-image img {
   object-fit: contain;
+}
+.gallery-image .missing-image {
+  min-height: 0;
 }
 .gallery-image > input {
   width: 16px;
@@ -126,21 +142,38 @@
 .gallery-card:focus-within .favorite {
   opacity: 1;
 }
-.gallery-card footer {
-  padding: 9px 2px 2px;
-  flex-direction: column;
-  gap: 3px;
-}
-.gallery-card footer small {
-  font-variant-numeric: tabular-nums;
-}
 .gallery-actions {
+  position: absolute;
+  inset: auto 13px 13px;
   justify-content: space-between;
   align-items: center;
-  padding-top: 3px;
+  gap: 6px;
+  flex-wrap: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+.gallery-card:hover .gallery-actions,
+.gallery-card:focus-within .gallery-actions,
+.gallery-card:has(.action-menu[open]) .gallery-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 .gallery-actions > button {
   font-size: 11px;
+}
+.gallery-actions > button,
+.gallery-actions .action-menu > summary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 5px 8px;
+}
+@media (hover: none) {
+  .gallery-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 .gallery-selection-footer {
   padding: 12px 20px;

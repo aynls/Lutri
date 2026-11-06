@@ -53,6 +53,8 @@ export function Gallery({
     [until, setUntil] = useState("");
   const [orientation, setOrientation] = useState("all"),
     [size, setSize] = useState(190);
+  const masonry = useRef<HTMLDivElement>(null);
+  const [availableWidth, setAvailableWidth] = useState(0);
   const [boardEditor, setBoardEditor] = useState<{ id?: string; name: string }>();
   const [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
@@ -60,6 +62,34 @@ export function Gallery({
   const [entries, setEntries] = useState<GalleryEntry[]>([]),
     [total, setTotal] = useState(0),
     [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const observer = new ResizeObserver(([entry]) => setAvailableWidth(entry.contentRect.width));
+    observer.observe(masonry.current!);
+    return () => observer.disconnect();
+  }, []);
+  const layout = useMemo(() => {
+    const gap = 16;
+    const width = Math.min(size, availableWidth || size);
+    const columnCount = Math.max(1, Math.floor((availableWidth + gap) / (width + gap)));
+    const heights = Array<number>(columnCount).fill(0);
+    let previousDay: string | null = null;
+    const cards = entries.map((entry) => {
+      const day = sort === "name" || sort === "size" ? null : new Date(entry.addedAt).toDateString();
+      let headingTop: number | undefined;
+      if (day !== null && day !== previousDay) {
+        headingTop = Math.max(...heights);
+        heights.fill(headingTop + 32);
+      }
+      previousDay = day;
+      const column = heights.indexOf(Math.min(...heights));
+      const top = heights[column];
+      const ratio = entry.asset.width > 0 && entry.asset.height > 0 ? entry.asset.width / entry.asset.height : 1;
+      // Card padding and the card/image borders take 12px on each axis.
+      heights[column] += Math.max(0, width - 12) / ratio + 12 + gap;
+      return { top, left: column * (width + gap), ratio, headingTop };
+    });
+    return { cards, width, height: Math.max(0, ...heights) - (entries.length ? gap : 0) };
+  }, [entries, sort, size, availableWidth]);
   const [kind, setKind] = useState("all"),
     [model, setModel] = useState("all"),
     [provider, setProvider] = useState("all"),
@@ -441,19 +471,25 @@ export function Gallery({
           />
         </div>
         <div className="gallery-scroll">
-          <div className="gallery-grid" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${size}px, 1fr))` }}>
+          <div className="gallery-masonry" ref={masonry} style={{ height: layout.height }}>
             {entries.map((entry, index) => {
-              const day = sort === "name" || sort === "size" ? null : new Date(entry.addedAt).toDateString();
-              const newDay =
-                day !== null && (index === 0 || new Date(entries[index - 1].addedAt).toDateString() !== day);
+              const position = layout.cards[index];
               return (
                 <Fragment key={entry.asset.id}>
-                  {newDay ? <h3 className="gallery-date">{new Date(entry.addedAt).toLocaleDateString()}</h3> : null}
-                  <article className={`gallery-card ${selection.includes(entry.asset.id) ? "is-selected" : ""}`}>
+                  {position.headingTop !== undefined && (
+                    <h3 className="gallery-date" style={{ top: position.headingTop }}>
+                      {new Date(entry.addedAt).toLocaleDateString()}
+                    </h3>
+                  )}
+                  <article
+                    className={`gallery-card ${selection.includes(entry.asset.id) ? "is-selected" : ""}`}
+                    style={{ top: position.top, left: position.left, width: layout.width }}
+                  >
                     <div className="gallery-image">
                       <button
                         className="image-button"
-                        title={entry.asset.name}
+                        style={{ aspectRatio: position.ratio }}
+                        aria-label={entry.asset.name}
                         onClick={(event) => {
                           if (picker || event.ctrlKey || event.metaKey || event.shiftKey || selection.length)
                             toggle(entry.asset.id, event.shiftKey);
@@ -476,12 +512,6 @@ export function Gallery({
                         <HeartIcon weight={entry.favorite ? "fill" : "regular"} />
                       </button>
                     </div>
-                    <footer>
-                      <span title={entry.asset.name}>{entry.asset.name}</span>
-                      <small>
-                        {entry.asset.width} × {entry.asset.height}
-                      </small>
-                    </footer>
                     {!picker && (
                       <div className="gallery-actions">
                         <button onClick={() => onReference(entry)}>{t("useReference")}</button>
