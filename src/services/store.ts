@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from "react";
+import { emit } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type {
   Board,
   CleanupPolicy,
@@ -153,6 +155,7 @@ export function saveDraft(draft: GenerationDraft) {
 export async function savePreferences(preferences: Preferences) {
   await commit([{ collection: "preferences", id: "preferences", value: preferences }]);
   updateState({ preferences });
+  void emit("preferences-changed", { source: getCurrentWindow().label }).catch(() => {});
   await cleanGallery();
 }
 let taskWrites: Promise<unknown> = Promise.resolve();
