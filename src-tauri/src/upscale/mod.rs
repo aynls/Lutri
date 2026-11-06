@@ -80,6 +80,15 @@ fn resources(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/upscale"))
 }
 
+fn runtime_path(root: &std::path::Path) -> Result<PathBuf, String> {
+    let relative = match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("windows", "x86_64") => "windows-x86_64/ncnn.dll",
+        ("linux", "x86_64") => "linux-x86_64/libncnn.so",
+        _ => return Err("No bundled NCNN runtime for this platform".into()),
+    };
+    Ok(root.join(relative))
+}
+
 #[tauri::command]
 pub fn upscale_models(app: tauri::AppHandle) -> Result<Vec<Value>, String> {
     let root = resources(&app)?.join("models");
@@ -152,7 +161,7 @@ pub async fn upscale_run(
         let entry: Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
         let root = resources(&app)?;
         let output = store.root.join("staging").join(format!("{id}.png"));
-        let runtime = root.join("windows-x86_64/ncnn.dll");
+        let runtime = runtime_path(&root)?;
         worker::check_runtime(&runtime)?;
         let input = PathBuf::from(entry["path"].as_str().ok_or("Missing source image")?);
         let _ = worker::oriented_dimensions(image::ImageReader::open(&input).map_err(|e| e.to_string())?)?;
@@ -370,7 +379,7 @@ pub fn run_device_probe(path: &str) {
 #[tauri::command]
 pub fn upscale_devices(app: tauri::AppHandle) -> Result<Vec<Value>, String> {
     use std::io::Read;
-    let path = resources(&app)?.join("windows-x86_64/ncnn.dll");
+    let path = runtime_path(&resources(&app)?)?;
     let mut command = Command::new(std::env::current_exe().map_err(|e| e.to_string())?);
     command
         .arg("--upscale-devices")

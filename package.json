@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "app:dev": "tauri dev",
-    "app:build": "tauri build --bundles nsis",
+    "app:build": "tauri build",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"*.{json,ts,html}\" && cargo fmt --manifest-path src-tauri/Cargo.toml",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"*.{json,ts,html}\" && cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",

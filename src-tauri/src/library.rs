@@ -287,27 +287,31 @@ pub fn gallery_backfill_provenance(store: tauri::State<Store>, entries: Vec<Valu
 }
 
 #[tauri::command]
-pub fn asset_copy(store: tauri::State<Store>, id: String) -> Result<(), String> {
+pub fn asset_copy(
+    store: tauri::State<Store>,
+    clipboard: tauri::State<crate::clipboard::Clipboard>,
+    id: String,
+) -> Result<(), String> {
     let entry = assets::entry(&store, &id)?;
     let path = entry["path"].as_str().ok_or("Missing image")?;
     let image = decode_image(Path::new(path))?.into_rgba8();
     let (width, height) = image.dimensions();
-    arboard::Clipboard::new()
-        .map_err(|e| e.to_string())?
-        .set_image(arboard::ImageData {
+    clipboard.with(|clipboard| {
+        clipboard.set_image(arboard::ImageData {
             width: width as usize,
             height: height as usize,
             bytes: std::borrow::Cow::Owned(image.into_raw()),
         })
-        .map_err(|e| e.to_string())
+    })
 }
 
 #[tauri::command]
-pub fn asset_paste(store: tauri::State<Store>, staged: Option<bool>) -> Result<Value, String> {
-    let image = arboard::Clipboard::new()
-        .map_err(|e| e.to_string())?
-        .get_image()
-        .map_err(|e| e.to_string())?;
+pub fn asset_paste(
+    store: tauri::State<Store>,
+    clipboard: tauri::State<crate::clipboard::Clipboard>,
+    staged: Option<bool>,
+) -> Result<Value, String> {
+    let image = clipboard.with(|clipboard| clipboard.get_image())?;
     let rgba = image::RgbaImage::from_raw(
         image.width.try_into().map_err(|_| "Invalid clipboard dimensions")?,
         image.height.try_into().map_err(|_| "Invalid clipboard dimensions")?,

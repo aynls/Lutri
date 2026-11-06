@@ -1,6 +1,6 @@
 # Local super-resolution components
 
-LutriUI's Rust image pipeline calls NCNN's C API.
+Lutri's Rust image pipeline calls NCNN's C API. Windows x64 and Linux x64 packages include only their respective runtime and the shared model files.
 
 | Files | Source | License |
 | --- | --- | --- |

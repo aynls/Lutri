@@ -1,4 +1,5 @@
 mod assets;
+mod clipboard;
 mod desktop;
 mod library;
 mod mcp;
@@ -21,6 +22,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            app.manage(clipboard::Clipboard::default());
             app.manage(storage::Store::open(app.handle())?);
             for directory in ["assets", "thumbnails"] {
                 app.asset_protocol_scope()
@@ -84,6 +86,11 @@ pub fn run() {
             mcp::mcp_get_token,
             mcp::mcp_rotate_token,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Lutri");
+        .build(tauri::generate_context!())
+        .expect("error while building Lutri")
+        .run(|app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                app.state::<clipboard::Clipboard>().close();
+            }
+        });
 }
