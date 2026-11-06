@@ -11,6 +11,7 @@ import { prepareGenerationInputs } from "../create/prepareInputs";
 import { resolveParameterAssets, storeParameterAssets } from "./parameterAssets";
 import { sanitizeDiagnostic } from "../providers/diagnostics";
 import { deletingTaskIds } from "./taskLocks";
+import { submittedPrompt } from "../providers/submittedPrompt";
 
 const running = new Set<string>();
 const providerRuns = new Map<string, number>();
@@ -89,7 +90,7 @@ async function receive(
       url: image.url?.startsWith("data:") ? await native<string>("result_stage", { dataUrl: image.url }) : image.url,
       mediaType: image.mediaType,
       status: image.error ? ("failed" as const) : ("pending" as const),
-      error: image.error,
+      error: image.error ? sanitizeDiagnostic(image.error) : undefined,
       metadata: image.metadata,
     });
   }
@@ -319,7 +320,7 @@ async function runTask(id: string, initial = false) {
         taskId: task.id,
         configuration: getState().preferences.providers[combination.provider] ?? {},
       });
-      task.compiledPrompt = compiledPrompt;
+      task.compiledPrompt = submittedPrompt(compiled);
       task.submittedAt = Date.now();
       task.status = "submitting";
       task.recovery = combination.initialRecovery?.(task.id);

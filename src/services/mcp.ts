@@ -26,6 +26,12 @@ const tools = [
         combinationId: { ...string, enum: combinations.map((c) => c.id) },
         prompt: string,
         requestCount: { type: "integer", minimum: 1 },
+        inputPreparation: {
+          type: "object",
+          properties: { version: { const: 1 }, maxEdge: { type: "integer", minimum: 256, maximum: 8192 } },
+          required: ["version"],
+          additionalProperties: false,
+        },
         parameters: { type: "object" },
         references: {
           type: "array",
