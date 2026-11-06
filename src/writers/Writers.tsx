@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownIcon, ArrowUpIcon, DotsSixVerticalIcon, XIcon, GearSixIcon } from "@phosphor-icons/react";
 import type { GenerationDraft, GalleryEntry } from "../domain/types";
 import { label, localize, t } from "../i18n";
@@ -34,6 +34,7 @@ export function Writers({
   incomingImages,
   onClose,
   onSettings,
+  onSyncReferences,
   active,
   onError,
 }: {
@@ -43,6 +44,7 @@ export function Writers({
   incomingImages?: { entries: GalleryEntry[]; nonce: string };
   onClose: () => void;
   onSettings: () => void;
+  onSyncReferences: (draft: GenerationDraft) => void;
   active: boolean;
   onError: (error: unknown) => void;
 }) {
@@ -53,6 +55,31 @@ export function Writers({
     [specs, setSpecs] = useState<Specification[]>(builtInSpecifications),
     [selected, setSelected] = useState(""),
     [outputs, setOutputs] = useState<Output[]>([]);
+  const resultsArea = useRef<HTMLDivElement>(null);
+  const [columnCount, setColumnCount] = useState(1);
+  useEffect(() => {
+    const observer = new ResizeObserver(([entry]) =>
+      setColumnCount(Math.max(1, Math.floor((entry.contentRect.width + 20) / 310))),
+    );
+    observer.observe(resultsArea.current!);
+    return () => observer.disconnect();
+  }, []);
+  const resultColumns = useMemo(() => {
+    const groups: Output[][] = Array.from({ length: columnCount }, () => []),
+      heights = Array<number>(columnCount).fill(0);
+    for (const output of outputs) {
+      const column = heights.indexOf(Math.min(...heights));
+      groups[column].push(output);
+      let lines = 0;
+      for (const line of `${output.text}\n${output.error ?? ""}`.split("\n"))
+        lines += Math.max(
+          1,
+          Math.ceil([...line].reduce((width, char) => width + (char.charCodeAt(0) > 0xff ? 2 : 1), 0) / 34),
+        );
+      heights[column] += 150 + lines * 24 + (output.reasoning ? 38 : 0);
+    }
+    return groups;
+  }, [outputs, columnCount]);
   const [picker, setPicker] = useState(false);
   const [urlImport, setUrlImport] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
@@ -62,16 +89,20 @@ export function Writers({
     combinationById(writerDraft.combinationId).maxReferences || 10,
     writerDraft.references.length,
   );
+  const syncReferences = (next: GenerationDraft) => {
+    setWriterDraft(next);
+    onSyncReferences(next);
+  };
   const addReferences = (entries: GalleryEntry[]) => {
     if (!entries.length) return;
     if (writerDraft.references.length + entries.length > referenceLimit) {
       onError(c("tooMany"));
       return;
     }
-    setWriterDraft((current) => ({
-      ...current,
+    syncReferences({
+      ...writerDraft,
       references: [
-        ...current.references,
+        ...writerDraft.references,
         ...entries.map((entry) => ({
           id: crypto.randomUUID(),
           assetId: entry.asset.id,
@@ -79,7 +110,7 @@ export function Writers({
           purpose: "reference" as const,
         })),
       ],
-    }));
+    });
     setPicker(false);
   };
   const addSource = async (source: ReferenceSource) => {
@@ -220,7 +251,7 @@ export function Writers({
             <References
               draft={writerDraft}
               gallery={gallery}
-              onChange={setWriterDraft}
+              onChange={syncReferences}
               onAdd={(source) => void addSource(source).catch(onError)}
               onView={onView}
               limit={referenceLimit}
@@ -419,39 +450,43 @@ export function Writers({
               <button onClick={() => setOutputs([])}>{localize(label("Clear all", "全部清空", "すべて消去"))}</button>
             </div>
           ) : null}
-          <div className="writer-results">
-            {outputs.map((output) => (
-              <article key={output.id}>
-                <header>
-                  <strong>{output.writer.name}</strong>
-                  {output.busy ? <span className="spinner" /> : null}
-                  <button
-                    aria-label={localize(label("Remove", "移除", "削除"))}
-                    onClick={() => setOutputs((current) => current.filter((item) => item.id !== output.id))}
-                  >
-                    ×
-                  </button>
-                </header>
-                {output.reasoning ? (
-                  <details>
-                    <summary>{localize(label("Reasoning", "推理过程", "推論"))}</summary>
-                    <p>{output.reasoning}</p>
-                  </details>
-                ) : null}
-                <p>{output.text}</p>
-                {output.error ? <p className="error-text">{output.error}</p> : null}
-                <footer>
-                  <button disabled={output.busy} onClick={() => void run(output.writer, output.id)}>
-                    {localize(label("Rewrite", "重写", "書き直す"))}
-                  </button>
-                  <button
-                    disabled={!output.text || output.busy}
-                    onClick={() => onAccept({ ...output.draft, prompt: output.text })}
-                  >
-                    {localize(label("Use prompt", "使用提示词", "使用する"))}
-                  </button>
-                </footer>
-              </article>
+          <div className="writer-results" ref={resultsArea}>
+            {resultColumns.map((column, index) => (
+              <div className="writer-results-column" key={index}>
+                {column.map((output) => (
+                  <article key={output.id}>
+                    <header>
+                      <strong>{output.writer.name}</strong>
+                      {output.busy ? <span className="spinner" /> : null}
+                      <button
+                        aria-label={localize(label("Remove", "移除", "削除"))}
+                        onClick={() => setOutputs((current) => current.filter((item) => item.id !== output.id))}
+                      >
+                        ×
+                      </button>
+                    </header>
+                    {output.reasoning ? (
+                      <details>
+                        <summary>{localize(label("Reasoning", "推理过程", "推論"))}</summary>
+                        <p>{output.reasoning}</p>
+                      </details>
+                    ) : null}
+                    <p>{output.text}</p>
+                    {output.error ? <p className="error-text">{output.error}</p> : null}
+                    <footer>
+                      <button disabled={output.busy} onClick={() => void run(output.writer, output.id)}>
+                        {localize(label("Rewrite", "重写", "書き直す"))}
+                      </button>
+                      <button
+                        disabled={!output.text || output.busy}
+                        onClick={() => onAccept({ ...output.draft, prompt: output.text })}
+                      >
+                        {localize(label("Use prompt", "使用提示词", "使用する"))}
+                      </button>
+                    </footer>
+                  </article>
+                ))}
+              </div>
             ))}
           </div>
         </div>

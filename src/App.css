@@ -942,14 +942,19 @@ small {
   margin-bottom: 16px;
 }
 .writer-results {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
   gap: 20px;
-  align-content: start;
+}
+.writer-results-column {
+  width: 290px;
+  flex-shrink: 0;
 }
 .writer-results article {
   background: var(--surface);
   padding: 20px;
+  margin-bottom: 20px;
   border: 1px solid var(--line);
   border-radius: 7px;
 }

@@ -787,15 +787,18 @@ export default function App() {
           onView={view}
           incomingImages={writerImages}
           onAccept={(draft) => {
-            const sameCombination = draft.combinationId === state.draft.combinationId;
+            changeDraft({ ...getState().draft, prompt: draft.prompt });
+            setWriters(false);
+          }}
+          onSyncReferences={(draft) => {
+            const current = getState().draft;
+            const sameCombination = draft.combinationId === current.combinationId;
             changeDraft({
-              ...state.draft,
-              prompt: draft.prompt,
+              ...current,
               references: draft.references,
               regions: sameCombination ? draft.regions : [],
               mask: sameCombination ? draft.mask : undefined,
             });
-            setWriters(false);
           }}
           onClose={() => setWriters(false)}
           active={writers}
