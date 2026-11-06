@@ -714,37 +714,8 @@ small {
 .error-text {
   color: #b7776a;
 }
-.settings-page {
-  overflow: auto;
-  padding: 28px;
-  display: grid;
-  gap: 24px;
-  align-content: start;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
-}
-.settings-page section {
-  padding: 22px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  display: grid;
-  align-content: start;
-  gap: 17px;
-}
-.settings-page label {
-  font-size: 13px;
-}
-.settings-page .button-row {
-  display: flex;
-  gap: 8px;
-}
 .button-row button {
   border: 1px solid var(--line);
-}
-.settings-page section > div > label {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
 }
 .error-banner {
   position: fixed;

@@ -38,6 +38,7 @@ import { Dialog } from "./components/Dialog";
 import { chooseImages } from "./gallery/actions";
 import { takeViewerContext } from "./gallery/viewContext";
 import { RequestPreview } from "./create/components/RequestPreview";
+import { SavedStyles } from "./create/components/SavedStyles";
 import { Regions } from "./create/components/Regions";
 import { Gallery } from "./gallery/Gallery";
 import { History } from "./history/History";
@@ -516,7 +517,12 @@ export default function App() {
                       {t("reset")}
                     </button>
                   </div>
-                  <Form combination={combination} draft={state.draft} onChange={changeDraft} />
+                  <Form
+                    combination={combination}
+                    draft={state.draft}
+                    onChange={changeDraft}
+                    styleControl={<SavedStyles combination={combination} draft={state.draft} onChange={changeDraft} />}
+                  />
                   {!!combination.maxReferences && <InputPreparation draft={state.draft} onChange={changeDraft} />}
                   <RequestPreview
                     combination={combination}

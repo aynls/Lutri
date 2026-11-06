@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { GenerationDraft, Json, Parameters, Recovery } from "../domain/types";
 
 export type ProviderId =
@@ -59,6 +59,8 @@ export interface FormProps {
   combination: ModelCombination;
   draft: GenerationDraft;
   onChange: (draft: GenerationDraft) => void;
+  /** App-owned controls keep model forms independent of application state. */
+  styleControl?: ReactNode;
 }
 
 export interface CompiledRequest {

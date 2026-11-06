@@ -1,6 +1,27 @@
+.storage-group {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.storage-group + .storage-group {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.storage-group > button {
+  justify-self: start;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.storage-group > .settings-row {
+  margin-top: -14px;
+}
 .storage-settings .path-value {
   display: block;
-  padding: 6px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
   overflow-wrap: anywhere;
   font-size: 12px;
 }

@@ -44,6 +44,7 @@ export function McpSettings({ onError }: { onError: (error: unknown) => void }) 
         <span>{text("automaticMcp")}</span>
         <input
           type="checkbox"
+          role="switch"
           checked={preferences.mcp?.autoStart ?? false}
           onChange={(event) => attempt(() => save({ autoStart: event.target.checked }))}
         />
@@ -80,7 +81,7 @@ export function McpSettings({ onError }: { onError: (error: unknown) => void }) 
         </button>
       </div>
       {current && (
-        <>
+        <div className="mcp-connection">
           <code>{current.url}</code>
           <button
             onClick={() =>
@@ -101,7 +102,7 @@ export function McpSettings({ onError }: { onError: (error: unknown) => void }) 
           >
             {text("copyConfig")}
           </button>
-        </>
+        </div>
       )}
       {busy && <small role="status">{t("processing")}</small>}
     </section>

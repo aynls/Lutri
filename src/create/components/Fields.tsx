@@ -6,7 +6,6 @@ import type { FieldDefinition, FormProps } from "../../models/types";
 import { c } from "../messages";
 import { FrameFields } from "./FrameFields";
 import { RememberedDetails } from "./RememberedDetails";
-import { SavedStyles } from "./SavedStyles";
 import { validateFields } from "../../models/shared";
 
 function JsonInput({
@@ -188,9 +187,7 @@ export function ParameterFields(props: FormProps) {
               <FrameFields {...props} fields={fields} />
             ) : (
               <div className="parameter-fields">
-                {group.id === "style" && fields.some((field) => field.key === "style_id") ? (
-                  <SavedStyles {...props} />
-                ) : null}
+                {group.id === "style" && fields.some((field) => field.key === "style_id") ? props.styleControl : null}
                 {fields.map(render)}
               </div>
             )}
