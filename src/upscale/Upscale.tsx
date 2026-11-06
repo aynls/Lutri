@@ -2,7 +2,17 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cancelUpscale, runUpscale } from "./queue";
 import { settingsText } from "../settings/messages";
 import { open } from "@tauri-apps/plugin-dialog";
-import { PlusIcon, XIcon, PauseIcon, PlayIcon, FolderOpenIcon, ArrowUpRightIcon } from "@phosphor-icons/react";
+import {
+  PlusIcon,
+  XIcon,
+  PauseIcon,
+  PlayIcon,
+  FolderOpenIcon,
+  ArrowUpRightIcon,
+  ArrowCounterClockwiseIcon,
+  ImagesIcon,
+  StopIcon,
+} from "@phosphor-icons/react";
 import type { GalleryEntry } from "../domain/types";
 import { label, localize, t } from "../i18n";
 import { chooseImages } from "../gallery/actions";
@@ -180,58 +190,72 @@ export function Upscale({
   };
   const viewed = [...jobs, ...(single ? [single] : [])].find((job) => job.id === view);
   const pending = visible.filter((job) => job.status === "pending" || job.status === "failed").length;
+  const doneCount = jobs.filter((job) => job.status === "completed").length;
   const remove = (id: string) => {
     setJobs((current) => current.filter((job) => job.id !== id));
     setSingle((current) => (current?.id === id ? undefined : current));
   };
   const jobFooter = (job: Job) => (
     <footer className="upscale-job-footer">
-      <div>
-        <strong title={job.input.asset.id}>{job.input.asset.id}</strong>
-        <small>
-          {job.input.asset.width} × {job.input.asset.height}
-          {job.scale ? ` → ${job.input.asset.width * job.scale} × ${job.input.asset.height * job.scale}` : ""}
-        </small>
+      {job.status === "generating" && <progress max={100} value={job.progress} aria-label={t("processing")} />}
+      <small className="upscale-job-spec" title={job.input.asset.id}>
+        {job.input.asset.width} × {job.input.asset.height}
+        {job.scale ? ` → ${job.input.asset.width * job.scale} × ${job.input.asset.height * job.scale}` : ""}
+      </small>
+      <div className="upscale-job-actions">
+        <span className={`status-badge status-${job.status}`}>
+          {job.status === "generating" ? `${t("processing")} ${job.progress}%` : t(job.status)}
+        </span>
+        {job.path && !job.assetId && (
+          <button
+            disabled={job.saving}
+            title={t("saveToGallery")}
+            aria-label={t("saveToGallery")}
+            onClick={() => void saveJob(job).catch(onError)}
+          >
+            <ImagesIcon size={16} />
+          </button>
+        )}
+        {job.assetId && <span className="muted">{t("saved")}</span>}
+        {job.exportError && job.path && (
+          <button
+            title={job.exportError}
+            onClick={() =>
+              void (async () => {
+                let directory = job.destination;
+                if (!directory) {
+                  const selected = await open({ directory: true });
+                  if (typeof selected !== "string") return;
+                  directory = selected;
+                }
+                await native("upscale_export", { path: job.path, directory, jobId: job.id });
+                update(job.id, { exportError: undefined });
+              })().catch(onError)
+            }
+          >
+            {t("saveAs")} · {t("retry")}
+          </button>
+        )}
+        {["queued", "generating"].includes(job.status) && (
+          <button
+            title={t("cancel")}
+            aria-label={t("cancel")}
+            onClick={() => void cancelUpscale(job.id).catch(onError)}
+          >
+            <StopIcon size={16} />
+          </button>
+        )}
+        {["completed", "cancelled"].includes(job.status) && (
+          <button
+            disabled={busy}
+            title={t("runAgain")}
+            aria-label={t("runAgain")}
+            onClick={() => update(job.id, { status: "pending", path: undefined, assetId: undefined, progress: 0 })}
+          >
+            <ArrowCounterClockwiseIcon size={16} />
+          </button>
+        )}
       </div>
-      <span className={`status-badge status-${job.status}`}>
-        {job.status === "generating" ? `${t("processing")} ${job.progress}%` : t(job.status)}
-      </span>
-      {job.path && !job.assetId && (
-        <button disabled={job.saving} onClick={() => void saveJob(job).catch(onError)}>
-          {t("saveToGallery")}
-        </button>
-      )}
-      {job.assetId && <span className="muted">{t("saved")}</span>}
-      {job.exportError && job.path && (
-        <button
-          title={job.exportError}
-          onClick={() =>
-            void (async () => {
-              let directory = job.destination;
-              if (!directory) {
-                const selected = await open({ directory: true });
-                if (typeof selected !== "string") return;
-                directory = selected;
-              }
-              await native("upscale_export", { path: job.path, directory, jobId: job.id });
-              update(job.id, { exportError: undefined });
-            })().catch(onError)
-          }
-        >
-          {t("saveAs")} · {t("retry")}
-        </button>
-      )}
-      {["queued", "generating"].includes(job.status) && (
-        <button onClick={() => void cancelUpscale(job.id).catch(onError)}>{t("cancel")}</button>
-      )}
-      {["completed", "cancelled"].includes(job.status) && (
-        <button
-          disabled={busy}
-          onClick={() => update(job.id, { status: "pending", path: undefined, assetId: undefined, progress: 0 })}
-        >
-          {t("runAgain")}
-        </button>
-      )}
     </footer>
   );
   return (
@@ -332,9 +356,21 @@ export function Upscale({
           <button onClick={() => setPicker(true)}>{t("gallery")}</button>
         </div>
         <div className="upscale-submit">
-          <small>
-            {t("pendingJobs")} · {pending}
-          </small>
+          <div className="upscale-queue">
+            <small>
+              {t("pendingJobs")} · {pending}
+            </small>
+            {batch && doneCount > 0 && (
+              <button
+                className="queue-clear"
+                disabled={busy}
+                onClick={() => setJobs((current) => current.filter((job) => job.status !== "completed"))}
+              >
+                {t("clearCompleted")} · {doneCount}
+              </button>
+            )}
+          </div>
+          {!batch && single && jobFooter(single)}
           {busy ? (
             <button
               disabled={pausing}
@@ -357,22 +393,6 @@ export function Upscale({
         </div>
       </ResizablePanel>
       <div className="upscale-results">
-        <div className="content-toolbar">
-          <span>{batch ? t("batch") : t("single")}</span>
-          <span className="toolbar-spacer" />
-          {batch && (
-            <button
-              disabled={busy || !jobs.some((job) => job.status === "completed")}
-              onClick={() => setJobs((current) => current.filter((job) => job.status !== "completed"))}
-            >
-              {t("clearCompleted")}
-            </button>
-          )}
-          <button onClick={() => setPicker(true)}>
-            <PlusIcon />
-            {t("chooseImages")}
-          </button>
-        </div>
         <div className={batch ? "upscale-grid" : "upscale-single"}>
           {visible.map((job) => (
             <article key={job.id}>
@@ -386,8 +406,7 @@ export function Upscale({
                   <img loading="lazy" src={imageUrl(job.path ?? job.input.thumbnailPath)} alt={job.input.asset.id} />
                 </button>
               )}
-              {job.status === "generating" && <progress max={100} value={job.progress} aria-label={t("processing")} />}
-              {jobFooter(job)}
+              {batch && jobFooter(job)}
               {job.error && <p className="error-text">{job.error}</p>}
             </article>
           ))}

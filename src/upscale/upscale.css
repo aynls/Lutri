@@ -23,6 +23,22 @@
 .upscale-submit small {
   font-size: 12px;
 }
+.upscale-queue {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 24px;
+}
+.queue-clear {
+  padding: 3px 6px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.queue-clear:hover {
+  color: var(--danger);
+}
 .upscale-results {
   flex: 1;
   min-width: 0;
@@ -47,7 +63,8 @@
   z-index: 4;
   padding: 4px;
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
 }
 .upscale-single {
   padding: 0;
@@ -68,49 +85,63 @@
   top: 52px;
 }
 .upscale-job-footer {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   width: 100%;
-  gap: 8px;
+  gap: 4px 6px;
   background: var(--surface);
   border-top: 1px solid var(--line);
-  padding: 12px;
-}
-.upscale-job-footer > div {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-  flex: 1;
-}
-.upscale-job-footer strong {
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
+  padding: 6px 10px;
   font-size: 12px;
-  font-weight: 500;
+  color: var(--muted);
 }
-.upscale-job-footer small {
-  font-size: 11px;
-}
-.upscale-job-footer button {
-  font-size: 12px;
-}
-.upscale-workspace progress {
-  width: 100%;
-  height: 3px;
+.upscale-job-footer > progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
   border: 0;
   accent-color: var(--accent);
+}
+.upscale-job-spec {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.upscale-job-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto;
+}
+.upscale-job-actions button {
+  padding: 3px 6px;
+  font-size: 11px;
+}
+.upscale-panel .upscale-job-footer {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 7px 10px;
+}
+.upscale-panel .upscale-job-spec {
+  flex-basis: 100%;
+}
+.preview-dialog .upscale-job-footer {
+  background: transparent;
+  border-top: 0;
+  padding: 12px 20px;
 }
 .upscale-workspace article > .error-text {
   padding: 12px;
   max-height: 130px;
   overflow: auto;
   font-size: 12px;
-}
-.upscale-grid .upscale-job-footer {
-  justify-content: flex-start;
-}
-.upscale-grid .upscale-job-footer > div {
-  flex-basis: 100%;
 }
