@@ -7,7 +7,7 @@ export function ResizablePanel({
   storageKey,
   initialWidth = 340,
   minWidth = 280,
-  maxWidth = 520,
+  maxWidth = 640,
   side = "left",
 }: {
   children: ReactNode;

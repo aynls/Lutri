@@ -153,6 +153,11 @@ pub fn mcp_reply(bridge: tauri::State<Arc<Bridge>>, id: String, result: Value) -
 }
 
 #[tauri::command]
+pub fn mcp_get_token(bridge: tauri::State<Arc<Bridge>>) -> Result<String, String> {
+    Ok(bridge.token.lock().map_err(|e| e.to_string())?.clone())
+}
+
+#[tauri::command]
 pub fn mcp_rotate_token(bridge: tauri::State<Arc<Bridge>>) -> Result<String, String> {
     let token = format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple());
     keyring::Entry::new("app.lutri.studio", "mcp")

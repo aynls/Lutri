@@ -191,9 +191,6 @@ export function History({
             </option>
           ))}
         </select>
-        <span className="muted">
-          {filtered.length} {t("batch")}
-        </span>
         <button onClick={() => setSelected(selection.length === visible.size ? [] : [...visible])}>
           {selection.length ? `${taskText("selecting")} ${selection.length}` : t("selectAll")}
         </button>

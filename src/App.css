@@ -869,17 +869,52 @@ small {
 .writer-body textarea {
   min-height: 180px;
 }
+.writer-queue {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
 .writer-queue-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  font-size: 15px;
+}
+.writer-queue.is-dragging {
+  user-select: none;
+  cursor: grabbing;
+}
+.writer-queue-item.is-dragging {
+  background: var(--accent-soft);
 }
 .writer-queue-item > span {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-.writer-queue-item small {
-  color: var(--accent);
-  font-size: 11px;
+.writer-queue-item button {
+  padding: 4px;
+}
+.writer-queue-item .writer-drag-handle {
+  color: var(--muted);
+  cursor: grab;
+  flex-shrink: 0;
+  align-self: stretch;
+  touch-action: none;
+}
+.writer-queue-item.is-dragging .writer-drag-handle {
+  cursor: grabbing;
+}
+.writer-queue-empty {
+  padding: 6px;
+  font-size: 12px;
 }
 .spec-option {
   display: flex;

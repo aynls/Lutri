@@ -52,8 +52,9 @@
 }
 .settings-panel h2 {
   margin-bottom: 16px;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 26px;
 }
 .settings-page label {
   font-size: 13px;
@@ -201,15 +202,51 @@
 .cleanup-setting + .cleanup-setting {
   margin-top: 20px;
 }
+.mcp-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.mcp-status {
+  color: var(--muted);
+  font-size: 12px;
+}
+.mcp-status.is-running {
+  color: var(--accent);
+}
 .mcp-connection {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.mcp-connection-row {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.mcp-connection-value {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 20px;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text);
 }
-.mcp-connection code {
+.mcp-connection-value code {
+  flex: 1;
+  min-width: 0;
   overflow-wrap: anywhere;
+}
+.mcp-connection-value button {
+  flex-shrink: 0;
+  padding: 5px;
+}
+.mcp-token-hidden {
+  letter-spacing: 0.08em;
 }
 @media (max-width: 900px) {
   .settings-page {
@@ -257,4 +294,67 @@
   .settings-page input[role="switch"]::before {
     display: none;
   }
+}
+
+.llm-heading,
+.llm-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.llm-heading h2 {
+  margin-bottom: 0;
+}
+.llm-heading {
+  margin-bottom: 16px;
+}
+.llm-heading button,
+.llm-item button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.llm-item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.llm-item > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.llm-item small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.llm-fields {
+  display: grid;
+  gap: 16px;
+}
+.llm-fields label:not(.llm-vision) {
+  display: grid;
+  gap: 6px;
+}
+.llm-fields .llm-vision {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.llm-dialog {
+  max-height: 90vh;
+}
+.settings-panel .llm-dialog > header h2 {
+  margin-bottom: 0;
+}
+
+.llm-import {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.llm-import:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
 }

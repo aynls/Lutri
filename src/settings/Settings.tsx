@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ArrowUpRightIcon,
+  ChatCircleTextIcon,
   CaretRightIcon,
   HardDrivesIcon,
   MonitorIcon,
@@ -8,6 +9,7 @@ import {
   SlidersHorizontalIcon,
 } from "@phosphor-icons/react";
 import { McpSettings } from "./McpSettings";
+import { LlmSettings } from "./LlmSettings";
 import { localePreference, t, useLocale, type LocalePreference } from "../i18n";
 import { lt } from "../i18n/library";
 import { providerNames } from "../models/shared";
@@ -19,7 +21,7 @@ import { settingsText as text } from "./messages";
 import { StorageSettings } from "./StorageSettings";
 import "./settings.css";
 
-type SettingsCategory = "general" | "providers" | "storage" | "upscale" | "mcp";
+type SettingsCategory = "general" | "providers" | "llm" | "storage" | "upscale" | "mcp";
 
 function ProviderSettings({ provider, onError }: { provider: ProviderId; onError: (error: unknown) => void }) {
   const { preferences } = useApplication();
@@ -138,16 +140,20 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
   useLocale();
   const { preferences } = useApplication();
   const [requestedProvider] = useState(() => sessionStorage.getItem("lutri.settings.provider"));
-  const [category, setCategory] = useState<SettingsCategory>(requestedProvider ? "providers" : "general");
+  const [category, setCategory] = useState<SettingsCategory>(() =>
+    requestedProvider ? "providers" : sessionStorage.getItem("lutri.settings.category") === "llm" ? "llm" : "general",
+  );
   const categoryItems = [
     { id: "general", label: text("general"), icon: SlidersHorizontalIcon },
     { id: "providers", label: t("provider"), icon: PlugsIcon },
+    { id: "llm", label: "LLM", icon: ChatCircleTextIcon },
     { id: "storage", label: lt("storage"), icon: HardDrivesIcon },
     { id: "upscale", label: t("upscale"), icon: ArrowUpRightIcon },
     { id: "mcp", label: "MCP", icon: MonitorIcon },
   ] as const;
   useEffect(() => {
     sessionStorage.removeItem("lutri.settings.provider");
+    sessionStorage.removeItem("lutri.settings.category");
     if (requestedProvider) {
       const section = document.getElementById(`provider-${requestedProvider}`);
       if (section instanceof HTMLDetailsElement) {
@@ -273,6 +279,14 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
               <ProviderSettings key={provider} provider={provider} onError={onError} />
             ))}
           </section>
+        </div>
+        <div
+          className="settings-panel"
+          id="settings-panel-llm"
+          aria-labelledby="settings-nav-llm"
+          hidden={category !== "llm"}
+        >
+          <LlmSettings onError={onError} />
         </div>
         <div
           className="settings-panel"

@@ -146,7 +146,6 @@ export function RequestDetails({
                     )}
                   </button>
                   {result.status === "downloading" && <span>{t("downloading")}</span>}
-                  {result.assetId && <CopyButton value={result.assetId} onError={onError} />}
                   {result.error && <p className="error-text">{result.error}</p>}
                   <TaskUsage task={task} result={result} />
                   {result.exportError && (

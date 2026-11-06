@@ -1,18 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowDownIcon, ArrowUpIcon, DotsSixVerticalIcon, XIcon, GearSixIcon } from "@phosphor-icons/react";
 import type { GenerationDraft, Json } from "../domain/types";
 import { label, localize, t } from "../i18n";
-import { assetData, commit, native, readRecords } from "../services/native";
+import { assetData, commit, readRecords } from "../services/native";
 import { streamChat } from "./stream";
 import { builtInSpecifications, type Specification } from "./specifications";
 import { ResizablePanel } from "../components/ResizablePanel";
 
-interface Writer {
-  id: string;
-  name: string;
-  endpoint: string;
-  model: string;
-  vision: boolean;
-}
+import type { Writer } from "./types";
+
 interface Output {
   id: string;
   writer: Writer;
@@ -28,22 +24,51 @@ export function Writers({
   draft,
   onAccept,
   onClose,
+  onSettings,
+  active,
   onError,
 }: {
   draft: GenerationDraft;
   onAccept: (text: string) => void;
   onClose: () => void;
+  onSettings: () => void;
+  active: boolean;
   onError: (error: unknown) => void;
 }) {
   const [writers, setWriters] = useState<Writer[]>([]),
-    [queue, setQueue] = useState<string[]>([]),
+    [queue, setQueue] = useState<{ id: string; writerId: string }[]>([]),
     [input, setInput] = useState(draft.prompt),
     [specs, setSpecs] = useState<Specification[]>(builtInSpecifications),
-    [selected, setSelected] = useState<string[]>([]),
-    [outputs, setOutputs] = useState<Output[]>([]),
-    [editing, setEditing] = useState<Writer>(),
-    [secret, setSecret] = useState("");
+    [selected, setSelected] = useState(""),
+    [outputs, setOutputs] = useState<Output[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const dragged = useRef<{ id: string; pointerId: number } | null>(null);
+  const [draggingId, setDraggingId] = useState<string>();
+  useEffect(() => {
+    if (!active || !loaded) return;
+    let valid = true;
+    void Promise.all([readRecords<Writer>("writers"), readRecords<Specification>("specifications")])
+      .then(([items, customSpecs]) => {
+        if (!valid) return;
+        setWriters(items);
+        const availableSpecs = [...builtInSpecifications, ...customSpecs];
+        setSpecs(availableSpecs);
+        setSelected((current) => (availableSpecs.some((spec) => spec.id === current) ? current : ""));
+        setQueue((current) => current.filter((entry) => items.some((item) => item.id === entry.writerId)));
+      })
+      .catch(onError);
+    return () => {
+      valid = false;
+    };
+  }, [active, loaded, onError]);
+  const move = (from: number, to: number) => {
+    setQueue((current) => {
+      if (from < 0 || to < 0 || from >= current.length || to >= current.length || from === to) return current;
+      const next = [...current];
+      next.splice(to, 0, next.splice(from, 1)[0]);
+      return next;
+    });
+  };
   useEffect(() => {
     void Promise.all([
       readRecords<Writer>("writers"),
@@ -54,8 +79,14 @@ export function Writers({
         setWriters(w);
         setSpecs([...builtInSpecifications, ...s]);
         if (sessions[0]) {
-          setQueue(sessions[0].queue);
-          setSelected(sessions[0].selected);
+          setQueue(
+            sessions[0].queue
+              .filter((id) => w.some((writer) => writer.id === id))
+              .map((writerId) => ({ id: crypto.randomUUID(), writerId })),
+          );
+          setSelected(
+            sessions[0].selected.find((id) => [...builtInSpecifications, ...s].some((spec) => spec.id === id)) ?? "",
+          );
           setInput(sessions[0].input);
         }
         setLoaded(true);
@@ -64,7 +95,13 @@ export function Writers({
   }, [onError]);
   useEffect(() => {
     if (loaded)
-      void commit([{ collection: "writer-session", id: "current", value: { queue, selected, input } }]).catch(onError);
+      void commit([
+        {
+          collection: "writer-session",
+          id: "current",
+          value: { queue: queue.map((entry) => entry.writerId), selected: selected ? [selected] : [], input },
+        },
+      ]).catch(onError);
   }, [queue, selected, input, loaded, onError]);
   const run = async (writer: Writer, id: string = crypto.randomUUID()) => {
     setOutputs((current) => [
@@ -82,10 +119,8 @@ export function Writers({
         { role: "system", content: systemPrompt },
         { role: "user", content },
       ];
-      for (const id of selected) {
-        const specification = specs.find((spec) => spec.id === id);
-        if (specification) messages.push({ role: "user", content: specification.content });
-      }
+      const specification = specs.find((spec) => spec.id === selected);
+      if (specification) messages.push({ role: "user", content: specification.content });
       await streamChat(
         {
           url: `${writer.endpoint.replace(/\/$/, "")}/chat/completions`,
@@ -119,55 +154,121 @@ export function Writers({
           <div className="writer-scroll">
             <textarea value={input} onChange={(e) => setInput(e.target.value)} aria-label={t("prompt")} />
             <div className="section-heading">
-              <span>{localize(label("Writer queue", "作家队列", "ライターキュー"))}</span>
-              <button
-                onClick={() => {
-                  setSecret("");
-                  setEditing({
-                    id: crypto.randomUUID(),
-                    name: "",
-                    endpoint: "https://openrouter.ai/api/v1",
-                    model: "",
-                    vision: true,
-                  });
-                }}
-              >
-                {t("add")}
+              <span>{localize(label("Writer queue", "Writer 队列", "Writer キュー"))}</span>
+              <button onClick={onSettings}>
+                <GearSixIcon /> {localize(label("LLM settings", "LLM 设置", "LLM 設定"))}
               </button>
             </div>
-            <select
-              value=""
-              onChange={(e) => {
-                if (e.target.value) setQueue([...queue, e.target.value]);
+            <div
+              className={`writer-queue${draggingId ? " is-dragging" : ""}`}
+              onPointerMove={(event) => {
+                const drag = dragged.current;
+                if (!drag || drag.pointerId !== event.pointerId) return;
+                const rows = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("[data-queue-id]"));
+                const from = rows.findIndex((row) => row.dataset.queueId === drag.id);
+                const to = rows.findIndex((row) => {
+                  const rect = row.getBoundingClientRect();
+                  return event.clientY >= rect.top && event.clientY <= rect.bottom;
+                });
+                if (from < 0 || to < 0 || from === to) return;
+                const rect = rows[to].getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                if ((from < to && event.clientY >= midpoint) || (from > to && event.clientY <= midpoint))
+                  move(from, to);
+              }}
+              onPointerUp={(event) => {
+                if (dragged.current?.pointerId !== event.pointerId) return;
+                dragged.current = null;
+                setDraggingId(undefined);
+                if (event.currentTarget.hasPointerCapture(event.pointerId))
+                  event.currentTarget.releasePointerCapture(event.pointerId);
+              }}
+              onPointerCancel={() => {
+                dragged.current = null;
+                setDraggingId(undefined);
+              }}
+              onLostPointerCapture={() => {
+                dragged.current = null;
+                setDraggingId(undefined);
               }}
             >
-              <option value="">{t("model")}</option>
-              {writers.map((writer) => (
-                <option key={writer.id} value={writer.id}>
-                  {writer.name}
+              {queue.length ? (
+                queue.map((entry, index) => {
+                  const writer = writers.find((item) => item.id === entry.writerId);
+                  if (!writer) return null;
+                  return (
+                    <div
+                      className={`writer-queue-item${draggingId === entry.id ? " is-dragging" : ""}`}
+                      key={entry.id}
+                      data-queue-id={entry.id}
+                    >
+                      <button
+                        className="writer-drag-handle"
+                        aria-label={localize(label("Drag to reorder", "拖动排序", "ドラッグで並べ替え"))}
+                        title={localize(label("Drag to reorder", "拖动排序", "ドラッグで並べ替え"))}
+                        onPointerDown={(event) => {
+                          if (event.button !== 0 || !event.isPrimary) return;
+                          event.preventDefault();
+                          event.currentTarget.focus();
+                          const container = event.currentTarget.closest<HTMLElement>(".writer-queue")!;
+                          container.setPointerCapture(event.pointerId);
+                          dragged.current = { id: entry.id, pointerId: event.pointerId };
+                          setDraggingId(entry.id);
+                        }}
+                      >
+                        <DotsSixVerticalIcon aria-hidden="true" />
+                      </button>
+                      <span>{writer.name}</span>
+                      <button
+                        title={t("moveUp")}
+                        aria-label={t("moveUp")}
+                        disabled={index === 0}
+                        onClick={() => move(index, index - 1)}
+                      >
+                        <ArrowUpIcon />
+                      </button>
+                      <button
+                        title={t("moveDown")}
+                        aria-label={t("moveDown")}
+                        disabled={index === queue.length - 1}
+                        onClick={() => move(index, index + 1)}
+                      >
+                        <ArrowDownIcon />
+                      </button>
+                      <button
+                        title={localize(label("Remove", "移除", "削除"))}
+                        aria-label={localize(label("Remove", "移除", "削除"))}
+                        onClick={() => setQueue((current) => current.filter((item) => item.id !== entry.id))}
+                      >
+                        <XIcon />
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <span className="muted writer-queue-empty">
+                  {localize(label("No models selected", "尚未添加模型", "モデルが未選択"))}
+                </span>
+              )}
+              <select
+                aria-label={localize(label("Add model", "添加模型", "モデルを追加"))}
+                value=""
+                disabled={!writers.length}
+                onChange={(event) => {
+                  const id = event.target.value;
+                  if (id) setQueue((current) => [...current, { id: crypto.randomUUID(), writerId: id }]);
+                }}
+              >
+                <option value="" disabled hidden>
+                  {localize(label("Add model", "添加模型", "モデルを追加"))}
                 </option>
-              ))}
-            </select>
-            {queue.map((id, index) => {
-              const writer = writers.find((entry) => entry.id === id);
-              return writer ? (
-                <div className="writer-queue-item" key={`${id}:${index}`}>
-                  <span>{writer.name}</span>
-                  <button
-                    onClick={() => {
-                      setSecret("");
-                      setEditing(writer);
-                    }}
-                  >
-                    {localize(label("Edit", "编辑", "編集"))}
-                  </button>
-                  {!writer.vision ? (
-                    <small>{localize(label("No image input", "不支持图像输入", "画像入力非対応"))}</small>
-                  ) : null}
-                  <button onClick={() => setQueue(queue.filter((_, i) => i !== index))}>×</button>
-                </div>
-              ) : null;
-            })}
+                {writers.map((writer) => (
+                  <option key={writer.id} value={writer.id}>
+                    {writer.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="section-heading">
               <span>{localize(label("Specifications", "附加规范", "追加ガイド"))}</span>
               <label className="file-button">
@@ -177,7 +278,9 @@ export function Writers({
                   accept=".md"
                   multiple
                   onChange={(e) => {
-                    for (const file of Array.from(e.target.files ?? []))
+                    const files = Array.from(e.target.files ?? []);
+                    e.target.value = "";
+                    for (const file of files)
                       void file
                         .text()
                         .then(async (content) => {
@@ -190,42 +293,37 @@ export function Writers({
                 />
               </label>
             </div>
-            {specs.map((spec) => (
-              <label className="spec-option" key={spec.id}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(spec.id)}
-                  onChange={(e) =>
-                    setSelected(e.target.checked ? [...selected, spec.id] : selected.filter((id) => id !== spec.id))
-                  }
-                />
-                {spec.name}
-                {selected.includes(spec.id) ? (
-                  <>
-                    <small>{selected.indexOf(spec.id) + 1}</small>
-                    <button
-                      type="button"
-                      disabled={selected.indexOf(spec.id) === 0}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        const next = [...selected],
-                          index = next.indexOf(spec.id);
-                        [next[index - 1], next[index]] = [next[index], next[index - 1]];
-                        setSelected(next);
-                      }}
-                    >
-                      ↑
-                    </button>
-                  </>
-                ) : null}
-              </label>
-            ))}
+            <select
+              aria-label={localize(label("Specifications", "附加规范", "追加ガイド"))}
+              value={selected}
+              onChange={(event) => setSelected(event.target.value)}
+            >
+              <option value="">{localize(label("None", "无", "なし"))}</option>
+              {specs
+                .filter((spec) => spec.builtin)
+                .map((spec) => (
+                  <option key={spec.id} value={spec.id}>
+                    {spec.name.replace(/\.md$/i, "")}
+                  </option>
+                ))}
+              {specs.some((spec) => !spec.builtin) && (
+                <optgroup label={localize(label("Custom", "自定义", "カスタム"))}>
+                  {specs
+                    .filter((spec) => !spec.builtin)
+                    .map((spec) => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.name.replace(/\.md$/i, "")}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+            </select>
             <button
               className="primary-button"
               disabled={!queue.length || !input.trim()}
               onClick={() => {
-                for (const id of queue) {
-                  const writer = writers.find((entry) => entry.id === id);
+                for (const queued of queue) {
+                  const writer = writers.find((entry) => entry.id === queued.writerId);
                   if (writer) void run(writer);
                 }
               }}
@@ -274,70 +372,6 @@ export function Writers({
           </div>
         </div>
       </div>
-      {editing ? (
-        <div className="modal-backdrop">
-          <section className="writer-config">
-            <h2>{t("model")}</h2>
-            {(["name", "endpoint", "model"] as const).map((key) => (
-              <label key={key}>
-                {key === "name" ? localize(label("Name", "名称", "名前")) : t(key)}
-                <input value={editing[key]} onChange={(e) => setEditing({ ...editing, [key]: e.target.value })} />
-              </label>
-            ))}
-            <label>
-              {t("key")}
-              <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} />
-            </label>
-            <label className="spec-option">
-              <input
-                type="checkbox"
-                checked={editing.vision}
-                onChange={(e) => setEditing({ ...editing, vision: e.target.checked })}
-              />
-              {localize(label("Image input", "图像输入", "画像入力"))}
-            </label>
-            <div className="button-row">
-              <button onClick={() => setEditing(undefined)}>{t("close")}</button>
-              {writers.some((writer) => writer.id === editing.id) ? (
-                <button
-                  onClick={() =>
-                    void (async () => {
-                      await commit([{ collection: "writers", id: editing.id }]);
-                      await native("credential_remove", { provider: `writer:${editing.id}` });
-                      setWriters((current) => current.filter((writer) => writer.id !== editing.id));
-                      setQueue((current) => current.filter((id) => id !== editing.id));
-                      setEditing(undefined);
-                    })().catch(onError)
-                  }
-                >
-                  {t("delete")}
-                </button>
-              ) : null}
-              <button
-                disabled={
-                  !editing.name ||
-                  !editing.model ||
-                  !editing.endpoint ||
-                  (!secret && !writers.some((writer) => writer.id === editing.id))
-                }
-                onClick={() =>
-                  void (async () => {
-                    if (secret) await native("credential_save", { provider: `writer:${editing.id}`, secret });
-                    await commit([{ collection: "writers", id: editing.id, value: editing }]);
-                    setWriters((current) => [...current.filter((w) => w.id !== editing.id), editing]);
-                    if (!writers.some((writer) => writer.id === editing.id))
-                      setQueue((current) => [...current, editing.id]);
-                    setEditing(undefined);
-                    setSecret("");
-                  })().catch(onError)
-                }
-              >
-                {t("save")}
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
     </section>
   );
 }

@@ -110,6 +110,8 @@ const messages = {
   cancel: ["Cancel", "取消", "キャンセル"],
   confirm: ["Confirm", "确认", "確認"],
   selectAll: ["Select all", "全选", "すべて選択"],
+  batchSelect: ["Select multiple", "批量选择", "複数選択"],
+  thumbnailSize: ["Thumbnail size", "缩略图大小", "サムネイルのサイズ"],
   deselect: ["Deselect", "取消选择", "選択を解除"],
   selectedCount: ["Selected", "已选", "選択済み"],
   newest: ["Newest first", "最新优先", "新しい順"],

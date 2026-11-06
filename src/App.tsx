@@ -768,6 +768,12 @@ export default function App() {
             setWriters(false);
           }}
           onClose={() => setWriters(false)}
+          active={writers}
+          onSettings={() => {
+            sessionStorage.setItem("lutri.settings.category", "llm");
+            setWriters(false);
+            setPage("settings");
+          }}
           onError={onError}
         />
       </div>

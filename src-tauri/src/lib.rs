@@ -78,6 +78,7 @@ pub fn run() {
             mcp::mcp_start,
             mcp::mcp_stop,
             mcp::mcp_reply,
+            mcp::mcp_get_token,
             mcp::mcp_rotate_token,
         ])
         .run(tauri::generate_context!())

@@ -3,6 +3,7 @@ import { confirm } from "@tauri-apps/plugin-dialog";
 import {
   HeartIcon,
   PlusIcon,
+  MinusIcon,
   UploadSimpleIcon,
   FunnelSimpleIcon,
   DotsThreeIcon,
@@ -46,6 +47,8 @@ export function Gallery({
   const { gallery, boards } = useApplication();
   const [filter, setFilter] = useState("all"),
     [search, setSearch] = useState("");
+  const [batchSelection, setBatchSelection] = useState(false);
+  const selecting = picker || batchSelection;
   const [selected, setSelected] = useState<string[]>([]),
     [sort, setSort] = useState("newest");
   const [filters, setFilters] = useState(false),
@@ -257,13 +260,7 @@ export function Gallery({
   };
   return (
     <div className="gallery-workspace">
-      <ResizablePanel
-        className="library-sidebar"
-        storageKey="lutri.gallery.sidebar"
-        initialWidth={180}
-        minWidth={150}
-        maxWidth={320}
-      >
+      <ResizablePanel className="library-sidebar" storageKey="lutri.gallery.sidebar" initialWidth={280}>
         <div className="library-nav">
           {(["all", "generated", "imported", "favorites"] as const).map((id) => (
             <button
@@ -437,38 +434,61 @@ export function Gallery({
         )}
         <div className="selection-toolbar">
           <button
-            disabled={!entries.length || busy || loading}
-            onClick={() =>
-              setSelected(
-                selection.length === Math.min(entries.length, limit)
-                  ? []
-                  : entries.slice(0, limit).map((entry) => entry.asset.id),
-              )
-            }
+            disabled={busy}
+            aria-pressed={batchSelection}
+            onClick={() => {
+              setBatchSelection(!batchSelection);
+              setSelected([]);
+              anchor.current = undefined;
+            }}
           >
             <CheckIcon />
-            {selection.length ? `${t("selectedCount")} ${selection.length}` : lt("loaded")}
+            {batchSelection ? t("cancel") : t("batchSelect")}
           </button>
-          {!!selection.length && <button onClick={() => setSelected([])}>{t("deselect")}</button>}
-          {total > entries.length && (
-            <button disabled={busy || loading} onClick={() => attempt(selectAllMatches)}>
-              {lt("selectMatches")} · {total}
-            </button>
+          {batchSelection && (
+            <>
+              <button
+                disabled={!entries.length || busy || loading || limit === 0}
+                onClick={() => attempt(selectAllMatches)}
+              >
+                {t("selectAll")}
+              </button>
+              {!!selection.length && (
+                <button disabled={busy} onClick={() => setSelected([])}>
+                  {t("deselect")}
+                </button>
+              )}
+            </>
           )}
           <span className="toolbar-spacer" />
           {notice && <span role="status">{notice}</span>}
-          <span className="muted">
-            {entries.length} / {total}
-          </span>
-          <input
-            className="thumbnail-size"
-            type="range"
-            min={130}
-            max={290}
-            value={size}
-            aria-label={t("zoomIn")}
-            onChange={(event) => setSize(Number(event.target.value))}
-          />
+          <div className="thumbnail-zoom">
+            <button
+              aria-label={t("zoomOut")}
+              title={t("zoomOut")}
+              disabled={size <= 130}
+              onClick={() => setSize((value) => Math.max(130, value - 10))}
+            >
+              <MinusIcon />
+            </button>
+            <input
+              className="thumbnail-size"
+              type="range"
+              min={130}
+              max={290}
+              value={size}
+              aria-label={t("thumbnailSize")}
+              onChange={(event) => setSize(Number(event.target.value))}
+            />
+            <button
+              aria-label={t("zoomIn")}
+              title={t("zoomIn")}
+              disabled={size >= 290}
+              onClick={() => setSize((value) => Math.min(290, value + 10))}
+            >
+              <PlusIcon />
+            </button>
+          </div>
         </div>
         <div className="gallery-scroll">
           <div className="gallery-masonry" ref={masonry} style={{ height: layout.height }}>
@@ -491,19 +511,20 @@ export function Gallery({
                         style={{ aspectRatio: position.ratio }}
                         aria-label={entry.asset.name}
                         onClick={(event) => {
-                          if (picker || event.ctrlKey || event.metaKey || event.shiftKey || selection.length)
-                            toggle(entry.asset.id, event.shiftKey);
+                          if (selecting) toggle(entry.asset.id, event.shiftKey);
                           else attempt(() => view(entry.asset.id));
                         }}
                       >
                         <AssetImage entry={entry} thumbnail />
                       </button>
-                      <input
-                        type="checkbox"
-                        aria-label={entry.asset.name}
-                        checked={selection.includes(entry.asset.id)}
-                        onChange={() => toggle(entry.asset.id)}
-                      />
+                      {selecting && (
+                        <input
+                          type="checkbox"
+                          aria-label={entry.asset.name}
+                          checked={selection.includes(entry.asset.id)}
+                          onChange={() => toggle(entry.asset.id)}
+                        />
+                      )}
                       <button
                         className="favorite"
                         title={entry.favorite ? t("removeFavorite") : t("favorites")}
@@ -555,10 +576,6 @@ export function Gallery({
         </div>
         {picker ? (
           <div className="gallery-selection-footer">
-            <span>
-              {t("selectedCount")} · {selection.length}
-              {Number.isFinite(limit) ? ` / ${limit}` : ""}
-            </span>
             <button
               className="primary-button"
               disabled={!selection.length || busy}
