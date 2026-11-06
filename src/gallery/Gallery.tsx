@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import {
   HeartIcon,
@@ -69,6 +69,20 @@ export function Gallery({
     const observer = new ResizeObserver(([entry]) => setAvailableWidth(entry.contentRect.width));
     observer.observe(masonry.current!);
     return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const dismiss = (event: Event) => {
+      for (const menu of document.querySelectorAll<HTMLDetailsElement>(".action-menu[open]"))
+        if (!(event.target instanceof Node) || !menu.contains(event.target)) menu.removeAttribute("open");
+    };
+    document.addEventListener("click", dismiss, true);
+    document.addEventListener("scroll", dismiss, true);
+    window.addEventListener("resize", dismiss);
+    return () => {
+      document.removeEventListener("click", dismiss, true);
+      document.removeEventListener("scroll", dismiss, true);
+      window.removeEventListener("resize", dismiss);
+    };
   }, []);
   const layout = useMemo(() => {
     const gap = 16;
@@ -197,6 +211,39 @@ export function Gallery({
       .catch(onError)
       .finally(() => setBusy(false));
   };
+  const positionMenu = (details: HTMLDetailsElement) => {
+    const menu = details.querySelector<HTMLElement>(":scope > div");
+    if (!menu) return;
+    for (const other of document.querySelectorAll<HTMLDetailsElement>(".action-menu[open]"))
+      if (other !== details) other.removeAttribute("open");
+    const margin = 8,
+      gap = 4,
+      rect = details.getBoundingClientRect(),
+      above = rect.top - margin,
+      below = window.innerHeight - rect.bottom - margin,
+      up = above >= menu.offsetHeight + gap || above > below,
+      left = Math.max(margin, Math.min(rect.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - margin)),
+      top = Math.max(
+        margin,
+        Math.min(
+          up ? rect.top - menu.offsetHeight - gap : rect.bottom + gap,
+          window.innerHeight - menu.offsetHeight - margin,
+        ),
+      );
+    menu.style.cssText = `position: fixed; left: ${left}px; right: auto; top: ${top}px; bottom: auto; max-height: ${window.innerHeight - margin * 2}px; overflow-y: auto;`;
+  };
+  const toggleMenu = (event: SyntheticEvent<HTMLElement>) => {
+    event.preventDefault();
+    const details = event.currentTarget.closest("details");
+    if (!details) return;
+    details.open = !details.open;
+    if (details.open) positionMenu(details);
+  };
+  const placeMenu = (event: SyntheticEvent<HTMLDetailsElement>) => {
+    const details = event.currentTarget;
+    if (details.open) positionMenu(details);
+    else details.querySelector(":scope > div")?.removeAttribute("style");
+  };
   const toggle = (id: string, range = false) => {
     if (limit === 0 || loading || busy) return;
     const a = entries.findIndex((entry) => entry.asset.id === anchor.current),
@@ -212,6 +259,12 @@ export function Gallery({
   };
   const mutateEntries = async (action: string, value: string) => {
     await native("gallery_mutate", { ids: selection, action, value });
+    await refreshGallery();
+  };
+  const deleteEntry = async (entry: GalleryEntry) => {
+    if (!(await confirm(t("confirmDeleteImage"), { title: "Lutri", kind: "warning" }))) return;
+    await native("asset_delete", { id: entry.asset.id });
+    setSelected((previous) => previous.filter((id) => id !== entry.asset.id));
     await refreshGallery();
   };
   const deleteSelected = async () => {
@@ -323,11 +376,11 @@ export function Gallery({
             {lt("url")}
           </button>
           {board && (
-            <details className="action-menu">
-              <summary aria-label={t("boards")}>
+            <details className="action-menu" onToggle={placeMenu}>
+              <summary aria-label={t("boards")} onClick={toggleMenu}>
                 <DotsThreeIcon size={20} />
               </summary>
-              <div>
+              <div onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}>
                 <button onClick={() => setBoardEditor(board)}>{t("rename")}</button>
                 <button onClick={() => attempt(deleteBoard)}>{t("deleteBoard")}</button>
               </div>
@@ -535,11 +588,11 @@ export function Gallery({
                     {!picker && (
                       <div className="gallery-actions">
                         <button onClick={() => onReference(entry)}>{t("useReference")}</button>
-                        <details className="action-menu">
-                          <summary aria-label={t("details")}>
+                        <details className="action-menu" onToggle={placeMenu}>
+                          <summary aria-label={t("details")} onClick={toggleMenu}>
                             <DotsThreeIcon size={20} />
                           </summary>
-                          <div>
+                          <div onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}>
                             <button onClick={() => attempt(() => view(entry.asset.id))}>{t("details")}</button>
                             {onEdit && <button onClick={() => onEdit(entry)}>{lt("edit")}</button>}
                             <button onClick={() => attempt(() => copyAssetImage(entry.asset.id))}>
@@ -549,6 +602,9 @@ export function Gallery({
                             <button onClick={() => onRelated(entry.asset.id)}>{t("related")}</button>
                             <button onClick={() => attempt(() => exportImages([entry]))}>{t("saveAs")}</button>
                             <CopyButton value={entry.asset.id} onError={onError} />
+                            <button className="danger-button" onClick={() => attempt(() => deleteEntry(entry))}>
+                              {t("delete")}
+                            </button>
                           </div>
                         </details>
                       </div>

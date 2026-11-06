@@ -217,6 +217,7 @@ const messages = {
     "一部の参照画像がありません。続行しますか？",
   ],
   confirmDelete: ["Delete selected images?", "删除选中的图片？", "選択した画像を削除しますか？"],
+  confirmDeleteImage: ["Delete this image?", "删除这张图片？", "この画像を削除しますか？"],
   key: ["API key", "API 密钥", "API キー"],
   connected: ["Configured", "已配置", "設定済み"],
   notConnected: ["Not configured", "未配置", "未設定"],
