@@ -10,6 +10,7 @@ import {
   XIcon,
 } from "@phosphor-icons/react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { listen } from "@tauri-apps/api/event";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { initializeDesktop } from "./services/desktop";
 import { useLocale } from "./i18n";
@@ -231,6 +232,21 @@ export default function App() {
     setPage("creation");
   };
   const addReference = (entry: GalleryEntry) => addReferences([entry]);
+  useEffect(() => {
+    if (new URLSearchParams(location.search).has("asset")) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listen<GalleryEntry>("viewer-use-reference", (event) => addReferences([event.payload]))
+      .then((stop) => {
+        if (disposed) stop();
+        else unlisten = stop;
+      })
+      .catch(onError);
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [onError]);
   const switchModel = async (next: ModelCombination) => {
     const current = getState().draft;
     if (

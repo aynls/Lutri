@@ -184,8 +184,28 @@
   font-size: 12px;
 }
 .opacity-control input {
-  width: 80px;
+  appearance: none;
+  width: 140px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   accent-color: var(--accent);
+  cursor: pointer;
+}
+.opacity-control input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.opacity-control input::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 .region-canvas-workspace {
   flex: 1;

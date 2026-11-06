@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowsHorizontal, Minus, Plus } from "@phosphor-icons/react";
 import { t } from "../i18n";
 export interface PreviewImage {
@@ -12,11 +13,13 @@ export function ImageStage({
   after,
   beforeLabel = t("before"),
   afterLabel = t("after"),
+  toolbarTarget,
 }: {
   before: PreviewImage;
   after?: PreviewImage | null;
   beforeLabel?: string;
   afterLabel?: string;
+  toolbarTarget?: HTMLElement | null;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const layers = useRef<(HTMLDivElement | null)[]>([]);
@@ -121,21 +124,24 @@ export function ImageStage({
     const rect = viewport.current?.getBoundingClientRect();
     if (rect?.width) setSplit(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100)));
   };
+  const toolbar = (
+    <div className="image-compare-toolbar" title={t("viewerHelp")}>
+      <button onClick={fit}>{t("fit")}</button>
+      <button onClick={() => zoom(1)}>100%</button>
+      <div className="row">
+        <button aria-label={t("zoomOut")} onClick={() => zoom(transform.current.scale / 1.25)}>
+          <Minus size={16} />
+        </button>
+        <span className="image-compare-scale">{scaleLabel}%</span>
+        <button aria-label={t("zoomIn")} onClick={() => zoom(transform.current.scale * 1.25)}>
+          <Plus size={16} />
+        </button>
+      </div>
+    </div>
+  );
   return (
     <div className="image-compare">
-      <div className="image-compare-toolbar" title={t("viewerHelp")}>
-        <button onClick={fit}>{t("fit")}</button>
-        <button onClick={() => zoom(1)}>100%</button>
-        <div className="row">
-          <button aria-label={t("zoomOut")} onClick={() => zoom(transform.current.scale / 1.25)}>
-            <Minus size={16} />
-          </button>
-          <span className="image-compare-scale">{scaleLabel}%</span>
-          <button aria-label={t("zoomIn")} onClick={() => zoom(transform.current.scale * 1.25)}>
-            <Plus size={16} />
-          </button>
-        </div>
-      </div>
+      {toolbarTarget === undefined ? toolbar : toolbarTarget ? createPortal(toolbar, toolbarTarget) : null}
       <div
         ref={viewport}
         className="image-compare-viewport"
