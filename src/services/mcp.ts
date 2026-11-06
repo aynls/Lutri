@@ -70,7 +70,8 @@ const tools = [
   },
   {
     name: "get_tasks",
-    description: "Read generation batches, original task states and saved result asset IDs.",
+    description:
+      "List generation task summaries (status, prompt preview, saved asset IDs). Pass taskId to read one full task with original parameters for resubmission.",
     inputSchema: { type: "object", properties: { batchId: string, taskId: string }, additionalProperties: false },
   },
   {
@@ -119,7 +120,8 @@ const tools = [
   },
   {
     name: "upscale",
-    description: "Run local neural super resolution on a gallery asset. Results do not enter generation history.",
+    description:
+      "Run local neural super resolution on a gallery asset and wait for completion. Track or cancel a submitted jobId with get_upscale_jobs and cancel_upscale. Results do not enter generation history.",
     inputSchema: {
       type: "object",
       properties: {
@@ -135,6 +137,11 @@ const tools = [
       required: ["assetId", "modelId"],
       additionalProperties: false,
     },
+  },
+  {
+    name: "get_upscale_jobs",
+    description: "List active local super-resolution jobs with states and jobIds for cancel_upscale.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
     name: "cancel_upscale",
@@ -180,10 +187,27 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
       }));
       return submitBatch(draft, "mcp");
     }
-    case "get_tasks":
-      return getState().tasks.filter(
+    case "get_tasks": {
+      const tasks = getState().tasks.filter(
         (task) => (!args.batchId || task.batchId === args.batchId) && (!args.taskId || task.id === args.taskId),
       );
+      const task = args.taskId ? tasks[0] : undefined;
+      if (args.taskId && !task) throw new Error("Task not found");
+      if (task) return task;
+      const preview = (text: string) => (text.length > 160 ? `${Array.from(text).slice(0, 160).join("")}…` : text);
+      return tasks.map(({ id, batchId, status, createdAt, updatedAt, draft, results, error }) => ({
+        taskId: id,
+        batchId,
+        status,
+        createdAt,
+        updatedAt,
+        combinationId: draft.combinationId,
+        requestCount: draft.requestCount,
+        prompt: preview(draft.prompt),
+        assetIds: results.flatMap((result) => (result.assetId ? [result.assetId] : [])),
+        error,
+      }));
+    }
     case "resume_task": {
       const id = String(args.taskId);
       if (!getState().tasks.some((task) => task.id === id)) throw new Error("Task not found");
@@ -200,12 +224,29 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
         jobId: String(args.jobId),
         cancelled: await native<boolean>("upscale_cancel", { id: String(args.jobId) }),
       };
+    case "get_upscale_jobs":
+      return native("upscale_jobs");
     case "find_assets":
-      return getState().gallery.filter(
-        (entry) =>
-          (!args.source || entry.source === args.source) &&
-          (!args.query || entry.asset.id.toLowerCase().includes(String(args.query).toLowerCase())),
-      );
+      return getState()
+        .gallery.filter(
+          (entry) =>
+            (!args.source || entry.source === args.source) &&
+            (!args.query || entry.asset.id.toLowerCase().includes(String(args.query).toLowerCase())),
+        )
+        .map(({ asset, source, addedAt, favorite, boardIds, bytes, tags, availability, provenance }) => ({
+          assetId: asset.id,
+          mediaType: asset.mediaType,
+          width: asset.width,
+          height: asset.height,
+          source,
+          addedAt,
+          favorite,
+          boardIds,
+          bytes,
+          tags,
+          availability,
+          provenance,
+        }));
     case "get_image":
       return { image: await assetData(String(args.assetId)) };
     case "import_image": {
@@ -278,4 +319,8 @@ export async function stopMcp() {
   unlisten?.();
   unlisten = undefined;
   connection = undefined;
+}
+
+export function setConnectionToken(token: string) {
+  if (connection) connection = { ...connection, token };
 }

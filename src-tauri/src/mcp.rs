@@ -17,6 +17,7 @@ pub struct Bridge {
     pending: Mutex<HashMap<String, oneshot::Sender<Value>>>,
     tools: Mutex<Vec<Value>>,
     server: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+    port: Mutex<u16>,
     token: Mutex<String>,
 }
 impl Bridge {
@@ -35,6 +36,7 @@ impl Bridge {
             pending: Mutex::new(HashMap::new()),
             tools: Mutex::new(vec![]),
             server: Mutex::new(None),
+            port: Mutex::new(0),
             token: Mutex::new(token),
         })
     }
@@ -71,7 +73,12 @@ async fn handle(State(state): State<ServerState>, headers: HeaderMap, Json(messa
     let id = id.unwrap();
     let result = match method {
         "initialize" => {
-            json!({"protocolVersion":"2025-06-18","capabilities":{"tools":{}},"serverInfo":{"name":"lutri","version":"0.2.0"}})
+            let requested = message["params"]["protocolVersion"].as_str().unwrap_or("");
+            json!({
+                "protocolVersion": if matches!(requested, "2025-03-26" | "2025-06-18") { requested } else { "2025-06-18" },
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "lutri", "version": env!("CARGO_PKG_VERSION")}
+            })
         }
         "ping" => json!({}),
         "tools/list" => json!({"tools":state.bridge.tools.lock().unwrap().clone()}),
@@ -111,9 +118,23 @@ pub async fn mcp_start(app: tauri::AppHandle, port: u16, tools: Vec<Value>) -> R
         return Err("Port must be at least 1024".into());
     }
     let bridge = app.state::<Arc<Bridge>>().inner().clone();
+    let running = |bridge: &Bridge| -> Result<Option<u16>, String> {
+        if bridge.server.lock().map_err(|e| e.to_string())?.is_some() {
+            Ok(Some(*bridge.port.lock().map_err(|e| e.to_string())?))
+        } else {
+            Ok(None)
+        }
+    };
+    let token = |bridge: &Bridge| -> Result<String, String> {
+        bridge
+            .token
+            .lock()
+            .map_err(|e| e.to_string())
+            .map(|token| token.clone())
+    };
     *bridge.tools.lock().map_err(|e| e.to_string())? = tools;
-    if bridge.server.lock().map_err(|e| e.to_string())?.is_some() {
-        return Err("MCP is already running".into());
+    if let Some(running) = running(&bridge)? {
+        return Ok(json!({"url":format!("http://127.0.0.1:{running}/mcp"),"token":token(&bridge)?}));
     }
     let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port))
         .await
@@ -127,13 +148,20 @@ pub async fn mcp_start(app: tauri::AppHandle, port: u16, tools: Vec<Value>) -> R
         .route("/mcp", post(handle))
         .layer(DefaultBodyLimit::max(16 * 1024 * 1024))
         .with_state(state);
-    let server = tauri::async_runtime::spawn(async move {
+    let spawned = tauri::async_runtime::spawn(async move {
         let _ = axum::serve(listener, router).await;
     });
-    *bridge.server.lock().map_err(|e| e.to_string())? = Some(server);
-    Ok(
-        json!({"url":format!("http://127.0.0.1:{port}/mcp"),"token":bridge.token.lock().map_err(|e| e.to_string())?.clone()}),
-    )
+    let mut server = bridge.server.lock().map_err(|e| e.to_string())?;
+    if server.is_some() {
+        // A concurrent start already owns the endpoint; keep that instance.
+        spawned.abort();
+    } else {
+        *server = Some(spawned);
+        *bridge.port.lock().map_err(|e| e.to_string())? = port;
+    }
+    drop(server);
+    let bound = running(&bridge)?.unwrap_or(port);
+    Ok(json!({"url":format!("http://127.0.0.1:{bound}/mcp"),"token":token(&bridge)?}))
 }
 
 #[tauri::command]
@@ -141,6 +169,8 @@ pub fn mcp_stop(bridge: tauri::State<Arc<Bridge>>) -> Result<(), String> {
     if let Some(server) = bridge.server.lock().map_err(|e| e.to_string())?.take() {
         server.abort();
     }
+    *bridge.port.lock().map_err(|e| e.to_string())? = 0;
+    bridge.pending.lock().map_err(|e| e.to_string())?.clear();
     Ok(())
 }
 

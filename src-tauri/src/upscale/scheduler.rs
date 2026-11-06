@@ -9,6 +9,17 @@ pub struct Job {
     pub child: Option<Child>,
     pub cancelled: bool,
     pub committing: bool,
+    pub asset_id: String,
+    pub model_id: String,
+    pub scale: u32,
+}
+
+pub struct JobInfo {
+    pub id: String,
+    pub state: &'static str,
+    pub asset_id: String,
+    pub model_id: String,
+    pub scale: u32,
 }
 
 struct State {
@@ -49,15 +60,18 @@ impl Scheduler {
         Ok(())
     }
 
-    pub fn register(&self, id: &str) -> Result<Arc<Mutex<Job>>, String> {
+    pub fn register(&self, id: &str, asset_id: &str, model_id: &str, scale: u32) -> Result<Arc<Mutex<Job>>, String> {
         let mut state = self.state.lock().map_err(|e| e.to_string())?;
         if state.jobs.contains_key(id) {
             return Err("Upscale task ID is already active".into());
         }
         let cancelled = state.cancelled.iter().any(|entry| entry == id);
-        state.cancelled.retain(|entry| entry != id);
+        state.cancelled.retain(|entry: &String| entry != id);
         let job = Arc::new(Mutex::new(Job {
             cancelled,
+            asset_id: asset_id.into(),
+            model_id: model_id.into(),
+            scale,
             ..Job::default()
         }));
         state.jobs.insert(id.into(), job.clone());
@@ -141,6 +155,40 @@ impl Scheduler {
 
     pub fn is_busy(&self) -> bool {
         self.state.lock().map(|s| !s.jobs.is_empty()).unwrap_or(true)
+    }
+
+    pub fn snapshot(&self) -> Result<Vec<JobInfo>, String> {
+        let state = self.state.lock().map_err(|e| e.to_string())?;
+        let describe = |id: &str, job: &Job, queued: bool| JobInfo {
+            id: id.to_string(),
+            state: if job.committing {
+                "committing"
+            } else if job.cancelled {
+                "cancelling"
+            } else if queued {
+                "queued"
+            } else {
+                "running"
+            },
+            asset_id: job.asset_id.clone(),
+            model_id: job.model_id.clone(),
+            scale: job.scale,
+        };
+        let mut jobs = Vec::new();
+        for (id, job) in &state.jobs {
+            if state.queue.contains(id) {
+                continue;
+            }
+            let job = job.lock().map_err(|e| e.to_string())?;
+            jobs.push(describe(id, &job, false));
+        }
+        for id in &state.queue {
+            if let Some(job) = state.jobs.get(id) {
+                let job = job.lock().map_err(|e| e.to_string())?;
+                jobs.push(describe(id, &job, true));
+            }
+        }
+        Ok(jobs)
     }
 }
 

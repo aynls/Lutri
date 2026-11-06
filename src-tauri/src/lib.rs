@@ -72,6 +72,7 @@ pub fn run() {
             upscale::upscale_configure,
             upscale::upscale_devices,
             upscale::upscale_cancel,
+            upscale::upscale_jobs,
             desktop::desktop_configure,
             desktop::desktop_zoom,
             desktop::desktop_shutdown,

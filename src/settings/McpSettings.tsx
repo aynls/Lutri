@@ -3,7 +3,7 @@ import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import { CopyButton } from "../components/CopyButton";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { t } from "../i18n";
-import { connection, startMcp, stopMcp } from "../services/mcp";
+import { connection, setConnectionToken, startMcp, stopMcp } from "../services/mcp";
 import { getState, savePreferences, useApplication } from "../services/store";
 import { native } from "../services/native";
 import { settingsText as text } from "./messages";
@@ -37,8 +37,8 @@ export function McpSettings({ onError }: { onError: (error: unknown) => void }) 
       .finally(() => setBusy(false));
   };
   const save = async (next: { port?: number; autoStart?: boolean }) => {
-    const current = getState().preferences;
-    await savePreferences({ ...current, mcp: { port: 39632, autoStart: false, ...current.mcp, ...next } });
+    const preferences = getState().preferences;
+    await savePreferences({ ...preferences, mcp: { port: 39632, autoStart: false, ...preferences.mcp, ...next } });
   };
   return (
     <section>
@@ -125,7 +125,7 @@ export function McpSettings({ onError }: { onError: (error: unknown) => void }) 
             attempt(async () => {
               if (!(await confirm(text("rotateConfirm"), { title: "MCP", kind: "warning" }))) return;
               const token = await native<string>("mcp_rotate_token");
-              if (connection) connection.token = token;
+              setConnectionToken(token);
               setToken(token);
               if (current) setCurrent({ ...current, token });
             })

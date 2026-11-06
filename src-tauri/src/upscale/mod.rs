@@ -123,7 +123,7 @@ pub async fn upscale_run(
     let control = {
         let store = app.state::<Store>();
         let _admission = store.library_mutation.lock().map_err(|e| e.to_string())?;
-        scheduler.register(&id)?
+        scheduler.register(&id, &asset_id, &model_id, scale)?
     };
     let _ = channel.send(json!({"phase":"queued"}));
     tauri::async_runtime::spawn_blocking(move || {
@@ -335,6 +335,25 @@ pub fn upscale_configure(state: tauri::State<Scheduler>, concurrency: usize) -> 
 #[tauri::command]
 pub fn upscale_cancel(state: tauri::State<Scheduler>, id: String) -> Result<bool, String> {
     state.cancel(&id)
+}
+
+#[tauri::command]
+pub fn upscale_jobs(state: tauri::State<Scheduler>) -> Result<Value, String> {
+    Ok(Value::Array(
+        state
+            .snapshot()?
+            .into_iter()
+            .map(|job| {
+                json!({
+                    "jobId": job.id,
+                    "state": job.state,
+                    "assetId": job.asset_id,
+                    "modelId": job.model_id,
+                    "scale": job.scale,
+                })
+            })
+            .collect(),
+    ))
 }
 
 pub fn run_device_probe(path: &str) {

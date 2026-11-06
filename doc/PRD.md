@@ -133,6 +133,10 @@ asset id全图库唯一，用户可以一键复制。
 
 MCP 发起的生图提交与手动提交使用相同的参数校验、请求次数、单次生成数量、批次、参考图导入、任务恢复、结果入库和历史记录规则。每次生图提交形成一个批次，各请求的卡片与手动提交的任务一起显示在创作页瀑布流中，并遵循相同的移除与数量上限规则。
 
+服务器以 Streamable HTTP 子集形式仅监听本机回环地址，使用 Bearer token 鉴权；token 保存在系统凭据管理器中并支持轮换，浏览器请求需携带与监听地址一致的 Origin。重复启动幂等返回现有端点，前端重载后自动恢复。
+
+工具集分三组：生成由 list_models、generate、get_tasks、resume_task、cancel_batch 构成；图库与参考素材由 find_assets、get_image、import_image 构成；超分辨率由 upscale、get_upscale_jobs、cancel_upscale、list_upscale_models 构成。generate 异步提交后经 get_tasks 轮询，get_tasks 默认返回任务摘要，传入 taskId 时返回完整参数；upscale 同步等待完成，jobId 用于查询与取消。
+
 ## 技术方向
 
 - 使用 Tauri、React、TypeScript 和 Rust 构建桌面应用。TypeScript 负责主要业务逻辑，Rust 负责桌面原生能力和高性能的超分辨率推理。
