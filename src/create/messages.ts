@@ -1,6 +1,43 @@
 import { label, localize } from "../i18n";
 
 const messages = {
+  creationMode: label("Creation mode", "创作方式", "作成モード"),
+  generateMode: label("Generate", "生成", "生成"),
+  editMode: label("Edit", "编辑", "編集"),
+  styleGenerateMode: label("Style generation", "风格生成", "スタイル生成"),
+  chooseEditTarget: label("Choose a source image", "请选择编辑原图", "編集する元画像を選択してください"),
+  maskNeedsEdit: label(
+    "Remove the mask or select Edit",
+    "请移除蒙版或选择编辑",
+    "マスクを削除するか編集を選択してください",
+  ),
+  maskTargetMismatch: label(
+    "The mask belongs to a different source image",
+    "蒙版与编辑原图不一致",
+    "マスクと編集対象が一致しません",
+  ),
+  unsupportedCreationMode: label(
+    "Creation mode is unavailable for this combination",
+    "此组合不支持创作方式选择",
+    "この組み合わせでは作成モードを選択できません",
+  ),
+  singleEditImage: label(
+    "Editing requires exactly one source image",
+    "编辑时仅支持一张原图",
+    "編集には元画像が1枚必要です",
+  ),
+  styleInputConflict: label(
+    "Use style images or a style ID",
+    "风格参考图与风格 ID 二选一",
+    "スタイル画像かスタイル ID のいずれかを指定してください",
+  ),
+  styleNeedsGenerate: label(
+    "Style settings require Generate",
+    "风格设置仅用于生成",
+    "スタイル設定は生成時のみ使用できます",
+  ),
+  invalidImageContext: label("Context must be an array", "上下文必须是数组", "コンテキストは配列で指定してください"),
+  promptControlled: label("Guided by the prompt", "通过提示词控制", "プロンプトによる制御"),
   frame: label("Output size", "输出尺寸", "出力サイズ"),
   generation: label("Generation", "生成控制", "生成設定"),
   style: label("Style", "样式", "スタイル"),

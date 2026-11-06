@@ -8,6 +8,8 @@ Ideogram 官方接口使用 v2。
 
 4.5 生成端点为 `/v2/image/generate/ideogram-4-5`；可上传 `images` 进行编辑。其 `quality` 为 `very_low`、`low`、`medium`、`high`，有输入图时默认 `medium`，无输入图时默认 `high`，`very_low` 需要输入图。
 
+Lutri 将原厂和 Comfy 组合的 `edit_mode` 显示为“常规编辑／精确编辑”，对应 `generate / precise`，避免将 generate 误读为“仅参考生成”。精确编辑没有输入图片时不可提交。
+
 4.5 精确编辑使用 `POST /v2/image/precise-edit/ideogram-4-5`，multipart 包含 `prompt` 和 `image`。可选 `reference_images` 最多四张；如果提供 `mask`，最多三张参考图。蒙版与原图同尺寸，黑色为编辑区，白色为保留区，且必须同时包含黑白区域。默认整图编辑最多 4,194,304 像素；较大输入会缩小。`context_window` 可为 `auto`（需要蒙版）或 `y_min,x_min,y_max,x_max`，用于限制区域并保留大图尺寸，具体区域限制见官方文档。
 
 默认同步返回 `data[].url`，链接会过期，应及时下载。设置 `async` 或 `webhook_url` 后返回 `generation_id`，使用 `GET /v2/generations/{generation_id}` 查询，直到完成或失败。`dry_run=true` 返回报价而不执行生成。

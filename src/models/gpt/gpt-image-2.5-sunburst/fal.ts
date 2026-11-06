@@ -23,6 +23,7 @@ export const gptImage25SunburstFal: ModelCombination = {
   label: "GPT Image 2.5 Sunburst",
   provider: "fal",
   protocol: "fal",
+  creationControl: "prompt",
   maxReferences: 16,
   mask: "white",
   fields,

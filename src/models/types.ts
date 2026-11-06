@@ -25,6 +25,7 @@ export interface FieldDefinition {
   label: Localized;
   kind: "text" | "number" | "select" | "toggle" | "json" | "size" | "seed";
   options?: readonly string[];
+  optionLabels?: Record<string, Localized>;
   min?: number;
   max?: number;
   step?: number;
@@ -97,6 +98,8 @@ export interface ModelCombination {
   fields: FieldDefinition[];
   groups?: ParameterGroup[];
   primaryReference?: boolean;
+  /** Opt-in creation intent: prompt guidance, native style inputs, or Gemini context. */
+  creationControl?: "prompt" | "style" | "context";
   promptLimit?: { min?: number; max: number };
   inputPolicy?: InputPolicy | ((draft: GenerationDraft) => InputPolicy);
   Form: ComponentType<FormProps>;

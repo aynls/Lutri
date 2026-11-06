@@ -18,6 +18,7 @@ export const museImageFal: ModelCombination = {
   label: "Muse Image",
   provider: "fal",
   protocol: "fal",
+  creationControl: "prompt",
   maxReferences: 10,
   fields,
   groups: [

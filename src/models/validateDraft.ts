@@ -2,10 +2,11 @@ import type { GenerationDraft } from "../domain/types";
 import { combinationById } from ".";
 import { t } from "../i18n";
 import { c } from "../create/messages";
+import { orderedCreationDraft, validateCreation } from "./creation";
 
 export function validateDraft(draft: GenerationDraft): string[] {
   const combination = combinationById(draft.combinationId);
-  const errors = combination.validate(draft);
+  const errors = [...validateCreation(draft, combination), ...combination.validate(draft)];
   const supported = new Set(combination.fields.map((field) => field.key));
   for (const key of Object.keys(draft.parameters))
     if (!supported.has(key)) errors.push(`Unsupported parameter: ${key}`);
@@ -23,7 +24,8 @@ export function validateDraft(draft: GenerationDraft): string[] {
   if (draft.references.length > combination.maxReferences)
     errors.push(`${t("references")} ≤ ${combination.maxReferences}`);
   if (draft.mask && !combination.mask) errors.push(t("unsupportedMask"));
-  if (draft.mask && draft.references[0]?.id !== draft.mask.referenceId) errors.push(t("maskFirstReference"));
+  if (draft.mask && orderedCreationDraft(draft, combination).references[0]?.id !== draft.mask.referenceId)
+    errors.push(t("maskFirstReference"));
   if (draft.regions.length && !combination.regions) errors.push(t("unsupportedRegions"));
   const ids = new Set<string>();
   for (const region of draft.regions) {

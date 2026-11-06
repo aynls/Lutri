@@ -17,6 +17,7 @@ export const maiImage26Azure: ModelCombination = {
   label: "MAI Image 2.6",
   provider: "azure",
   protocol: "images",
+  creationControl: "prompt",
   maxReferences: 5,
   fields,
   inputPolicy: { mediaTypes: ["image/jpeg", "image/png"] },

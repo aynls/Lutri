@@ -58,6 +58,9 @@ export interface MaskBinding {
 
 export interface GenerationDraft {
   combinationId: string;
+  /** Omitted on older records: preserve the original input-driven routing. */
+  creationMode?: "auto" | "generate" | "edit";
+  editTargetId?: string;
   prompt: string;
   references: ImageReference[];
   regions: Region[];

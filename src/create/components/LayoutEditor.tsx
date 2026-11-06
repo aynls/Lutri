@@ -182,10 +182,12 @@ export function LayoutEditor({
   const regions = history.value;
   const [selection, setSelection] = useState<string | undefined>(regions[0]?.id),
     [sourceEditor, setSourceEditor] = useState(false);
-  const [background, setBackground] = useState(draft.references[0]?.id ?? ""),
+  const sourceReference =
+    draft.creationMode === "edit" ? draft.references.find((ref) => ref.id === draft.editTargetId) : draft.references[0];
+  const [background, setBackground] = useState(draft.creationMode === "generate" ? "" : (sourceReference?.id ?? "")),
     [opacity, setOpacity] = useState(0.65),
     [error, setError] = useState("");
-  const first = gallery.find((entry) => entry.asset.id === draft.references[0]?.assetId);
+  const first = gallery.find((entry) => entry.asset.id === sourceReference?.assetId);
   const frame =
     combinationById(draft.combinationId).regions === "seedream" && first
       ? { width: first.asset.width, height: first.asset.height }
@@ -230,7 +232,7 @@ export function LayoutEditor({
       const source = selected.source ?? box;
       update(selected.id, {
         operation: kind,
-        referenceId: selected.referenceId ?? draft.references[0]?.id,
+        referenceId: selected.referenceId ?? sourceReference?.id,
         source,
         target: kind === "remove" ? undefined : kind === "anchor" ? source : box,
       });

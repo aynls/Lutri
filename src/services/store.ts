@@ -154,6 +154,8 @@ export async function saveMask(dataUrl: string) {
 
 let draftWrites = Promise.resolve();
 export function saveDraft(draft: GenerationDraft) {
+  if (draft.creationMode === "edit" && !draft.editTargetId && draft.references.length)
+    draft = { ...draft, editTargetId: draft.references[0].id };
   updateState({ draft });
   draftWrites = draftWrites
     .catch(() => {})

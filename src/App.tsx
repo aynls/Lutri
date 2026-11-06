@@ -20,6 +20,8 @@ import { AssetPicker } from "./gallery/AssetPicker";
 import { ResizablePanel } from "./components/ResizablePanel";
 import { BrandMark } from "./components/ModelIcon";
 import { ModelSelector } from "./create/components/ModelSelector";
+import { CreationControl } from "./create/components/CreationControl";
+import { editTargetId } from "./models/creation";
 import type { ModelCombination } from "./models/types";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { GalleryEntry, GenerationDraft } from "./domain/types";
@@ -278,8 +280,7 @@ export default function App() {
             (region) => !region.referenceId || current.references.some((ref) => ref.id === region.referenceId),
           )
         : [],
-      mask:
-        next.mask && current.mask && current.references[0]?.id === current.mask.referenceId ? current.mask : undefined,
+      mask: next.mask ? current.mask : undefined,
     });
     requestAnimationFrame(() => {
       if (creationScroll.current) creationScroll.current.scrollTop = scrollPositions.current.get(next.id) ?? 0;
@@ -324,6 +325,7 @@ export default function App() {
     const mask = current.mask?.referenceId === reference.id ? current.mask : undefined;
     changeDraft({
       ...current,
+      ...(target.creationControl ? { creationMode: "edit" as const, editTargetId: reference.id } : {}),
       references,
       mask,
       regions: current.regions.filter((region) => !region.referenceId || retained.has(region.referenceId)),
@@ -524,6 +526,7 @@ export default function App() {
                     {c("configure")}
                   </button>
                 </div>
+                <CreationControl combination={combination} draft={state.draft} onChange={changeDraft} />
                 <PromptField
                   draft={state.draft}
                   onChange={changeDraft}
@@ -538,11 +541,15 @@ export default function App() {
                     onAdd={(source) => void addSource(source).catch(onError)}
                     onView={view}
                     limit={combination.maxReferences}
-                    primary={combination.primaryReference}
+                    primary={!combination.creationControl && combination.primaryReference}
+                    targetId={editTargetId(state.draft, combination)}
+                    stableTarget={!!combination.creationControl && state.draft.creationMode === "edit"}
                     onNotice={(notice) => void message(notice, { title: "Lutri", kind: "warning" })}
                   />
                 )}
-                {combination.mask && state.draft.references.length ? (
+                {combination.mask &&
+                state.draft.references.length &&
+                (state.draft.mask || editTargetId(state.draft, combination)) ? (
                   state.draft.mask ? (
                     <div className="reference-item mask-input">
                       <button

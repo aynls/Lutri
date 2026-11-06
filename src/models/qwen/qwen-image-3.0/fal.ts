@@ -21,6 +21,7 @@ export const combination: ModelCombination = {
   label: "Qwen Image 3.0",
   provider: "fal",
   protocol: "fal",
+  creationControl: "prompt",
   maxReferences: 3,
   fields,
   inputPolicy: {

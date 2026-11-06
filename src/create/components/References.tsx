@@ -16,6 +16,8 @@ export function References({
   onView,
   limit,
   primary,
+  targetId,
+  stableTarget = false,
   onNotice,
 }: {
   draft: GenerationDraft;
@@ -25,13 +27,15 @@ export function References({
   onView: (id: string) => void;
   limit: number;
   primary?: boolean;
+  targetId?: string;
+  stableTarget?: boolean;
   onNotice: (message: string) => void;
 }) {
   const move = (index: number, to: number) => {
     const references = [...draft.references];
     const [reference] = references.splice(index, 1);
     references.splice(to, 0, reference);
-    const invalidMask = draft.mask && draft.mask.referenceId !== references[0]?.id;
+    const invalidMask = !stableTarget && draft.mask && draft.mask.referenceId !== references[0]?.id;
     onChange({ ...draft, references, mask: invalidMask ? undefined : draft.mask });
     if (invalidMask) onNotice(c("maskRemoved"));
   };
@@ -76,7 +80,9 @@ export function References({
                 onClick={() => onView(reference.assetId)}
               >
                 {asset ? <AssetImage entry={asset} thumbnail /> : <span className="missing-image">{t("missing")}</span>}
-                {primary && index === 0 ? <span className="reference-badge">{t("editTarget")}</span> : null}
+                {(targetId ? reference.id === targetId : primary && index === 0) ? (
+                  <span className="reference-badge">{t("editTarget")}</span>
+                ) : null}
               </button>
               <div className="reference-information">
                 <div className="reference-name">

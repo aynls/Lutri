@@ -91,7 +91,9 @@ export function ParameterField({
         >
           {!field.options?.includes("auto") && <option value="">{t("automatic")}</option>}
           {field.options?.map((option) => (
-            <option key={option}>{option}</option>
+            <option key={option} value={option}>
+              {field.optionLabels?.[option] ? localize(field.optionLabels[option]) : option}
+            </option>
           ))}
         </select>
       ) : field.kind === "seed" ? (

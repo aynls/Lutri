@@ -42,7 +42,9 @@ export function outputFrame(draft: GenerationDraft, gallery: GalleryEntry[]) {
       width: Math.round(edge * Math.sqrt(+ratio[1] / +ratio[2])),
       height: Math.round(edge / Math.sqrt(+ratio[1] / +ratio[2])),
     };
-  const reference = gallery.find((entry) => entry.asset.id === draft.references[0]?.assetId);
+  const source =
+    draft.creationMode === "edit" ? draft.references.find((ref) => ref.id === draft.editTargetId) : draft.references[0];
+  const reference = gallery.find((entry) => entry.asset.id === source?.assetId);
   return reference ? { width: reference.asset.width, height: reference.asset.height } : { width: edge, height: edge };
 }
 export function operation(region: Region): NonNullable<Region["operation"]> {

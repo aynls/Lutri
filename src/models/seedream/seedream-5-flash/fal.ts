@@ -22,6 +22,7 @@ export const combination: ModelCombination = {
   label: "Seedream 5 Flash",
   provider: "fal",
   protocol: "fal",
+  creationControl: "prompt",
   maxReferences: 10,
   regions: "seedream",
   fields,

@@ -8,6 +8,7 @@ import { maiCombinations } from "./mai";
 import { museCombinations } from "./muse";
 import { recraftCombinations } from "./recraft";
 import { ideogramCombinations } from "./ideogram";
+import { withCreationControl } from "./creation";
 export const combinations = [
   ...fluxCombinations,
   ...gptCombinations,
@@ -19,7 +20,7 @@ export const combinations = [
   ...museCombinations,
   ...recraftCombinations,
   ...ideogramCombinations,
-];
+].map(withCreationControl);
 export function combinationById(id: string) {
   const combination = combinations.find((entry) => entry.id === id);
   if (!combination) throw new Error(`Unknown model–provider combination: ${id}`);

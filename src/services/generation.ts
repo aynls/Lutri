@@ -12,6 +12,7 @@ import { resolveParameterAssets, storeParameterAssets } from "./parameterAssets"
 import { sanitizeDiagnostic } from "../providers/diagnostics";
 import { deletingTaskIds } from "./taskLocks";
 import { submittedPrompt } from "../providers/submittedPrompt";
+import { orderedCreationDraft, validateCreation } from "../models/creation";
 
 const running = new Set<string>();
 const providerRuns = new Map<string, number>();
@@ -308,10 +309,15 @@ async function runTask(id: string, initial = false) {
         regions: task.draft.regions.filter((region) => !region.referenceId || !missingIds.has(region.referenceId)),
         mask: task.draft.mask && missingIds.has(task.draft.mask.referenceId) ? undefined : task.draft.mask,
       };
-      if (executionDraft.mask && executionDraft.references[0]?.id !== executionDraft.mask.referenceId)
+      const creationErrors = validateCreation(executionDraft, combination);
+      if (creationErrors.length) throw new Error(creationErrors.join("\n"));
+      if (
+        executionDraft.mask &&
+        orderedCreationDraft(executionDraft, combination).references[0]?.id !== executionDraft.mask.referenceId
+      )
         throw new Error("Mask must be bound to the first input image.");
       const prepared = await prepareGenerationInputs(executionDraft, combination);
-      const compiledPrompt = compilePrompt(prepared.draft, references);
+      const compiledPrompt = compilePrompt(prepared.draft, prepared.draft.references);
       const compiled = combination.compile({
         draft: prepared.draft,
         prompt: compiledPrompt,

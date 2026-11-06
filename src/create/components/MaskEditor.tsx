@@ -38,11 +38,14 @@ export function MaskEditor({
   onClose: () => void;
   onError: (error: unknown) => void;
 }) {
-  const reference = draft.references[0],
+  const reference =
+      draft.creationMode === "edit"
+        ? draft.references.find((ref) => ref.id === draft.editTargetId)
+        : draft.references[0],
     entry = gallery.find((entry) => entry.asset.id === reference?.assetId);
   return (
     <Dialog title={t("mask")} className="mask-dialog" onClose={onClose}>
-      {entry ? (
+      {entry && reference ? (
         <MaskWorkspace
           key={entry.asset.id}
           entry={entry}

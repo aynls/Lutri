@@ -26,6 +26,16 @@ const tools = [
       properties: {
         combinationId: { ...string, enum: combinations.map((c) => c.id) },
         prompt: string,
+        creationMode: {
+          enum: ["generate", "edit", "auto"],
+          description:
+            "Only for combinations with creationControl. Generate uses references without designating a source canvas; prompt-based controls may still call an edit endpoint. Defaults to generate for new requests. Auto preserves input-driven routing.",
+        },
+        editTargetId: {
+          ...string,
+          description:
+            "Reference id of the source image, required for explicit edit mode. Use a stable id in references.",
+        },
         requestCount: { type: "integer", minimum: 1 },
         inputPreparation: {
           type: "object",
@@ -143,16 +153,22 @@ export let connection: { url: string; token: string } | undefined;
 async function dispatch(name: string, args: Record<string, unknown>): Promise<unknown> {
   switch (name) {
     case "list_models":
-      return combinations.map(({ id, label, provider, maxReferences, mask, regions, fields, docs }) => ({
-        id,
-        label,
-        provider,
-        maxReferences,
-        mask,
-        regions,
-        docs,
-        fields: fields.map(({ visible, ...field }) => ({ ...field, conditional: !!visible })),
-      }));
+      return combinations.map(
+        ({ id, label, provider, maxReferences, mask, regions, fields, docs, creationControl }) => ({
+          id,
+          label,
+          provider,
+          maxReferences,
+          mask,
+          regions,
+          docs,
+          creationControl,
+          ...(creationControl
+            ? { creationModes: ["generate", "edit", "auto"], defaultCreationMode: "generate", editTargetRequired: true }
+            : {}),
+          fields: fields.map(({ visible, ...field }) => ({ ...field, conditional: !!visible })),
+        }),
+      );
     case "generate": {
       const combination = combinationById(String(args.combinationId));
       const draft = { ...initialDraft(combination), ...args } as GenerationDraft;

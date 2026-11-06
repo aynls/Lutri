@@ -28,6 +28,7 @@ export const combination: ModelCombination = {
   label: "Seedream 5 Lite",
   provider: "fal",
   protocol: "fal",
+  creationControl: "prompt",
   maxReferences: 14,
   regions: undefined,
   fields,

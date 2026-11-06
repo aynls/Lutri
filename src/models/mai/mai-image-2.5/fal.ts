@@ -18,6 +18,7 @@ export const maiImage25Fal: ModelCombination = {
   label: "MAI Image 2.5",
   provider: "fal",
   protocol: "fal",
+  creationControl: "prompt",
   maxReferences: 1,
   fields,
   groups: [

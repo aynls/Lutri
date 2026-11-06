@@ -20,6 +20,7 @@ export const combination: ModelCombination = {
   label: "Grok Imagine Image 2.0",
   provider: "fal",
   protocol: "fal",
+  creationControl: "prompt",
   maxReferences: 5,
   fields,
   groups: [

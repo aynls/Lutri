@@ -35,6 +35,7 @@ export const combination: ModelCombination = {
   label: "Nano Banana Pro",
   provider: "fal",
   protocol: "fal",
+  creationControl: "context",
   maxReferences: 14,
   fields,
   groups: [

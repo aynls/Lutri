@@ -15,6 +15,7 @@ import { AssetPicker } from "../gallery/AssetPicker";
 import { Dialog } from "../components/Dialog";
 import { chooseImages } from "../gallery/actions";
 import { combinationById } from "../models";
+import { editTargetId } from "../models/creation";
 import { c } from "../create/messages";
 import { writerMessages } from "./request";
 
@@ -255,7 +256,8 @@ export function Writers({
               onAdd={(source) => void addSource(source).catch(onError)}
               onView={onView}
               limit={referenceLimit}
-              primary={combinationById(writerDraft.combinationId).primaryReference}
+              targetId={editTargetId(writerDraft, combinationById(writerDraft.combinationId))}
+              stableTarget={writerDraft.creationMode === "edit"}
               onNotice={setNotice}
             />
             {notice && (

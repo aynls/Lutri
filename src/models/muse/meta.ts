@@ -18,6 +18,7 @@ export const museImageMeta: ModelCombination = {
   label: "Muse Image",
   provider: "meta",
   protocol: "images",
+  creationControl: "prompt",
   maxReferences: 10,
   fields,
   groups: [

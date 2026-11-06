@@ -1,3 +1,4 @@
+import { c } from "../../../create/messages";
 import { ParameterFields } from "../../../create/components/Fields";
 import { adv, count, seed, select, text, toggle } from "../../fields";
 import { request, validateFields, values } from "../../shared";
@@ -6,7 +7,11 @@ import type { FieldDefinition, ModelCombination } from "../../types";
 const fields: FieldDefinition[] = [
   {
     ...select("edit_mode", ["Edit mode", "编辑方式", "編集モード"], ["generate", "precise"]),
-    visible: (d) => d.references.length > 0,
+    optionLabels: {
+      generate: { en: "Standard edit", zh: "常规编辑", ja: "通常編集" },
+      precise: { en: "Precise edit", zh: "精确编辑", ja: "精密編集" },
+    },
+    visible: (d) => d.references.length > 0 || d.parameters.edit_mode === "precise",
   },
   select("quality", ["Quality", "质量", "品質"], ["very_low", "low", "medium", "high"]),
   {
@@ -62,6 +67,7 @@ export const ideogram45Comfy: ModelCombination = {
   outputCount: (p) => Number(p.num_images ?? p.numberResults ?? 1),
   validate: (draft) => {
     const errors = validateFields(fields, draft);
+    if (draft.parameters.edit_mode === "precise" && !draft.references.length) errors.push(c("chooseEditTarget"));
     if (draft.prompt.length > 10000) errors.push("prompt ≤ 10000");
     if (draft.parameters.quality === "very_low" && !draft.references.length) errors.push("very_low: references ≥ 1");
     if (draft.mask && draft.references.length > 4) errors.push("mask: references ≤ 4");
@@ -70,7 +76,8 @@ export const ideogram45Comfy: ModelCombination = {
   },
   compile: (context) => {
     const p = values(fields, context.draft),
-      precise = p.edit_mode === "precise" && context.images.length > 0;
+      precise = p.edit_mode === "precise";
+    if (precise && !context.images.length) throw new Error(c("chooseEditTarget"));
     delete p.edit_mode;
     const compiled = request("comfy", "https://api.comfy.org/v2/models/ideogram/ideogram-4-5", {
       ...p,

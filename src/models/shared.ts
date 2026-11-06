@@ -73,6 +73,7 @@ export function validateFields(fields: FieldDefinition[], draft: GenerationDraft
 export function initialDraft(combination: ModelCombination): GenerationDraft {
   return {
     combinationId: combination.id,
+    ...(combination.creationControl ? { creationMode: "generate" as const } : {}),
     prompt: "",
     references: [],
     regions: [],

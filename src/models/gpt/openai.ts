@@ -23,6 +23,7 @@ export function openAICombination(model: string, label: string, version26: boole
     label,
     provider: "openai",
     protocol: "images",
+    creationControl: "prompt",
     maxReferences: 16,
     primaryReference: true,
     mask: "alpha",

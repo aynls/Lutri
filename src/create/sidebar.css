@@ -387,3 +387,8 @@
   padding: 3px;
   flex-shrink: 0;
 }
+.creation-mode-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}

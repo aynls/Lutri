@@ -20,6 +20,8 @@
 
 V4 Styles 必须提供 `style_id` 或 1–10 张风格参考图；也可以通过 multipart 的 `style_references` 上传。参考图为 PNG、JPG 或 WEBP，单张小于 20 MB，总计不超过 64 MB。结果中可能包含新建的 `style_id`，后续可复用；结果 `data` 每项对应一张图片，默认 URL 约保留 24 小时。风格与创建它的模型关联。V4.1 支持图生图；V4 Styles 不支持图生图和局部重绘。两者均不支持 `negative_prompt`、预置 `style` 和 `text_layout`。
 
+Lutri 的 V4.1 / Pro / Utility / Utility Pro 原厂组合提供“风格生成／编辑／自动”。风格生成走 generations，最多 10 张参考图通过 `style_reference_urls` 发送，不能与 `style_id` 同时提供。编辑走 `POST /v1/images/imageToImage`，只能输入一张原图，必填的 `strength` 为 0–1，Lutri 初始值为 0.5。编辑请求不发送 size，且不支持 V4.1 的 style_id / style_match；保留的风格设置需清空后再编辑。自动模式有图时走 imageToImage。来源：[V4.1 风格参考](https://www.recraft.ai/docs/api-reference/models/recraft-v4-1)、[图生图](https://www.recraft.ai/docs/api-reference/tools/image-to-image)。
+
 ## Runware
 
 请求 `POST https://api.runware.ai/v1`，Bearer API key，JSON 数组中放置 `imageInference` 任务和唯一 UUID v4 `taskUUID`。模型 ID 分别为 `recraft:v4.1@0`、`recraft:v4.1-pro@0`、`recraft:v4.1-utility@0`、`recraft:v4.1-utility-pro@0`、`recraft:v4@styles` 和 `recraft:v4@styles-pro`。输出类型可为 `URL`、`base64Data`、`dataURI`；结果在 `data` 数组，其图片字段分别为 `imageURL`、`imageBase64Data`、`imageDataURI`。

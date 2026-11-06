@@ -12,6 +12,8 @@ import { taskText } from "../i18n/tasks";
 import { TaskUsage } from "./TaskUsage";
 import { retryResultExport } from "../services/generation";
 import { native } from "../services/native";
+import { c } from "../create/messages";
+import { creationMode, editTargetId } from "../models/creation";
 
 export function RequestDetails({
   task,
@@ -52,6 +54,31 @@ export function RequestDetails({
         <dd>{combination.label}</dd>
         <dt>{t("provider")}</dt>
         <dd>{providerNames[combination.provider]}</dd>
+        {combination.creationControl && (
+          <>
+            <dt>{c("creationMode")}</dt>
+            <dd>
+              {creationMode(task.draft) === "auto"
+                ? t("automatic")
+                : c(
+                    creationMode(task.draft) === "edit"
+                      ? "editMode"
+                      : combination.creationControl === "style"
+                        ? "styleGenerateMode"
+                        : "generateMode",
+                  )}
+            </dd>
+            {editTargetId(task.draft, combination) && (
+              <>
+                <dt>{t("editTarget")}</dt>
+                <dd>
+                  {task.draft.references.find((ref) => ref.id === editTargetId(task.draft, combination))?.name ??
+                    t("missing")}
+                </dd>
+              </>
+            )}
+          </>
+        )}
         <dt>{t("request")}</dt>
         <dd>
           <code>{task.id}</code>

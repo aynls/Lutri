@@ -3,6 +3,7 @@ import type { ModelCombination } from "../models/types";
 import { assetData } from "../services/native";
 import { prepareMask } from "../services/masks";
 import { c } from "./messages";
+import { orderedCreationDraft } from "../models/creation";
 
 async function bitmap(data: string) {
   const response = await fetch(data);
@@ -65,6 +66,7 @@ function assertOpaque(image: ImageBitmap) {
 
 /** Prepare sending copies. Regions use normalized coordinates, so uniform resizing preserves them. */
 export async function prepareGenerationInputs(draft: GenerationDraft, combination: ModelCombination) {
+  draft = orderedCreationDraft(draft, combination);
   const maximum = draft.inputPreparation?.maxEdge;
   if (maximum !== undefined && (!Number.isSafeInteger(maximum) || maximum < 256 || maximum > 8192))
     throw new Error(`${c("maxEdge")}: 256–8192`);

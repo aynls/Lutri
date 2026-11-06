@@ -95,6 +95,8 @@ HTTP 请求发送至 `https://api.runware.ai/v1`，使用 `Authorization: Bearer
 
 fal 将文生图和编辑分成两个端点。2.1 使用 `google/nano-banana-2.1` 和 `google/nano-banana-2.1/edit`；2 使用 `fal-ai/nano-banana-2` 和 `fal-ai/nano-banana-2/edit`；Pro 使用 `fal-ai/nano-banana-pro` 和 `fal-ai/nano-banana-pro/edit`。
 
+Lutri 对这三个 fal 组合提供创作方式。2 / Pro 的生成模式使用基础路径，将参考图按顺序编码为 `context` 中的 `{type: "image", image_url: "..."}`，排在用户已有 context 之前，不重复发送 image_urls；引用图片和 context 图片合计最多 14 张。编辑模式通过 image_urls 发送原图及参考图并走 /edit，原图以稳定引用 ID 指定。2.1 有图片时仍走 /edit，以提示词区分参考创作与编辑原图。自动模式保留原有分流及提示词。
+
 使用 `@fal-ai/client` 设置 `FAL_KEY` 后可调用 `fal.subscribe(model, { input: {...} })`；长任务可用 `fal.queue.submit`、`status` 和 `result`。`prompt` 必填，编辑使用有序 `image_urls`，接受可访问 URL 或 Base64 data URI。2 的编辑端点将 `image_urls` 和 `context` 中图片合计限制为 14 张；2.1 最多 14 张。结果的 `images` 数组包含图片 URL；`sync_mode` 可返回 data URI，但结果不会保存在请求历史中。
 
 | 字段 | fal 语义 |

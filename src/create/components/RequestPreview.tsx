@@ -5,6 +5,7 @@ import type { ModelCombination } from "../../models/types";
 import { getState } from "../../services/store";
 import { preparedDimensions } from "../prepareInputs";
 import { RememberedDetails } from "./RememberedDetails";
+import { orderedCreationDraft } from "../../models/creation";
 
 export function RequestPreview({
   combination,
@@ -19,6 +20,7 @@ export function RequestPreview({
     body: Json | undefined,
     error = "";
   try {
+    draft = orderedCreationDraft(draft, combination);
     const compiled = combination.compile({
       draft,
       prompt: compilePrompt(draft, draft.references),

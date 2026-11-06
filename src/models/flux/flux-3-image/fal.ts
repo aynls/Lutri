@@ -21,6 +21,7 @@ export const combination: ModelCombination = {
   label: "FLUX 3 Image",
   provider: "fal",
   protocol: "fal",
+  creationControl: "prompt",
   maxReferences: 10,
   regions: "prompt",
   fields,
