@@ -1,0 +1,329 @@
+.creation-panel {
+  container-type: inline-size;
+}
+.creation-host {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.workspace-hidden {
+  display: none;
+}
+.creation-host .creation-workspace {
+  min-width: 0;
+}
+.creation-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  gap: 18px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+.creation-scroll > * {
+  flex-shrink: 0;
+  min-width: 0;
+}
+.creation-credential {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  margin-top: -8px;
+}
+.creation-credential button {
+  padding: 2px 6px;
+  font-size: 12px;
+}
+.prompt-length {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.parameter-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.creation-section {
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+.creation-section > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 550;
+  padding: 10px 0;
+  color: var(--muted);
+}
+.creation-section > .parameter-fields,
+.creation-section > .frame-controls {
+  padding: 4px 0 8px;
+}
+.frame-controls {
+  display: grid;
+  gap: 12px;
+}
+.frame-dimensions {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+}
+.frame-dimensions > label,
+.frame-dimensions > .field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: stretch;
+}
+.frame-dimensions > span {
+  padding-bottom: 7px;
+  color: var(--muted);
+}
+.frame-dimensions input {
+  width: 100%;
+}
+.frame-presets,
+.input-preparation-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(100px, 1fr);
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+.encoded-size > summary {
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.encoded-size .field {
+  margin-top: 8px;
+}
+.fixed-field-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+.fixed-field-value button {
+  padding: 2px 4px;
+  font-size: 11px;
+}
+.creation-panel .has-error input,
+.creation-panel .has-error select,
+.creation-panel .has-error textarea,
+.creation-panel [aria-invalid="true"].prompt-editor {
+  border-color: #b26557;
+}
+.field-error {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.creation-panel .references {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.creation-panel .reference-item {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+.creation-panel .reference-preview {
+  height: 82px;
+  width: 82px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.creation-panel .reference-item.missing .reference-preview {
+  border-color: #b26557;
+}
+.creation-panel .reference-information {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+.creation-panel .reference-name input {
+  font-size: 12px;
+  min-width: 0;
+}
+.creation-panel .reference-dims {
+  padding: 0;
+  font-size: 11px;
+}
+.creation-panel .reference-actions {
+  justify-content: flex-start;
+  gap: 7px;
+}
+.creation-panel .reference-actions button {
+  padding: 3px;
+}
+.creation-panel .reference-actions button:last-child {
+  margin-left: auto;
+}
+.creation-panel .reference-add {
+  min-height: 38px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.reference-source-menu {
+  position: relative;
+}
+.reference-source-menu > summary {
+  cursor: pointer;
+  display: flex;
+  padding: 3px 5px;
+  list-style: none;
+}
+.reference-source-menu > div {
+  min-width: 150px;
+  right: 0;
+}
+.saved-styles {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 9px;
+}
+.saved-styles .field-inline {
+  flex-wrap: wrap;
+}
+.saved-styles .field-inline input {
+  min-width: 90px;
+}
+.saved-styles label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.saved-styles button {
+  font-size: 11px;
+}
+.submit-panel {
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 12px 20px 15px;
+}
+.generate-submit-row {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+}
+.generate-submit-row > label {
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+}
+.generate-submit-row > label input {
+  width: 100%;
+  padding: 10px 6px;
+}
+.generate-submit-row > .primary-button {
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.generate-submit-row .primary-button kbd {
+  font-size: 10px;
+}
+.submit-reason {
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: left;
+  padding: 0;
+  overflow-wrap: anywhere;
+  justify-content: start;
+}
+.validation-notice {
+  max-height: min(120px, 20vh);
+}
+.validation-notice button {
+  display: inline;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  font-size: inherit;
+}
+.feed {
+  position: relative;
+}
+.new-results-pill {
+  position: sticky;
+  top: 6px;
+  z-index: 4;
+  display: block;
+  margin: 0 auto 10px;
+  background: var(--accent);
+  color: var(--surface);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 8px 14px;
+}
+.result-actions {
+  flex-wrap: wrap;
+}
+.result-card > .task-usage-summary {
+  display: block;
+  padding: 0 12px 8px;
+  font-size: 10px;
+  color: var(--muted);
+}
+@container (max-width: 320px) {
+  .creation-panel .field:not(.field-json) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+  }
+  .creation-scroll {
+    padding: 16px 12px;
+  }
+  .submit-panel {
+    padding: 10px 12px;
+  }
+  .generate-submit-row {
+    grid-template-columns: 62px minmax(0, 1fr);
+    gap: 6px;
+  }
+  .generate-submit-row .primary-button kbd {
+    display: none;
+  }
+}
+@container (min-width: 440px) {
+  .parameter-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .parameter-fields > .field {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .parameter-fields > .field-text,
+  .parameter-fields > .field-json {
+    grid-column: 1 / -1;
+  }
+}

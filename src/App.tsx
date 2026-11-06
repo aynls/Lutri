@@ -11,6 +11,8 @@ import {
 } from "@phosphor-icons/react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
+import { initializeDesktop } from "./services/desktop";
+import { useLocale } from "./i18n";
 import { AssetPicker } from "./gallery/AssetPicker";
 import { ResizablePanel } from "./components/ResizablePanel";
 import { BrandMark } from "./components/ModelIcon";
@@ -24,12 +26,17 @@ import { validateDraft } from "./models/validateDraft";
 import { combinationById } from "./models";
 import { initialDraft } from "./models/shared";
 import { useApplication, loadApplication, saveDraft, removeFeed, getState, refreshGallery } from "./services/store";
-import { assetExists } from "./services/native";
+import { assetExists, importAsset, native } from "./services/native";
 import { ImageViewer } from "./gallery/ImageViewer";
-import { resumeTasks, submitBatch } from "./services/generation";
+import { cancelBatchQueued, resumeTasks, submitBatch } from "./services/generation";
 import { Feed } from "./create/Feed";
 import { PromptField } from "./create/components/PromptField";
-import { References } from "./create/components/References";
+import { References, type ReferenceSource } from "./create/components/References";
+import { c } from "./create/messages";
+import { InputPreparation } from "./create/components/InputPreparation";
+import { Dialog } from "./components/Dialog";
+import { chooseImages } from "./gallery/actions";
+import { takeViewerContext } from "./gallery/viewContext";
 import { RequestPreview } from "./create/components/RequestPreview";
 import { Regions } from "./create/components/Regions";
 import { Gallery } from "./gallery/Gallery";
@@ -45,6 +52,7 @@ import "./gallery/gallery.css";
 import "./history/history.css";
 import "./upscale/upscale.css";
 import "./create/editor.css";
+import "./create/sidebar.css";
 import "./typography.css";
 
 type Page = "creation" | "upscale" | "gallery" | "history" | "settings";
@@ -57,6 +65,7 @@ const navigation = [
 let started = false;
 
 export default function App() {
+  useLocale();
   const state = useApplication();
   const [page, setPage] = useState<Page>("creation"),
     [error, setError] = useState(""),
@@ -65,6 +74,15 @@ export default function App() {
     [writers, setWriters] = useState(false),
     [maskEditor, setMaskEditor] = useState(false);
   const [upscaleInput, setUpscaleInput] = useState<{ entries: GalleryEntry[]; nonce: string }>();
+  const [credential, setCredential] = useState<boolean | undefined>(),
+    [sent, setSent] = useState(false);
+  const [urlImport, setUrlImport] = useState(false),
+    [imageUrl, setImageUrl] = useState(""),
+    [importBusy, setImportBusy] = useState(false);
+  const [editing, setEditing] = useState<GalleryEntry>(),
+    [keepReferences, setKeepReferences] = useState(false);
+  const creationScroll = useRef<HTMLDivElement>(null);
+  const scrollPositions = useRef(new Map<string, number>());
   const [dragging, setDragging] = useState(false),
     [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
@@ -78,17 +96,45 @@ export default function App() {
         .then(() => {
           if (!new URLSearchParams(location.search).has("asset")) return resumeTasks();
         })
+        .then(() => initializeDesktop(onError))
         .catch(onError);
     }
   }, [onError]);
   useEffect(() => {
     document.documentElement.dataset.theme = state.preferences.theme;
   }, [state.preferences.theme]);
+  useEffect(() => {
+    let disposed = false;
+    setCredential(undefined);
+    const provider = combinationById(state.draft.combinationId).provider;
+    void native<boolean>("credential_present", { provider })
+      .then((value) => {
+        if (!disposed) setCredential(value);
+      })
+      .catch(onError);
+    return () => {
+      disposed = true;
+    };
+  }, [state.draft.combinationId, state.preferences.providers, page, onError]);
+  useEffect(() => {
+    if (page !== "creation") return;
+    requestAnimationFrame(() => {
+      if (creationScroll.current)
+        creationScroll.current.scrollTop = scrollPositions.current.get(getState().draft.combinationId) ?? 0;
+    });
+  }, [page]);
+  useEffect(() => {
+    if (!sent) return;
+    const timer = window.setTimeout(() => setSent(false), 1400);
+    return () => window.clearTimeout(timer);
+  }, [sent]);
   const receiveImages = useCallback(
     async (entries: GalleryEntry[]) => {
       if (!entries.length) return;
       if (page === "creation") {
         const draft = getState().draft;
+        if (draft.references.length + entries.length > combinationById(draft.combinationId).maxReferences)
+          throw new Error(c("tooMany"));
         await saveDraft({
           ...draft,
           references: [
@@ -147,8 +193,9 @@ export default function App() {
     return () => window.removeEventListener("focus", refresh);
   }, [onError]);
   const view = (id: string) => {
+    const context = takeViewerContext(id);
     const window = new WebviewWindow(`image-${crypto.randomUUID()}`, {
-      url: `index.html?asset=${encodeURIComponent(id)}`,
+      url: `index.html?asset=${encodeURIComponent(id)}&context=${context}`,
       title: "Lutri",
       width: 1100,
       height: 800,
@@ -157,6 +204,10 @@ export default function App() {
   };
   const addReferences = (entries: GalleryEntry[]) => {
     const draft = getState().draft;
+    if (draft.references.length + entries.length > combinationById(draft.combinationId).maxReferences) {
+      onError(c("tooMany"));
+      return;
+    }
     changeDraft({
       ...draft,
       references: [
@@ -173,8 +224,14 @@ export default function App() {
     setPage("creation");
   };
   const addReference = (entry: GalleryEntry) => addReferences([entry]);
-  const switchModel = (next: ModelCombination) => {
+  const switchModel = async (next: ModelCombination) => {
     const current = getState().draft;
+    if (
+      ((current.mask && !next.mask) || (current.regions.length && !next.regions)) &&
+      !(await confirm(c("switchWarning"), { title: "Lutri", kind: "warning" }))
+    )
+      return;
+    scrollPositions.current.set(current.combinationId, creationScroll.current?.scrollTop ?? 0);
     drafts.current.set(current.combinationId, structuredClone(current));
     const previous = drafts.current.get(next.id) ?? initialDraft(next);
     changeDraft({
@@ -182,16 +239,80 @@ export default function App() {
       prompt: current.prompt,
       references: current.references,
       requestCount: current.requestCount,
+      inputPreparation: current.inputPreparation,
       regions: next.regions
         ? previous.regions.filter(
             (region) => !region.referenceId || current.references.some((ref) => ref.id === region.referenceId),
           )
         : [],
       mask:
-        next.mask && previous.mask && current.references.some((ref) => ref.id === previous.mask?.referenceId)
-          ? previous.mask
-          : undefined,
+        next.mask && current.mask && current.references[0]?.id === current.mask.referenceId ? current.mask : undefined,
     });
+    requestAnimationFrame(() => {
+      if (creationScroll.current) creationScroll.current.scrollTop = scrollPositions.current.get(next.id) ?? 0;
+    });
+  };
+  const addSource = async (source: ReferenceSource) => {
+    if (source === "library") {
+      setPicker(true);
+      return;
+    }
+    if (source === "url") {
+      setUrlImport(true);
+      return;
+    }
+    if (source === "files") {
+      addReferences(await chooseImages());
+      return;
+    }
+    const content = await navigator.clipboard.read();
+    const files: File[] = [];
+    for (const item of content) {
+      const type = item.types.find((type) => type.startsWith("image/"));
+      if (type) files.push(new File([await item.getType(type)], "Clipboard.png", { type }));
+    }
+    if (!files.length) throw new Error(c("noClipboard"));
+    addReferences(await importFiles(files));
+  };
+  const applyEdit = (entry: GalleryEntry, keep: boolean) => {
+    const current = getState().draft,
+      target = combinationById(current.combinationId);
+    if (!target.maxReferences) {
+      onError(c("unsupportedImages"));
+      return;
+    }
+    const reference = current.references.find((ref) => ref.assetId === entry.asset.id) ?? {
+      id: crypto.randomUUID(),
+      assetId: entry.asset.id,
+      name: entry.asset.name,
+      purpose: "reference" as const,
+    };
+    const references = [reference, ...(keep ? current.references.filter((ref) => ref.id !== reference.id) : [])];
+    if (references.length > target.maxReferences) {
+      onError(c("tooMany"));
+      return;
+    }
+    const retained = new Set(references.map((ref) => ref.id));
+    const mask = current.mask?.referenceId === reference.id ? current.mask : undefined;
+    changeDraft({
+      ...current,
+      references,
+      mask,
+      regions: current.regions.filter((region) => !region.referenceId || retained.has(region.referenceId)),
+    });
+    if (current.mask && !mask) void message(c("maskRemoved"), { title: "Lutri", kind: "warning" });
+    setEditing(undefined);
+    setPage("creation");
+  };
+  const editImage = (entry: GalleryEntry) => {
+    if (!combinationById(getState().draft.combinationId).maxReferences) {
+      onError(c("unsupportedImages"));
+      return;
+    }
+    if (getState().draft.references.length) {
+      setKeepReferences(false);
+      setEditing(entry);
+    } else applyEdit(entry, false);
   };
   const restore = async (draft: GenerationDraft) => {
     const availability = await Promise.all(
@@ -208,33 +329,43 @@ export default function App() {
     if (missing.size || maskMissing) await message(t("missing"), { title: "Lutri", kind: "warning" });
   };
   const submit = async () => {
-    if (submittingRef.current) return;
+    if (submittingRef.current || !canSubmit) return;
     submittingRef.current = true;
     setSubmitting(true);
     try {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       const invalid = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(".creation-panel :invalid");
       if (invalid) {
+        for (let parent = invalid.parentElement; parent; parent = parent.parentElement)
+          if (parent instanceof HTMLDetailsElement) parent.open = true;
+        invalid.focus();
         invalid.reportValidity();
         return;
       }
+      const submittedDraft = getState().draft;
+      if (validateDraft(submittedDraft).length) return;
       const missing = await Promise.all(
-        state.draft.references.map(async (ref) => ({ ref, exists: await assetExists(ref.assetId) })),
+        submittedDraft.references.map(async (ref) => ({ ref, exists: await assetExists(ref.assetId) })),
       );
       const ids = new Set(missing.filter((entry) => !entry.exists).map((entry) => entry.ref.id));
-      const maskMissing = state.draft.mask && !(await assetExists(state.draft.mask.assetId));
+      const maskMissing = submittedDraft.mask && !(await assetExists(submittedDraft.mask.assetId));
       if (
-        (ids.size || maskMissing || missingPromptReferences(state.draft).length) &&
+        (ids.size || maskMissing || missingPromptReferences(submittedDraft).length) &&
         !(await confirm(t("missingWarning"), { title: "Lutri", kind: "warning" }))
       )
         return;
       const draft = {
-        ...state.draft,
-        references: state.draft.references.filter((ref) => !ids.has(ref.id)),
-        regions: state.draft.regions.filter((region) => !region.referenceId || !ids.has(region.referenceId)),
-        mask: state.draft.mask && (ids.has(state.draft.mask.referenceId) || maskMissing) ? undefined : state.draft.mask,
+        ...submittedDraft,
+        references: submittedDraft.references.filter((ref) => !ids.has(ref.id)),
+        regions: submittedDraft.regions.filter((region) => !region.referenceId || !ids.has(region.referenceId)),
+        mask:
+          submittedDraft.mask && (ids.has(submittedDraft.mask.referenceId) || maskMissing)
+            ? undefined
+            : submittedDraft.mask,
       };
-      if (ids.size || maskMissing) await saveDraft({ ...draft, references: state.draft.references });
-      await submitBatch({ ...draft, references: state.draft.references });
+      if (ids.size || maskMissing) await saveDraft({ ...draft, references: submittedDraft.references });
+      await submitBatch({ ...draft, references: submittedDraft.references });
+      setSent(true);
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -247,6 +378,30 @@ export default function App() {
   const combination = combinationById(state.draft.combinationId),
     Form = combination.Form;
   const validation = validateDraft(state.draft);
+  const configuration = state.preferences.providers[combination.provider];
+  const configured =
+    credential &&
+    (combination.provider !== "azure" || !!(configuration?.endpoint?.trim() && configuration?.deployment?.trim()));
+  const promptEmpty =
+    !state.draft.prompt.trim() &&
+    !state.draft.parameters.layer_decomposition &&
+    !state.draft.parameters.structured_prompt;
+  const canSubmit = state.ready && !submitting && !!configured && !validation.length && !promptEmpty;
+  const queuedBatches = state.batches.filter((batch) =>
+    state.tasks.some((task) => task.batchId === batch.id && task.status === "queued"),
+  );
+  const focusIssue = (issue: string) => {
+    const field = Array.from(document.querySelectorAll<HTMLElement>(".creation-panel [data-field]")).find(
+      (field) =>
+        issue.toLowerCase().includes(field.dataset.field!.toLowerCase()) ||
+        issue.includes(field.querySelector("label")?.textContent ?? "\0"),
+    );
+    if (!field) return;
+    for (let parent = field.parentElement; parent; parent = parent.parentElement)
+      if (parent instanceof HTMLDetailsElement) parent.open = true;
+    field.scrollIntoView({ block: "center", behavior: "instant" });
+    field.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")?.focus();
+  };
   return (
     <div className="app-shell">
       <nav className="navigation">
@@ -274,35 +429,75 @@ export default function App() {
             <h1>{t(page)}</h1>
           </div>
           {page === "creation" ? (
-            <button onClick={() => void removeFeed(state.feed.map((slot) => slot.id)).catch(onError)}>
-              {t("clear")}
-            </button>
+            <div className="button-row">
+              {!!queuedBatches.length && (
+                <button
+                  onClick={() =>
+                    void Promise.all(queuedBatches.map((batch) => cancelBatchQueued(batch.id))).catch(onError)
+                  }
+                >
+                  {c("stopQueued")} · {state.tasks.filter((task) => task.status === "queued").length}
+                </button>
+              )}
+              <button onClick={() => void removeFeed(state.feed.map((slot) => slot.id)).catch(onError)}>
+                {t("clear")}
+              </button>
+            </div>
           ) : null}
         </header>
-        {page === "creation" ? (
+        <div className={page === "creation" ? "creation-host" : "creation-host workspace-hidden"}>
           <div
             className="creation-workspace"
             onKeyDown={(event) => {
               if (document.querySelector("dialog[open]")) return;
-              if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+              if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !event.nativeEvent.isComposing) {
                 event.preventDefault();
-                if (!validation.length && state.draft.prompt.trim()) void submit().catch(onError);
+                if (canSubmit) void submit().catch(onError);
               }
             }}
           >
             <ResizablePanel className="creation-panel" storageKey="lutri.creation.panel">
-              <div className="creation-scroll">
-                <ModelSelector value={combination} onChange={switchModel} />
-                <PromptField draft={state.draft} onChange={changeDraft} onWriters={() => setWriters(true)} />
-                <References
+              <div
+                className="creation-scroll"
+                ref={creationScroll}
+                onScroll={(event) =>
+                  scrollPositions.current.set(state.draft.combinationId, event.currentTarget.scrollTop)
+                }
+              >
+                <ModelSelector value={combination} onChange={(next) => void switchModel(next).catch(onError)} />
+                <div className="creation-credential" role="status">
+                  <span className={credential === false ? "error-text" : "muted"}>
+                    {credential === undefined
+                      ? "…"
+                      : c(configured ? "configured" : credential ? "needsConfiguration" : "needsKey")}
+                  </span>
+                  <button
+                    onClick={() => {
+                      sessionStorage.setItem("lutri.settings.provider", combination.provider);
+                      setPage("settings");
+                    }}
+                  >
+                    {c("configure")}
+                  </button>
+                </div>
+                <PromptField
                   draft={state.draft}
-                  gallery={state.gallery}
                   onChange={changeDraft}
-                  onAdd={() => setPicker(true)}
-                  onView={view}
-                  limit={combination.maxReferences}
-                  primary
+                  onWriters={() => setWriters(true)}
+                  limit={combination.promptLimit}
                 />
+                {!!combination.maxReferences && (
+                  <References
+                    draft={state.draft}
+                    gallery={state.gallery}
+                    onChange={changeDraft}
+                    onAdd={(source) => void addSource(source).catch(onError)}
+                    onView={view}
+                    limit={combination.maxReferences}
+                    primary={combination.primaryReference}
+                    onNotice={(notice) => void message(notice, { title: "Lutri", kind: "warning" })}
+                  />
+                )}
                 {combination.mask && state.draft.references.length ? (
                   <div className="button-row">
                     <button onClick={() => setMaskEditor(true)}>{t("mask")}</button>
@@ -315,12 +510,19 @@ export default function App() {
                   <div className="section-heading">
                     <span>{t("parameters")}</span>
                     <button
-                      onClick={() => changeDraft({ ...state.draft, parameters: initialDraft(combination).parameters })}
+                      onClick={() =>
+                        changeDraft({
+                          ...state.draft,
+                          parameters: initialDraft(combination).parameters,
+                          requestCount: 1,
+                        })
+                      }
                     >
                       {t("reset")}
                     </button>
                   </div>
                   <Form combination={combination} draft={state.draft} onChange={changeDraft} />
+                  {!!combination.maxReferences && <InputPreparation draft={state.draft} onChange={changeDraft} />}
                   <RequestPreview
                     combination={combination}
                     draft={state.draft}
@@ -337,47 +539,58 @@ export default function App() {
                     </summary>
                     <ul>
                       {validation.map((issue, index) => (
-                        <li key={index}>{issue}</li>
+                        <li key={index}>
+                          <button onClick={() => focusIssue(issue)}>{issue}</button>
+                        </li>
                       ))}
                     </ul>
                   </details>
                 )}
-                <label>
-                  {t("requestCount")}
-                  <input
-                    type="number"
-                    min={1}
-                    value={state.draft.requestCount}
-                    onChange={(e) => changeDraft({ ...state.draft, requestCount: Number(e.target.value) })}
-                  />
-                </label>
-                <button
-                  className="primary-button"
-                  disabled={
-                    !state.ready ||
-                    submitting ||
-                    validation.length > 0 ||
-                    (!state.draft.prompt.trim() &&
-                      !state.draft.parameters.layer_decomposition &&
-                      !state.draft.parameters.structured_prompt)
-                  }
-                  onClick={() => void submit().catch(onError)}
-                >
-                  <SparkleIcon weight="fill" />
-                  {submitting
-                    ? t("submitting")
-                    : `${t("generate")}${
-                        state.draft.requestCount * combination.outputCount(state.draft.parameters) > 1
-                          ? ` · ${state.draft.requestCount * combination.outputCount(state.draft.parameters)} ${t("imageCount")}`
-                          : ""
-                      }`}
-                  <kbd>Ctrl ↵</kbd>
-                </button>
+                {!configured && credential !== undefined ? (
+                  <button
+                    className="submit-reason"
+                    onClick={() => {
+                      sessionStorage.setItem("lutri.settings.provider", combination.provider);
+                      setPage("settings");
+                    }}
+                  >
+                    {c(credential ? "needsConfiguration" : "needsKey")} · {c("configure")}
+                  </button>
+                ) : validation.length ? (
+                  <button className="submit-reason" onClick={() => focusIssue(validation[0])}>
+                    {validation[0]}
+                  </button>
+                ) : promptEmpty ? (
+                  <span className="submit-reason muted">{c("promptRequired")}</span>
+                ) : null}
+                <div className="generate-submit-row">
+                  <label>
+                    {t("requestCount")}
+                    <input
+                      type="number"
+                      min={1}
+                      value={state.draft.requestCount}
+                      onChange={(e) => changeDraft({ ...state.draft, requestCount: Number(e.target.value) })}
+                    />
+                  </label>
+                  <button className="primary-button" disabled={!canSubmit} onClick={() => void submit().catch(onError)}>
+                    <SparkleIcon weight="fill" />
+                    {submitting
+                      ? t("submitting")
+                      : `${sent ? c("sent") : t("generate")}${
+                          state.draft.requestCount * combination.outputCount(state.draft.parameters) > 1
+                            ? ` · ${state.draft.requestCount * combination.outputCount(state.draft.parameters)} ${t("imageCount")}`
+                            : ""
+                        }`}
+                    <kbd>Ctrl ↵</kbd>
+                  </button>
+                </div>
               </div>
             </ResizablePanel>
             <Feed
               onView={view}
               onReference={addReference}
+              onEdit={editImage}
               onRelated={(id) => {
                 setSearch(id);
                 setPage("history");
@@ -385,7 +598,7 @@ export default function App() {
               onError={onError}
             />
           </div>
-        ) : null}
+        </div>
         {page === "gallery" ? (
           <Gallery
             onView={view}
@@ -394,6 +607,7 @@ export default function App() {
               setPage("upscale");
             }}
             onReference={addReference}
+            onEdit={editImage}
             onRelated={(id) => {
               setSearch(id);
               setPage("history");
@@ -433,6 +647,70 @@ export default function App() {
           onError={onError}
           limit={Math.max(0, combination.maxReferences - state.draft.references.length)}
         />
+      )}
+      {urlImport && (
+        <Dialog
+          title={c("url")}
+          className="compact-dialog"
+          onClose={() => setUrlImport(false)}
+          footer={
+            <>
+              <button disabled={importBusy} onClick={() => setUrlImport(false)}>
+                {t("cancel")}
+              </button>
+              <button
+                className="primary-button"
+                disabled={importBusy || !/^https?:\/\//i.test(imageUrl)}
+                onClick={() => {
+                  setImportBusy(true);
+                  void importAsset("URL", { url: imageUrl })
+                    .then(async (entry) => {
+                      await refreshGallery();
+                      addReferences([entry]);
+                      setImageUrl("");
+                      setUrlImport(false);
+                    })
+                    .catch(onError)
+                    .finally(() => setImportBusy(false));
+                }}
+              >
+                {t("import")}
+              </button>
+            </>
+          }
+        >
+          <input
+            autoFocus
+            type="url"
+            aria-label={c("url")}
+            value={imageUrl}
+            onChange={(event) => setImageUrl(event.target.value)}
+          />
+        </Dialog>
+      )}
+      {editing && (
+        <Dialog
+          title={c("edit")}
+          className="compact-dialog"
+          onClose={() => setEditing(undefined)}
+          footer={
+            <>
+              <button onClick={() => setEditing(undefined)}>{t("cancel")}</button>
+              <button className="primary-button" onClick={() => applyEdit(editing, keepReferences)}>
+                {c("edit")}
+              </button>
+            </>
+          }
+        >
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={keepReferences}
+              onChange={(event) => setKeepReferences(event.target.checked)}
+            />
+            {c("keepReferences")}
+          </label>
+        </Dialog>
       )}
       {dragging && (
         <div className="file-drop-overlay">

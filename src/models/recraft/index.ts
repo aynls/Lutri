@@ -79,6 +79,23 @@ function make(variant: (typeof variants)[number], provider: ProviderId): ModelCo
     protocol: provider === "fal" || provider === "runware" ? provider : "images",
     maxReferences: styles ? 10 : provider === "recraft" ? 1 : 0,
     fields,
+    inputPolicy:
+      styles && provider === "recraft"
+        ? { maxBytes: 19_999_999, totalBytes: 64_000_000, mediaTypes: ["image/jpeg", "image/png", "image/webp"] }
+        : styles && provider === "runware"
+          ? { minEdge: 256, maxBytes: 10_000_000, totalBytes: 64_000_000 }
+          : styles && provider === "fal"
+            ? { mediaTypes: ["image/jpeg", "image/png", "image/webp"] }
+            : undefined,
+    primaryReference: provider === "recraft" && !styles,
+    promptLimit: { max: 10000 },
+    groups: [
+      { id: "frame", fields: ["size", "image_size"] },
+      { id: "style", fields: ["style_id", "style_match", "colors", "background_color"] },
+      { id: "generation", fields: ["random_seed", "n", "numberResults"] },
+      { id: "output", fields: ["outputFormat", "image_format", "response_format"], collapsed: true },
+      { id: "advanced", fields: ["enable_safety_checker"], collapsed: true },
+    ],
     Form: ParameterFields,
     docs: ["doc/model/Recraft/Recraft-V4.md"],
     outputCount: (p) => Number(p.n ?? p.numberResults ?? 1),

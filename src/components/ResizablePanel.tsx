@@ -18,9 +18,13 @@ export function ResizablePanel({
   maxWidth?: number;
   side?: "left" | "right";
 }) {
-  const [width, setWidth] = useState(() => Number(localStorage.getItem(storageKey)) || initialWidth);
+  const clamp = (value: number) => Math.max(minWidth, Math.min(maxWidth, value));
+  const [width, setWidth] = useState(() => {
+    const stored = Number(localStorage.getItem(storageKey));
+    return clamp(Number.isFinite(stored) && stored > 0 ? stored : initialWidth);
+  });
   const resize = (next: number) => {
-    const value = Math.max(minWidth, Math.min(maxWidth, next));
+    const value = clamp(next);
     setWidth(value);
     localStorage.setItem(storageKey, String(value));
   };
@@ -38,6 +42,11 @@ export function ResizablePanel({
         tabIndex={0}
         onDoubleClick={() => resize(initialWidth)}
         onKeyDown={(event) => {
+          if (event.key === "Home" || event.key === "End") {
+            event.preventDefault();
+            resize(event.key === "Home" ? minWidth : maxWidth);
+            return;
+          }
           if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
             event.preventDefault();
             const step = event.key === "ArrowLeft" ? -16 : 16;
@@ -45,6 +54,8 @@ export function ResizablePanel({
           }
         }}
         onPointerDown={(event) => {
+          if (event.button !== 0 || !event.isPrimary) return;
+          event.currentTarget.focus();
           event.currentTarget.setPointerCapture(event.pointerId);
           event.preventDefault();
         }}
@@ -54,7 +65,14 @@ export function ResizablePanel({
             resize(side === "right" ? rect.right - event.clientX : event.clientX - rect.left);
           }
         }}
-        onPointerUp={(event) => event.currentTarget.releasePointerCapture(event.pointerId)}
+        onPointerUp={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId))
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onPointerCancel={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId))
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
       />
     </aside>
   );

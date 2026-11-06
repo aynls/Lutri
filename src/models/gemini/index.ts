@@ -113,6 +113,33 @@ function make(variant: (typeof variants)[number], provider: ProviderId): ModelCo
             : "images",
     maxReferences: 14,
     fields,
+    groups: [
+      { id: "frame", fields: ["aspect_ratio", "resolution", "width", "height"] },
+      {
+        id: "generation",
+        fields: ["thinking_level", "enable_web_search", "enable_image_search", "seed", "num_images", "numberResults"],
+      },
+      {
+        id: "output",
+        fields: ["output_format", "outputFormat", "mime_type", "sync_mode", "limit_generations", "return_history"],
+        collapsed: true,
+      },
+      {
+        id: "advanced",
+        fields: [
+          "safety_tolerance",
+          "system_prompt",
+          "temperature",
+          "top_p",
+          "max_output_tokens",
+          "history",
+          "context",
+          "previous_interaction_id",
+          "uploadImagesToStorage",
+        ],
+        collapsed: true,
+      },
+    ],
     Form: ParameterFields,
     docs: ["doc/model/Gemini/Nano-Banana-API.md"],
     outputCount: (p) => Number(p.num_images ?? p.numberResults ?? 1),

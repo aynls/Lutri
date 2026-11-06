@@ -1,8 +1,11 @@
-import { ArrowLeftIcon, ArrowRightIcon, PlusIcon, XIcon } from "@phosphor-icons/react";
+import { ArrowUpIcon, ArrowDownIcon, ArrowLineUpIcon, PlusIcon, XIcon } from "@phosphor-icons/react";
 import type { GalleryEntry, GenerationDraft } from "../../domain/types";
 import { removeReference } from "../../domain/references";
 import { t } from "../../i18n";
 import { AssetImage } from "../../gallery/AssetImage";
+import { c } from "../messages";
+
+export type ReferenceSource = "library" | "files" | "url" | "clipboard";
 
 export function References({
   draft,
@@ -12,22 +15,27 @@ export function References({
   onView,
   limit,
   primary,
+  onNotice,
 }: {
   draft: GenerationDraft;
   gallery: GalleryEntry[];
   onChange: (draft: GenerationDraft) => void;
-  onAdd: () => void;
+  onAdd: (source: ReferenceSource) => void;
   onView: (id: string) => void;
   limit: number;
   primary?: boolean;
+  onNotice: (message: string) => void;
 }) {
-  const move = (index: number, direction: number) => {
+  const move = (index: number, to: number) => {
     const references = [...draft.references];
-    [references[index], references[index + direction]] = [references[index + direction], references[index]];
-    onChange({ ...draft, references });
+    const [reference] = references.splice(index, 1);
+    references.splice(to, 0, reference);
+    const invalidMask = draft.mask && draft.mask.referenceId !== references[0]?.id;
+    onChange({ ...draft, references, mask: invalidMask ? undefined : draft.mask });
+    if (invalidMask) onNotice(c("maskRemoved"));
   };
   return (
-    <section>
+    <section className="references-section">
       <div className="section-heading">
         <span>
           {t("references")}{" "}
@@ -35,9 +43,25 @@ export function References({
             {draft.references.length} / {limit}
           </small>
         </span>
-        <button title={t("add")} onClick={onAdd} disabled={draft.references.length >= limit}>
-          <PlusIcon />
-        </button>
+        <details className="reference-source-menu action-menu">
+          <summary aria-label={t("add")}>
+            <PlusIcon />
+          </summary>
+          <div>
+            {(["library", "files", "url", "clipboard"] as const).map((source) => (
+              <button
+                key={source}
+                disabled={draft.references.length >= limit}
+                onClick={(event) => {
+                  event.currentTarget.closest("details")?.removeAttribute("open");
+                  onAdd(source);
+                }}
+              >
+                {c(source)}
+              </button>
+            ))}
+          </div>
+        </details>
       </div>
       <div className="references">
         {draft.references.map((reference, index) => {
@@ -53,7 +77,7 @@ export function References({
                 {asset ? <AssetImage entry={asset} thumbnail /> : <span className="missing-image">{t("missing")}</span>}
                 {primary && index === 0 ? <span className="reference-badge">{t("editTarget")}</span> : null}
               </button>
-              <div>
+              <div className="reference-information">
                 <div className="reference-name">
                   <small>{index + 1}.</small>
                   <input
@@ -75,16 +99,45 @@ export function References({
                     {asset.asset.width} × {asset.asset.height}
                   </small>
                 ) : null}
+                {reference.purpose !== "reference" && (
+                  <button
+                    className="error-text"
+                    onClick={() =>
+                      onChange({
+                        ...draft,
+                        references: draft.references.map((entry) =>
+                          entry.id === reference.id ? { ...entry, purpose: "reference" } : entry,
+                        ),
+                      })
+                    }
+                  >
+                    {reference.purpose} · {t("reset")}
+                  </button>
+                )}
                 <div className="reference-actions">
-                  <button disabled={index === 0} aria-label="←" onClick={() => move(index, -1)}>
-                    <ArrowLeftIcon />
+                  <button
+                    disabled={index === 0}
+                    title={c("moveFirst")}
+                    aria-label={c("moveFirst")}
+                    onClick={() => move(index, 0)}
+                  >
+                    <ArrowLineUpIcon />
+                  </button>
+                  <button
+                    disabled={index === 0}
+                    title={c("moveUp")}
+                    aria-label={c("moveUp")}
+                    onClick={() => move(index, index - 1)}
+                  >
+                    <ArrowUpIcon />
                   </button>
                   <button
                     disabled={index === draft.references.length - 1}
-                    aria-label="→"
-                    onClick={() => move(index, 1)}
+                    title={c("moveDown")}
+                    aria-label={c("moveDown")}
+                    onClick={() => move(index, index + 1)}
                   >
-                    <ArrowRightIcon />
+                    <ArrowDownIcon />
                   </button>
                   <button title={t("remove")} onClick={() => onChange(removeReference(draft, reference.id))}>
                     <XIcon />
@@ -94,7 +147,12 @@ export function References({
             </div>
           );
         })}
-        <button className="reference-add" title={t("add")} onClick={onAdd} disabled={draft.references.length >= limit}>
+        <button
+          className="reference-add"
+          title={t("add")}
+          onClick={() => onAdd("library")}
+          disabled={draft.references.length >= limit}
+        >
           <PlusIcon size={18} />
           {!draft.references.length && <span>{t("chooseImages")}</span>}
         </button>

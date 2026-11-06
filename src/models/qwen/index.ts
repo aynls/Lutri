@@ -68,6 +68,39 @@ function make(version: string, provider: ProviderId): ModelCombination {
     protocol: provider === "fal" || provider === "runware" ? provider : provider === "openrouter" ? "images" : "qwen",
     maxReferences: old ? 10 : 3,
     fields,
+    inputPolicy:
+      provider === "fal"
+        ? {
+            minEdge: 384,
+            maxEdge: 2048,
+            maxBytes: 10_000_000,
+            mediaTypes: ["image/jpeg", "image/png", "image/webp"],
+            opaque: true,
+          }
+        : provider === "qwencloud"
+          ? {
+              maxBytes: 10_000_000,
+              mediaTypes: ["image/jpeg", "image/png", "image/bmp", "image/tiff", "image/webp", "image/gif"],
+            }
+          : undefined,
+    groups: [
+      { id: "frame", fields: ["aspect_ratio", "resolution", "width", "height", "size", "image_size"] },
+      {
+        id: "generation",
+        fields: [
+          "seed",
+          "n",
+          "num_images",
+          "numberResults",
+          "prompt_extend",
+          "prompt_extend_mode",
+          "enable_prompt_expansion",
+          "enable_thinking",
+        ],
+      },
+      { id: "output", fields: ["output_format", "watermark", "sync_mode"], collapsed: true },
+      { id: "advanced", fields: ["negative_prompt", "enable_safety_checker"], collapsed: true },
+    ],
     Form: ParameterFields,
     docs: ["doc/model/Qwen/qwen-image/"],
     outputCount: (p) => Number(p.n ?? p.num_images ?? p.numberResults ?? 1),

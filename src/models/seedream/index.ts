@@ -107,6 +107,52 @@ function make(variant: "pro" | "flash" | "lite", provider: ProviderId): ModelCom
     maxReferences: provider === "openrouter" || lite ? 14 : 10,
     regions: lite ? undefined : "seedream",
     fields,
+    inputPolicy:
+      provider === "ark" || provider === "byteplus"
+        ? (draft) => ({
+            minEdge: 15,
+            minPixels: draft.parameters.layer_decomposition ? 262144 : 196,
+            maxPixels: 36_000_000,
+            maxRatio: 16,
+            maxBytes: 30_000_000,
+            mediaTypes: draft.parameters.layer_decomposition
+              ? ["image/png", "image/jpeg"]
+              : [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "image/bmp",
+                  "image/tiff",
+                  "image/gif",
+                  "image/heic",
+                  "image/heif",
+                ],
+          })
+        : undefined,
+    groups: [
+      { id: "frame", fields: ["aspect_ratio", "resolution", "width", "height", "size", "image_size"] },
+      {
+        id: "generation",
+        fields: [
+          "seed",
+          "layer_decomposition",
+          "background",
+          "n",
+          "num_images",
+          "numberResults",
+          "sequential_image_generation",
+          "max_images",
+          "enhance_prompt_mode",
+          "web_search",
+        ],
+      },
+      {
+        id: "output",
+        fields: ["output_format", "outputFormat", "watermark", "response_format", "stream", "sync_mode"],
+        collapsed: true,
+      },
+      { id: "advanced", fields: ["enable_safety_checker"], collapsed: true },
+    ],
     Form: ParameterFields,
     docs: ["doc/model/Seedream/seedream-5/"],
     outputCount: (p) => Number(p.n ?? p.num_images ?? p.numberResults ?? 1),

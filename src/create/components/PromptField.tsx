@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef } from "react";
 import type { GenerationDraft, ImageReference } from "../../domain/types";
 import { insertReference } from "../../domain/references";
 import { t } from "../../i18n";
+import { c } from "../messages";
 
 function serialize(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
@@ -22,10 +23,12 @@ export function PromptField({
   draft,
   onChange,
   onWriters,
+  limit,
 }: {
   draft: GenerationDraft;
   onChange: (draft: GenerationDraft) => void;
   onWriters: () => void;
+  limit?: { min?: number; max: number };
 }) {
   const input = useRef<HTMLDivElement>(null),
     selection = useRef<Range | null>(null);
@@ -98,6 +101,11 @@ export function PromptField({
         role="textbox"
         aria-multiline="true"
         aria-labelledby="prompt-label"
+        aria-describedby="prompt-limit"
+        aria-invalid={
+          (limit && (draft.prompt.length > limit.max || (!!draft.prompt && draft.prompt.length < (limit.min ?? 0)))) ||
+          undefined
+        }
         onInput={publish}
         onKeyUp={remember}
         onMouseUp={remember}
@@ -116,6 +124,16 @@ export function PromptField({
           publish();
         }}
       />
+      <div
+        id="prompt-limit"
+        className={`prompt-length${limit && draft.prompt.length > limit.max ? " error-text" : " muted"}`}
+      >
+        <span>{limit && draft.prompt.length > limit.max ? c("promptLimit") : ""}</span>
+        <span>
+          {draft.prompt.length.toLocaleString()}
+          {limit ? ` / ${limit.max.toLocaleString()}` : ""}
+        </span>
+      </div>
       <div className="reference-tokens">
         {draft.references.map((reference) => (
           <button

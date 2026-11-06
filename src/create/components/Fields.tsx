@@ -1,8 +1,13 @@
-import { useId, useEffect, useState } from "react";
+import { useId, useEffect, useRef, useState } from "react";
 import { DiceFiveIcon } from "@phosphor-icons/react";
 import type { Json } from "../../domain/types";
 import { localize, t } from "../../i18n";
 import type { FieldDefinition, FormProps } from "../../models/types";
+import { c } from "../messages";
+import { FrameFields } from "./FrameFields";
+import { RememberedDetails } from "./RememberedDetails";
+import { SavedStyles } from "./SavedStyles";
+import { validateFields } from "../../models/shared";
 
 function JsonInput({
   id,
@@ -14,18 +19,28 @@ function JsonInput({
   onChange: (value: Json | undefined) => void;
 }) {
   const [text, setText] = useState("");
-  useEffect(() => setText(value === undefined ? "" : JSON.stringify(value, null, 2)), [value]);
+  const [invalid, setInvalid] = useState(false);
+  const input = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    setText(value === undefined ? "" : JSON.stringify(value, null, 2));
+    setInvalid(false);
+    input.current?.setCustomValidity("");
+  }, [value]);
   return (
     <textarea
       id={id}
+      ref={input}
       value={text}
+      aria-invalid={invalid || undefined}
       onChange={(event) => {
         setText(event.target.value);
         try {
           if (event.target.value) JSON.parse(event.target.value);
           event.target.setCustomValidity("");
+          setInvalid(false);
         } catch {
           event.target.setCustomValidity("JSON");
+          setInvalid(true);
         }
       }}
       onBlur={(event) => {
@@ -44,6 +59,7 @@ export function ParameterField({
   const id = useId();
   if (field.visible && !field.visible(draft)) return null;
   const value = draft.parameters[field.key];
+  const errors = validateFields([field], draft);
   const update = (next: typeof value | undefined) => {
     const parameters = { ...draft.parameters };
     if (next === undefined) delete parameters[field.key];
@@ -51,11 +67,24 @@ export function ParameterField({
     onChange({ ...draft, parameters });
   };
   return (
-    <div className={`field field-${field.kind}`}>
+    <div
+      className={`field field-${field.kind}${errors.length ? " has-error" : ""}`}
+      data-field={field.key}
+      role="group"
+      aria-invalid={!!errors.length || undefined}
+      aria-describedby={errors.length ? `${id}-error` : undefined}
+    >
       <label id={field.kind === "toggle" ? id : undefined} htmlFor={field.kind === "toggle" ? undefined : id}>
         {localize(field.label)}
       </label>
-      {field.kind === "select" ? (
+      {field.kind === "select" && field.options?.length === 1 ? (
+        <span className="fixed-field-value">
+          {String(value ?? field.options[0])}
+          <button type="button" onClick={() => update(field.options![0])} disabled={value === field.options[0]}>
+            {t("reset")}
+          </button>
+        </span>
+      ) : field.kind === "select" ? (
         <select
           id={id}
           value={String(value ?? (field.options?.includes("auto") ? "auto" : ""))}
@@ -118,14 +147,23 @@ export function ParameterField({
           }
         />
       )}
+      {!!errors.length && (
+        <small className="field-error error-text" id={`${id}-error`}>
+          {errors[0]}
+        </small>
+      )}
     </div>
   );
 }
 
 export function ParameterFields(props: FormProps) {
   const visible = props.combination.fields.filter((field) => !field.visible || field.visible(props.draft));
-  const primary = visible.filter((field) => !field.advanced),
-    secondary = visible.filter((field) => field.advanced);
+  const groups = props.combination.groups ?? [{ id: "generation" as const, fields: visible.map((field) => field.key) }];
+  const assigned = new Set(groups.flatMap((group) => [...group.fields]));
+  const remaining = visible.filter((field) => !assigned.has(field.key));
+  const allGroups = remaining.length
+    ? [...groups, { id: "advanced" as const, collapsed: true, fields: remaining.map((field) => field.key) }]
+    : groups;
   const render = (field: FieldDefinition) => (
     <ParameterField
       key={`${props.combination.id}:${field.key}`}
@@ -135,14 +173,30 @@ export function ParameterFields(props: FormProps) {
     />
   );
   return (
-    <div className="parameter-fields">
-      {primary.map(render)}
-      {secondary.length ? (
-        <details className="advanced-fields">
-          <summary>{t("advanced")}</summary>
-          <div className="parameter-fields">{secondary.map(render)}</div>
-        </details>
-      ) : null}
+    <div className="parameter-sections">
+      {allGroups.map((group) => {
+        const fields = group.fields.flatMap((key) => visible.find((field) => field.key === key) ?? []);
+        if (!fields.length) return null;
+        return (
+          <RememberedDetails
+            key={`${props.combination.id}:${group.id}`}
+            name={`${props.combination.id}.${group.id}`}
+            title={c(group.id)}
+            defaultOpen={!group.collapsed}
+          >
+            {group.id === "frame" ? (
+              <FrameFields {...props} fields={fields} />
+            ) : (
+              <div className="parameter-fields">
+                {group.id === "style" && fields.some((field) => field.key === "style_id") ? (
+                  <SavedStyles {...props} />
+                ) : null}
+                {fields.map(render)}
+              </div>
+            )}
+          </RememberedDetails>
+        );
+      })}
     </div>
   );
 }

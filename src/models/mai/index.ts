@@ -35,6 +35,12 @@ function make(version: "2.5" | "2.6", provider: ProviderId): ModelCombination {
     protocol: provider === "fal" ? "fal" : "images",
     maxReferences: provider === "azure" ? 5 : version === "2.5" ? 1 : 5,
     fields,
+    inputPolicy: provider === "azure" ? { mediaTypes: ["image/jpeg", "image/png"] } : undefined,
+    groups: [
+      { id: "frame", fields: ["aspect_ratio", "auto_aspect_ratio", "width", "height"] },
+      { id: "generation", fields: ["web_grounding", "num_images"] },
+      { id: "output", fields: ["output_format", "sync_mode"], collapsed: true },
+    ],
     Form: ParameterFields,
     docs: ["doc/model/MAI/MAI-Image.md"],
     outputCount: (p) => Number(p.num_images ?? 1),

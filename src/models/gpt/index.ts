@@ -62,6 +62,27 @@ function make(variant: "flare" | "sunburst", provider: ProviderId): ModelCombina
     maxReferences: 16,
     mask: provider === "openrouter" ? undefined : provider === "comfy" ? "alpha" : "white",
     fields,
+    inputPolicy:
+      provider === "comfy"
+        ? {
+            maxBytes: 25 * 1024 * 1024,
+            totalBytes: 64 * 1024 * 1024,
+            maskBytes: 4 * 1024 * 1024 - 1,
+            mediaTypes: ["image/jpeg", "image/png", "image/webp"],
+          }
+        : undefined,
+    primaryReference: true,
+    promptLimit: provider === "runware" ? { min: 2, max: 32000 } : undefined,
+    groups: [
+      { id: "frame", fields: ["aspect_ratio", "size", "image_size", "width", "height"] },
+      { id: "generation", fields: ["quality", "background", "n", "num_images", "numberResults"] },
+      {
+        id: "output",
+        fields: ["output_format", "outputFormat", "output_compression", "outputQuality", "stream", "sync_mode"],
+        collapsed: true,
+      },
+      { id: "advanced", fields: ["moderation", "enable_safety_checker", "user"], collapsed: true },
+    ],
     Form: ParameterFields,
     docs: [`doc/model/GPT/gpt-image-2.5/gpt-image-2.5-${provider}.md`],
     outputCount: (p) => Number(p.n ?? p.num_images ?? p.numberResults ?? 1),

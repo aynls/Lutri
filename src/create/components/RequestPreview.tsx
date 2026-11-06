@@ -2,6 +2,9 @@ import type { GenerationDraft, Json } from "../../domain/types";
 import { compilePrompt } from "../../domain/references";
 import { t } from "../../i18n";
 import type { ModelCombination } from "../../models/types";
+import { getState } from "../../services/store";
+import { preparedDimensions } from "../prepareInputs";
+import { RememberedDetails } from "./RememberedDetails";
 
 export function RequestPreview({
   combination,
@@ -19,7 +22,11 @@ export function RequestPreview({
     const compiled = combination.compile({
       draft,
       prompt: compilePrompt(draft, draft.references),
-      images: draft.references.map((_, index) => `<image ${index + 1}>`),
+      images: draft.references.map((reference, index) => {
+        const asset = getState().gallery.find((entry) => entry.asset.id === reference.assetId)?.asset;
+        const size = asset ? preparedDimensions(asset.width, asset.height, draft, combination) : undefined;
+        return `<image ${index + 1}${size ? ` · ${size.width} × ${size.height}` : ""}>`;
+      }),
       mask: draft.mask ? "<mask>" : undefined,
       taskId: "<task>",
       configuration,
@@ -37,8 +44,7 @@ export function RequestPreview({
     error = String(exception);
   }
   return (
-    <details className="request-preview">
-      <summary>{t("requestPreview")}</summary>
+    <RememberedDetails name={`${combination.id}.preview`} title={t("requestPreview")} className="request-preview">
       {error ? (
         <p className="muted">{error}</p>
       ) : (
@@ -48,6 +54,6 @@ export function RequestPreview({
           {JSON.stringify(body, null, 2)}
         </pre>
       )}
-    </details>
+    </RememberedDetails>
   );
 }

@@ -7,6 +7,8 @@ import {
   DownloadSimpleIcon,
   PlusIcon,
   ClockCounterClockwiseIcon,
+  CopyIcon,
+  PencilSimpleIcon,
 } from "@phosphor-icons/react";
 import type { FeedSlot, GalleryEntry } from "../domain/types";
 import { displayPrompt } from "../domain/references";
@@ -14,9 +16,13 @@ import { ModelIcon } from "../components/ModelIcon";
 import { t } from "../i18n";
 import { combinationById } from "../models";
 import { AssetImage } from "../gallery/AssetImage";
-import { exportImages, favorite } from "../gallery/actions";
+import { copyAssetImage, exportImages, favorite } from "../gallery/actions";
 import { execute } from "../services/generation";
 import { removeFeed, useApplication } from "../services/store";
+import { c } from "./messages";
+import { taskStatusLabel } from "../i18n/tasks";
+import { TaskUsage } from "../history/TaskUsage";
+import { setViewerContext } from "../gallery/viewContext";
 
 function Timer({ start }: { start: number }) {
   const [now, setNow] = useState(Date.now());
@@ -34,17 +40,34 @@ function Timer({ start }: { start: number }) {
 export function Feed({
   onView,
   onReference,
+  onEdit,
   onRelated,
   onError,
 }: {
   onView: (id: string) => void;
   onReference: (entry: GalleryEntry) => void;
+  onEdit: (entry: GalleryEntry) => void;
   onRelated: (id: string) => void;
   onError: (error: unknown) => void;
 }) {
-  const { feed, tasks, gallery } = useApplication();
+  const { feed, tasks, gallery, ready } = useApplication();
   const container = useRef<HTMLDivElement>(null);
   const [columnCount, setColumnCount] = useState(1);
+  const observed = useRef<Set<string> | undefined>(undefined);
+  const [newResults, setNewResults] = useState<string[]>([]);
+  useEffect(() => {
+    if (!ready) return;
+    const saved = feed.flatMap((slot) => {
+      const result = tasks.find((task) => task.id === slot.taskId)?.results[slot.resultIndex];
+      return result?.status === "saved" ? [result.id] : [];
+    });
+    if (observed.current) {
+      const added = saved.filter((id) => !observed.current!.has(id));
+      if ((container.current?.scrollTop ?? 0) > 80 && added.length)
+        setNewResults((current) => [...new Set([...current, ...added])]);
+    }
+    observed.current = new Set(saved);
+  }, [feed, tasks, ready]);
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) =>
       setColumnCount(Math.max(1, Math.floor((entry.contentRect.width - 48 + 18) / 274))),
@@ -70,7 +93,27 @@ export function Feed({
   }, [feed, columnCount, taskMap, assets]);
   const attempt = (action: () => Promise<unknown>) => void action().catch(onError);
   return (
-    <div className="feed" ref={container}>
+    <div
+      className="feed"
+      ref={container}
+      onScroll={(event) => {
+        if (event.currentTarget.scrollTop <= 80) setNewResults([]);
+      }}
+    >
+      {!!newResults.length && (
+        <button
+          className="new-results-pill"
+          onClick={() => {
+            container.current?.scrollTo({
+              top: 0,
+              behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+            });
+            setNewResults([]);
+          }}
+        >
+          {newResults.length} {c("newResults")} ↑
+        </button>
+      )}
       {!feed.length ? (
         <div className="empty-state">
           <ImageIcon size={36} weight="thin" />
@@ -105,16 +148,27 @@ export function Feed({
                       <XIcon />
                     </button>
                     {asset ? (
-                      <button className="image-button" onClick={() => onView(asset.asset.id)}>
+                      <button
+                        className="image-button"
+                        onClick={() => {
+                          setViewerContext(
+                            feed.flatMap((slot) => {
+                              const id = taskMap.get(slot.taskId)?.results[slot.resultIndex]?.assetId;
+                              return id ? [id] : [];
+                            }),
+                          );
+                          onView(asset.asset.id);
+                        }}
+                      >
                         <AssetImage entry={asset} />
                       </button>
                     ) : (
                       <div className="result-placeholder">
                         {busy ? <span className="spinner" /> : <ImageIcon size={28} />}
-                        <span>{t(status)}</span>
+                        <span>{status === "missing" ? t("missing") : taskStatusLabel(status)}</span>
                         {busy && status !== "downloading" && <Timer start={task.createdAt} />}
                         {status === "downloading" && <small className="task-timer">{t("downloading")}</small>}
-                        {!busy && task.status !== "completed" && (
+                        {!busy && task.status !== "completed" && task.status !== "cancelled" && (
                           <button
                             className="result-retry"
                             title={t("retry")}
@@ -141,8 +195,19 @@ export function Feed({
                         {prompt}
                       </p>
                     ) : null}
+                    <TaskUsage task={task} result={result} compact />
                     {asset && (
                       <div className="result-actions">
+                        <button title={c("edit")} aria-label={c("edit")} onClick={() => onEdit(asset)}>
+                          <PencilSimpleIcon size={15} />
+                        </button>
+                        <button
+                          title={c("copyImage")}
+                          aria-label={c("copyImage")}
+                          onClick={() => attempt(() => copyAssetImage(asset.asset.id))}
+                        >
+                          <CopyIcon size={15} />
+                        </button>
                         <button
                           title={t("useReference")}
                           aria-label={t("useReference")}

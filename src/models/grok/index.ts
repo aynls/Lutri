@@ -45,6 +45,15 @@ function make(provider: ProviderId): ModelCombination {
     protocol: provider === "fal" || provider === "runware" ? provider : "images",
     maxReferences: provider === "comfy" ? 0 : provider === "openrouter" ? 3 : 5,
     fields,
+    groups: [
+      { id: "frame", fields: ["aspect_ratio", "resolution", "width", "height"] },
+      { id: "generation", fields: ["quality", "n", "num_images", "numberResults"] },
+      {
+        id: "output",
+        fields: ["output_format", "outputFormat", "outputQuality", "response_format", "sync_mode"],
+        collapsed: true,
+      },
+    ],
     Form: ParameterFields,
     docs: ["doc/model/Grok/Grok-Imagine-Image-2.0-API.md"],
     outputCount: (p) => Number(p.n ?? p.num_images ?? p.numberResults ?? 1),

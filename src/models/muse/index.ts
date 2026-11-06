@@ -47,6 +47,19 @@ function make(provider: ProviderId): ModelCombination {
     protocol: provider === "fal" || provider === "runware" ? provider : "images",
     maxReferences: 10,
     fields,
+    groups: [
+      { id: "frame", fields: ["size", "aspect_ratio", "resolution"] },
+      {
+        id: "generation",
+        fields: ["webSearch", "imageSearch", "shell", "thinkingLevel", "n", "num_images", "numberResults"],
+      },
+      {
+        id: "output",
+        fields: ["output_format", "outputFormat", "response_format", "stream", "sync_mode"],
+        collapsed: true,
+      },
+      { id: "advanced", fields: ["moderation"], collapsed: true },
+    ],
     Form: ParameterFields,
     docs: ["doc/model/Muse/Muse-Image.md"],
     outputCount: (p) => Number(p.n ?? p.num_images ?? p.numberResults ?? 1),

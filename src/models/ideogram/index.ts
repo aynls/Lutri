@@ -56,6 +56,32 @@ function make(version: "4.0" | "4.5", provider: ProviderId): ModelCombination {
     maxReferences: editing ? 5 : 0,
     mask: editing ? (provider === "runware" ? "white" : "black") : undefined,
     fields,
+    inputPolicy:
+      provider === "comfy"
+        ? (draft) => ({
+            maxBytes:
+              draft.parameters.context_window && draft.parameters.edit_mode === "precise"
+                ? 50_000_000
+                : 25 * 1024 * 1024,
+            totalBytes:
+              (draft.parameters.context_window && draft.parameters.edit_mode === "precise" ? 128 : 64) * 1024 * 1024,
+            mediaTypes: ["image/png", "image/webp", "image/jpeg"],
+          })
+        : undefined,
+    primaryReference: editing,
+    promptLimit: { max: 10000 },
+    groups: [
+      { id: "frame", fields: ["size"] },
+      {
+        id: "generation",
+        fields: ["edit_mode", "quality", "rendering_speed", "magic_prompt", "seed", "num_images", "numberResults"],
+      },
+      {
+        id: "advanced",
+        fields: ["context_window", "structured_prompt", "enable_copyright_detection"],
+        collapsed: true,
+      },
+    ],
     Form: ParameterFields,
     docs: ["doc/model/Ideogram/Ideogram-4.md"],
     outputCount: (p) => Number(p.num_images ?? p.numberResults ?? 1),

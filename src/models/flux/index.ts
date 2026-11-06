@@ -116,6 +116,21 @@ function make(provider: ProviderId, klein: boolean): ModelCombination {
     maxReferences: klein && provider === "runware" ? 4 : 10,
     regions: provider === "runware" ? "runware" : klein && provider === "fal" ? "fal" : "prompt",
     fields,
+    inputPolicy:
+      provider === "comfy"
+        ? { minEdge: 256, maxPixels: 16_000_000, maxEncodedBytes: 20_000_000 }
+        : provider === "fal" && !klein
+          ? { minEdge: 256, maxPixels: 4_000_000 }
+          : undefined,
+    groups: [
+      { id: "frame", fields: ["aspect_ratio", "resolution", "width", "height", "image_size"] },
+      {
+        id: "generation",
+        fields: ["seed", "steps", "grounding", "enable_prompt_expansion", "num_images", "numberResults"],
+      },
+      { id: "output", fields: ["output_format", "outputFormat", "outputQuality", "sync_mode"], collapsed: true },
+      { id: "advanced", fields: ["safety_tolerance", "enable_safety_checker", "version", "user"], collapsed: true },
+    ],
     Form: ParameterFields,
     docs: [`doc/model/FLUX/${model}/`],
     outputCount: (p) => Number(p.num_images ?? p.numberResults ?? 1),
@@ -222,6 +237,7 @@ function make(provider: ProviderId, klein: boolean): ModelCombination {
           ...p,
           taskType: "imageInference",
           taskUUID: context.taskId,
+          includeCost: true,
           model: klein ? "bfl:flux@3-image-klein" : "bfl:flux@3-image",
           positivePrompt: context.prompt,
           settings,

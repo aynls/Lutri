@@ -32,6 +32,7 @@ export function runware(
       ...p,
       taskType: "imageInference",
       taskUUID: context.taskId,
+      includeCost: true,
       model,
       positivePrompt: context.prompt,
       ...(context.images.length || Object.keys(inputs).length

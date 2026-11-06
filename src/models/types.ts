@@ -34,6 +34,27 @@ export interface FieldDefinition {
   visible?: (draft: GenerationDraft) => boolean;
 }
 
+export interface ParameterGroup {
+  id: "frame" | "generation" | "style" | "output" | "advanced";
+  fields: readonly string[];
+  collapsed?: boolean;
+}
+
+/** Constraints copied from the combination's documented input schema, never output-size fields. */
+export interface InputPolicy {
+  minEdge?: number;
+  maxEdge?: number;
+  minPixels?: number;
+  maxPixels?: number;
+  maxRatio?: number;
+  maxBytes?: number;
+  maxEncodedBytes?: number;
+  totalBytes?: number;
+  maskBytes?: number;
+  mediaTypes?: readonly string[];
+  opaque?: boolean;
+}
+
 export interface FormProps {
   combination: ModelCombination;
   draft: GenerationDraft;
@@ -71,6 +92,10 @@ export interface ModelCombination {
   mask?: "alpha" | "white" | "black";
   regions?: "prompt" | "runware" | "fal" | "seedream";
   fields: FieldDefinition[];
+  groups?: ParameterGroup[];
+  primaryReference?: boolean;
+  promptLimit?: { min?: number; max: number };
+  inputPolicy?: InputPolicy | ((draft: GenerationDraft) => InputPolicy);
   Form: ComponentType<FormProps>;
   docs: string[];
   validate: (draft: GenerationDraft) => string[];
