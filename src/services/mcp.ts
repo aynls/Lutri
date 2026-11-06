@@ -1,13 +1,13 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { Channel } from "@tauri-apps/api/core";
-import type { GenerationDraft, Json } from "../domain/types";
+import type { GenerationDraft } from "../domain/types";
 import { combinations, combinationById } from "../models";
 import { initialDraft } from "../models/shared";
 import { assetData, importAsset, native } from "./native";
-import { execute, submitBatch } from "./generation";
+import { execute, submitBatch, cancelBatch } from "./generation";
 import { getState, refreshGallery } from "./store";
 
 import { loadUpscaleModels, resolveUpscaleModel, noiseOptions } from "../upscale/catalog";
+import { runUpscale } from "../upscale/queue";
 
 const string = { type: "string" };
 const tools = [
@@ -62,6 +62,17 @@ const tools = [
     inputSchema: { type: "object", properties: { taskId: string }, required: ["taskId"], additionalProperties: false },
   },
   {
+    name: "cancel_batch",
+    description:
+      "Cancel only requests still queued in a generation batch. Already submitted requests continue retrieving original results.",
+    inputSchema: {
+      type: "object",
+      properties: { batchId: string },
+      required: ["batchId"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "find_assets",
     description: "Find gallery assets by asset ID, filename or source.",
     inputSchema: {
@@ -103,10 +114,16 @@ const tools = [
         tileSize: { type: "integer", minimum: 32, maximum: 512 },
         destination: string,
         saveToGallery: { type: "boolean" },
+        jobId: string,
       },
       required: ["assetId", "modelId"],
       additionalProperties: false,
     },
+  },
+  {
+    name: "cancel_upscale",
+    description: "Cancel a queued or running local upscale job by its jobId.",
+    inputSchema: { type: "object", properties: { jobId: string }, required: ["jobId"], additionalProperties: false },
   },
   {
     name: "list_upscale_models",
@@ -148,9 +165,19 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
     case "resume_task": {
       const id = String(args.taskId);
       if (!getState().tasks.some((task) => task.id === id)) throw new Error("Task not found");
-      void execute(id);
+      void execute(id).catch(() => {});
       return { taskId: id };
     }
+    case "cancel_batch": {
+      const batchId = String(args.batchId);
+      if (!getState().batches.some((batch) => batch.id === batchId)) throw new Error("Batch not found");
+      return { batchId, cancelled: await cancelBatch(batchId) };
+    }
+    case "cancel_upscale":
+      return {
+        jobId: String(args.jobId),
+        cancelled: await native<boolean>("upscale_cancel", { id: String(args.jobId) }),
+      };
     case "find_assets":
       return getState().gallery.filter(
         (entry) =>
@@ -181,14 +208,14 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
         scale,
         typeof args.noise === "string" ? args.noise : undefined,
       );
-      const result = await native("upscale_run", {
-        assetId: args.assetId,
+      const result = await runUpscale({
+        assetId: String(args.assetId),
         modelId: fileId,
         scale,
-        tileSize: args.tileSize ?? 128,
-        destination: args.destination ?? null,
-        saveToGallery: args.saveToGallery ?? true,
-        channel: new Channel<Json>(),
+        tileSize: Number(args.tileSize ?? 128),
+        destination: typeof args.destination === "string" ? args.destination : null,
+        saveToGallery: args.saveToGallery !== false,
+        jobId: typeof args.jobId === "string" ? args.jobId : undefined,
       });
       await refreshGallery();
       return result;

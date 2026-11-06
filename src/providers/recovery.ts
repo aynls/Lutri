@@ -58,7 +58,7 @@ export async function poll(
       ...array(data.errors).map((error, index) => ({ remoteId: `error:${index}`, error: JSON.stringify(error) })),
     );
     const processing = array(data.data).some((item) => object(item).status === "processing");
-    return { done: !processing && images.length > 0, images };
+    return { done: !processing && images.length > 0, images, metadata: responseMetadata(response) };
   }
   if (data.errors) throw new Error(JSON.stringify(data.errors));
   if (status && ["failed", "error", "cancelled", "canceled"].includes(status.toLowerCase()))

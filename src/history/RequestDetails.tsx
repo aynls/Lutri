@@ -1,4 +1,5 @@
-import type { GenerationTask } from "../domain/types";
+import { useEffect, useRef, useState } from "react";
+import type { GalleryEntry, GenerationTask } from "../domain/types";
 import { displayPrompt } from "../domain/references";
 import { combinationById } from "../models";
 import { providerNames } from "../models/shared";
@@ -6,6 +7,10 @@ import { localize, t } from "../i18n";
 import { useApplication } from "../services/store";
 import { AssetImage } from "../gallery/AssetImage";
 import { CopyButton } from "../components/CopyButton";
+import { taskStatusLabel, taskText } from "../i18n/tasks";
+import { TaskUsage } from "./TaskUsage";
+import { retryResultExport } from "../services/generation";
+import { native } from "../services/native";
 
 export function RequestDetails({
   task,
@@ -16,7 +21,29 @@ export function RequestDetails({
   onView: (id: string) => void;
   onError: (error: unknown) => void;
 }) {
-  const { gallery } = useApplication();
+  const { gallery: cached } = useApplication();
+  const errorHandler = useRef(onError);
+  errorHandler.current = onError;
+  const [entries, setEntries] = useState<GalleryEntry[]>([]);
+  const gallery = [...new Map([...cached, ...entries].map((entry) => [entry.asset.id, entry])).values()];
+  const assetKey = JSON.stringify([
+    ...new Set([
+      ...task.draft.references.map((reference) => reference.assetId),
+      ...(task.draft.mask ? [task.draft.mask.assetId] : []),
+      ...task.results.flatMap((result) => (result.assetId ? [result.assetId] : [])),
+    ]),
+  ]);
+  useEffect(() => {
+    let current = true;
+    void native<GalleryEntry[]>("gallery_entries", { ids: JSON.parse(assetKey) })
+      .then((value) => {
+        if (current) setEntries(value);
+      })
+      .catch((error) => errorHandler.current(error));
+    return () => {
+      current = false;
+    };
+  }, [assetKey, cached]);
   const combination = combinationById(task.draft.combinationId);
   return (
     <div className="request-details">
@@ -32,9 +59,31 @@ export function RequestDetails({
         </dd>
         <dt>{t("results")}</dt>
         <dd>
-          {task.results.filter((result) => result.status === "saved").length} / {task.results.length} · {t(task.status)}
+          {task.results.filter((result) => result.status === "saved").length} / {task.results.length} ·{" "}
+          {taskStatusLabel(task.status)}
         </dd>
+        {(task.providerTaskId ?? task.recovery?.remoteId) && (
+          <>
+            <dt>{taskText("providerTask")}</dt>
+            <dd>
+              <code>{task.providerTaskId ?? task.recovery?.remoteId}</code>
+              <CopyButton value={task.providerTaskId ?? task.recovery!.remoteId} onError={onError} />
+            </dd>
+          </>
+        )}
+        {task.httpStatus !== undefined && (
+          <>
+            <dt>HTTP</dt>
+            <dd>{task.httpStatus}</dd>
+          </>
+        )}
       </dl>
+      <TaskUsage task={task} />
+      {typeof task.draft.parameters.seed === "number" && (
+        <p className="muted">
+          {taskText("requestedSeed")} · {task.draft.parameters.seed}
+        </p>
+      )}
       <section>
         <div className="section-heading">
           <span>{t("prompt")}</span>
@@ -42,6 +91,17 @@ export function RequestDetails({
         </div>
         <p className="full-prompt">{displayPrompt(task.draft)}</p>
       </section>
+      <details>
+        <summary>{taskText("compiledPrompt")}</summary>
+        {task.compiledPrompt !== undefined ? (
+          <>
+            <CopyButton value={task.compiledPrompt} onError={onError} />
+            <pre className="full-prompt">{task.compiledPrompt}</pre>
+          </>
+        ) : (
+          <p className="muted">{taskText("promptUnavailable")}</p>
+        )}
+      </details>
       {!!task.draft.references.length && (
         <section>
           <h3>{t("references")}</h3>
@@ -114,6 +174,15 @@ export function RequestDetails({
                   </span>
                   {result.assetId && <CopyButton value={result.assetId} onError={onError} />}
                   {result.error && <p className="error-text">{result.error}</p>}
+                  <TaskUsage task={task} result={result} />
+                  {result.exportError && (
+                    <>
+                      <p className="error-text">{result.exportError}</p>
+                      <button onClick={() => void retryResultExport(task.id, result.id).catch(onError)}>
+                        {taskText("retryExport")}
+                      </button>
+                    </>
+                  )}
                   {result.metadata && (
                     <details>
                       <summary>{t("details")}</summary>
@@ -132,7 +201,12 @@ export function RequestDetails({
           <pre>{JSON.stringify(task.metadata, null, 2)}</pre>
         </details>
       )}
-      {task.error && <p className="error-text">{task.error}</p>}
+      {task.error && (
+        <details open>
+          <summary>{taskText("diagnostics")}</summary>
+          <pre className="error-text">{task.error}</pre>
+        </details>
+      )}
     </div>
   );
 }

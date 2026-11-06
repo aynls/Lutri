@@ -13,9 +13,20 @@ export interface RemoteImage {
 export function responseMetadata(raw: Json): Parameters {
   const body = object(raw);
   return Object.fromEntries(
-    ["id", "style_id", "description", "grounding_metadata", "usage", "conversations"].flatMap((key) =>
-      body[key] === undefined ? [] : [[key, body[key]]],
-    ),
+    [
+      "id",
+      "request_id",
+      "generation_id",
+      "responseId",
+      "style_id",
+      "description",
+      "grounding_metadata",
+      "usage",
+      "usageMetadata",
+      "metrics",
+      "seed",
+      "conversations",
+    ].flatMap((key) => (body[key] === undefined ? [] : [[key, body[key]]])),
   );
 }
 
@@ -73,9 +84,18 @@ export function imageResults(protocol: Protocol, raw: Json): RemoteImage[] {
       (base64 ? `data:${mime};base64,${base64}` : undefined);
     if (!url && !value.error) return [];
     const metadata = Object.fromEntries(
-      ["z_index", "bbox", "seed", "prompt", "resolution", "outputs", "is_image_safe", "revised_prompt"].flatMap(
-        (key) => (value[key] === undefined ? [] : [[key, value[key]]]),
-      ),
+      [
+        "z_index",
+        "bbox",
+        "seed",
+        "prompt",
+        "resolution",
+        "outputs",
+        "is_image_safe",
+        "revised_prompt",
+        "usage",
+        ...(protocol === "runware" ? ["cost"] : []),
+      ].flatMap((key) => (value[key] === undefined ? [] : [[key, value[key]]])),
     );
     return [
       {

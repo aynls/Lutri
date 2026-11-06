@@ -2,13 +2,15 @@ import type { Json } from "../domain/types";
 import type { CompiledRequest } from "../models/types";
 import { native } from "../services/native";
 import { streamEvents } from "./events";
+import { sanitizeDiagnostic } from "./diagnostics";
 
 export class HttpError extends Error {
   constructor(
     public status: number,
     body: string,
+    public retryAfter?: string,
   ) {
-    super(`${status}: ${body}`);
+    super(`${status}: ${sanitizeDiagnostic(body)}`);
   }
 }
 
@@ -35,7 +37,8 @@ export async function send(request: CompiledRequest): Promise<Json> {
     return { data: images };
   }
   const response = await native<{ status: number; body: string; retryAfter?: string }>("http_request", { request });
-  if (response.status < 200 || response.status >= 300) throw new HttpError(response.status, response.body);
+  if (response.status < 200 || response.status >= 300)
+    throw new HttpError(response.status, response.body, response.retryAfter);
   return JSON.parse(response.body) as Json;
 }
 

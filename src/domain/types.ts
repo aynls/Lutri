@@ -19,6 +19,10 @@ export interface GalleryEntry {
   addedAt: number;
   favorite: boolean;
   boardIds: string[];
+  bytes?: number;
+  tags?: string[];
+  availability?: "available" | "missing" | "unknown";
+  provenance?: { kind: "generation" | "import" | "upscale"; model?: string; provider?: string; taskId?: string };
 }
 
 export interface Board {
@@ -58,6 +62,7 @@ export interface GenerationDraft {
   mask?: MaskBinding;
   parameters: Parameters;
   requestCount: number;
+  inputPreparation?: { maxEdge?: number; version: 1 };
 }
 
 export type TaskStatus =
@@ -68,6 +73,7 @@ export type TaskStatus =
   | "downloading"
   | "download-failed"
   | "completed"
+  | "cancelled"
   | "failed";
 
 export interface Recovery {
@@ -87,6 +93,7 @@ export interface GenerationResult {
   status: "pending" | "downloading" | "saved" | "failed";
   error?: string;
   metadata?: Parameters;
+  exportError?: string;
 }
 
 export interface GenerationTask {
@@ -102,6 +109,11 @@ export interface GenerationTask {
   results: GenerationResult[];
   error?: string;
   metadata?: Parameters;
+  compiledPrompt?: string;
+  submittedAt?: number;
+  httpStatus?: number;
+  providerTaskId?: string;
+  historyDeletedAt?: number;
 }
 
 export interface GenerationBatch {
