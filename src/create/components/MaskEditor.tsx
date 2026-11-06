@@ -158,7 +158,11 @@ function MaskWorkspace({
       display = overlay.current!.getContext("2d")!;
     for (const [target, color, operation] of [
       [context, tool === "erase" ? "black" : "white", "source-over"],
-      [display, "#d17e55", tool === "erase" ? "destination-out" : "source-over"],
+      [
+        display,
+        getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#d17e55",
+        tool === "erase" ? "destination-out" : "source-over",
+      ],
     ] as const) {
       target.globalCompositeOperation = operation;
       target.strokeStyle = color;

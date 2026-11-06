@@ -5,10 +5,12 @@ import { t } from "../i18n";
 export function CopyButton({
   value,
   title = t("copyId"),
+  className,
   onError,
 }: {
   value: string;
   title?: string;
+  className?: string;
   onError: (error: unknown) => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -16,6 +18,7 @@ export function CopyButton({
   useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <button
+      className={className}
       title={copied ? t("copied") : title}
       aria-label={copied ? t("copied") : title}
       onClick={() =>

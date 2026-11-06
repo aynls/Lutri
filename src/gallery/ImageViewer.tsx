@@ -6,6 +6,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
+  ArrowUpRightIcon,
   CopyIcon,
   DownloadSimpleIcon,
   FolderOpenIcon,
@@ -125,6 +126,21 @@ export function ImageViewer({ assetId }: { assetId: string }) {
               }
             >
               {t("useReference")}
+            </button>
+            <button
+              title={t("upscale")}
+              aria-label={t("upscale")}
+              onClick={() =>
+                attempt(async () => {
+                  const main = await WebviewWindow.getByLabel("main");
+                  if (!main) throw new Error("Main window unavailable");
+                  await emitTo("main", "viewer-use-upscale", entry);
+                  await main.unminimize();
+                  await main.setFocus();
+                })
+              }
+            >
+              <ArrowUpRightIcon />
             </button>
             <button
               title={entry.favorite ? t("removeFavorite") : t("favorites")}

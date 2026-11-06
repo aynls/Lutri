@@ -6,6 +6,8 @@ import {
   ClockCounterClockwiseIcon,
   GearSixIcon,
   ImagesIcon,
+  PencilSimpleIcon,
+  PlusIcon,
   SparkleIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -106,7 +108,8 @@ export default function App() {
   }, [onError]);
   useEffect(() => {
     document.documentElement.dataset.theme = state.preferences.theme;
-  }, [state.preferences.theme]);
+    document.documentElement.dataset.accent = state.preferences.accent ?? "clay";
+  }, [state.preferences.theme, state.preferences.accent]);
   useEffect(() => {
     let disposed = false;
     setCredential(undefined);
@@ -235,16 +238,23 @@ export default function App() {
   useEffect(() => {
     if (new URLSearchParams(location.search).has("asset")) return;
     let disposed = false;
-    let unlisten: (() => void) | undefined;
+    const unlistens: (() => void)[] = [];
+    const settle = (stop: () => void) => {
+      if (disposed) stop();
+      else unlistens.push(stop);
+    };
     void listen<GalleryEntry>("viewer-use-reference", (event) => addReferences([event.payload]))
-      .then((stop) => {
-        if (disposed) stop();
-        else unlisten = stop;
-      })
+      .then(settle)
+      .catch(onError);
+    void listen<GalleryEntry>("viewer-use-upscale", (event) => {
+      setUpscaleInput({ entries: [event.payload], nonce: crypto.randomUUID() });
+      setPage("upscale");
+    })
+      .then(settle)
       .catch(onError);
     return () => {
       disposed = true;
-      unlisten?.();
+      unlistens.forEach((stop) => stop());
     };
   }, [onError]);
   const switchModel = async (next: ModelCombination) => {
@@ -438,15 +448,16 @@ export default function App() {
           {navigation.map(({ id, icon: Icon }) => (
             <button title={t(id)} key={id} className={page === id ? "active" : ""} onClick={() => setPage(id)}>
               <Icon size={20} />
-              <span>{t(id)}</span>
             </button>
           ))}
         </div>
-        <button className={page === "settings" ? "active" : ""} onClick={() => setPage("settings")}>
+        <button
+          title={t("settings")}
+          className={page === "settings" ? "active" : ""}
+          onClick={() => setPage("settings")}
+        >
           <GearSixIcon size={20} />
-          <span>{t("settings")}</span>
         </button>
-        <span className="version">Lutri / 0.2</span>
       </nav>
       <main className="workspace">
         <header className="workspace-header">
@@ -464,7 +475,15 @@ export default function App() {
                   {c("stopQueued")} · {state.tasks.filter((task) => task.status === "queued").length}
                 </button>
               )}
-              <button onClick={() => void removeFeed(state.feed.map((slot) => slot.id)).catch(onError)}>
+              <button
+                disabled={!state.feed.length}
+                onClick={() =>
+                  void (async () => {
+                    if (await confirm(c("clearConfirm"), { title: "Lutri", kind: "warning" }))
+                      await removeFeed(state.feed.map((slot) => slot.id));
+                  })().catch(onError)
+                }
+              >
                 {t("clear")}
               </button>
             </div>
@@ -524,12 +543,12 @@ export default function App() {
                   />
                 )}
                 {combination.mask && state.draft.references.length ? (
-                  <div className="mask-input">
-                    {state.draft.mask ? (
+                  state.draft.mask ? (
+                    <div className="reference-item mask-input">
                       <button
-                        className="image-button mask-preview"
-                        aria-label={t("mask")}
-                        title={t("mask")}
+                        className="image-button reference-preview mask-preview"
+                        aria-label={c("editMask")}
+                        title={c("editMask")}
                         onClick={() => setMaskEditor(true)}
                       >
                         {maskEntry && maskReferenceEntry ? (
@@ -545,14 +564,29 @@ export default function App() {
                           <span className="missing-image">{t("missing")}</span>
                         )}
                       </button>
-                    ) : null}
-                    <div className="button-row">
-                      <button onClick={() => setMaskEditor(true)}>{t("mask")}</button>
-                      {state.draft.mask ? (
-                        <button onClick={() => changeDraft({ ...state.draft, mask: undefined })}>{t("remove")}</button>
-                      ) : null}
+                      <div className="reference-information">
+                        <div className="reference-name">{t("mask")}</div>
+                        <small className="reference-dims">{maskReference?.name ?? t("missing")}</small>
+                        <div className="reference-actions">
+                          <button title={c("editMask")} aria-label={c("editMask")} onClick={() => setMaskEditor(true)}>
+                            <PencilSimpleIcon />
+                          </button>
+                          <button
+                            title={t("remove")}
+                            aria-label={t("remove")}
+                            onClick={() => changeDraft({ ...state.draft, mask: undefined })}
+                          >
+                            <XIcon />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <button className="reference-add mask-input" onClick={() => setMaskEditor(true)}>
+                      <PlusIcon size={18} />
+                      <span>{c("addMask")}</span>
+                    </button>
+                  )
                 ) : null}
                 <section>
                   <div className="section-heading">

@@ -221,6 +221,29 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
                 ))}
               </div>
             </div>
+            <div className="settings-row">
+              <span>{text("accentColor")}</span>
+              <div className="accent-swatches">
+                {(
+                  [
+                    ["clay", "#a45b3e", "accentClay"],
+                    ["graphite", "#59544e", "accentGraphite"],
+                    ["indigo", "#5b6394", "accentIndigo"],
+                    ["moss", "#687d4b", "accentMoss"],
+                  ] as const
+                ).map(([accent, color, name]) => (
+                  <button
+                    key={accent}
+                    className="accent-swatch"
+                    style={{ background: color }}
+                    title={text(name)}
+                    aria-label={text(name)}
+                    aria-pressed={(preferences.accent ?? "clay") === accent}
+                    onClick={() => attempt(() => save({ accent }))}
+                  />
+                ))}
+              </div>
+            </div>
             <label className="settings-row">
               <span>{text("language")}</span>
               <select

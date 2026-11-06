@@ -29,6 +29,8 @@ const messages = {
     "请选择支持图片输入的模型",
     "画像入力に対応したモデルを選択してください",
   ),
+  addMask: label("Add mask", "添加蒙版", "マスクを追加"),
+  editMask: label("Edit mask", "编辑蒙版", "マスクを編集"),
   maskRemoved: label(
     "The mask was removed because its image is no longer first.",
     "原主图的蒙版已移除。",
@@ -46,6 +48,7 @@ const messages = {
   queued: label("queued", "个排队请求", "件の待機リクエスト"),
   stopQueued: label("Stop queued requests", "停止排队请求", "待機中のリクエストを停止"),
   sent: label("Submitted", "已提交", "送信済み"),
+  clearConfirm: label("Clear the entire feed?", "清空瀑布流？", "一覧をすべて消去しますか？"),
   prepare: label("Input images", "输入图片", "入力画像"),
   maxEdge: label("Maximum edge", "长边上限", "長辺の上限"),
   original: label("Original", "原图", "元画像"),

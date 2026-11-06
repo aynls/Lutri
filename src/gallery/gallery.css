@@ -123,6 +123,9 @@
   padding: 4px;
   border-radius: 8px;
   position: absolute;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
 }
 .gallery-card.is-selected {
   background: var(--accent-soft);
@@ -186,7 +189,8 @@
 }
 .gallery-actions > button,
 .gallery-actions .action-menu > summary {
-  background: var(--surface);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 5px;
@@ -298,22 +302,15 @@
   border-radius: 4px;
 }
 .viewer-details-bar {
-  background: var(--surface);
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  backdrop-filter: blur(16px);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
   margin: 16px 16px 16px 0;
   min-height: 0;
   display: flex;
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 4px 24px #0003;
+  box-shadow: var(--shadow-md);
   font-size: 13px;
-}
-@media (prefers-reduced-transparency: reduce) {
-  .viewer-details-bar {
-    background: var(--surface);
-    backdrop-filter: none;
-  }
 }
 .viewer-details-scroll {
   min-width: 0;
@@ -379,4 +376,11 @@
 .gallery-actions .action-menu > div {
   top: auto;
   bottom: calc(100% + 4px);
+  animation-name: menu-up;
+}
+@keyframes menu-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }

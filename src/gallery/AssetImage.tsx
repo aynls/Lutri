@@ -5,6 +5,7 @@ import { assetExists, imageUrl } from "../services/native";
 
 export function AssetImage({ entry, thumbnail = false }: { entry: GalleryEntry; thumbnail?: boolean }) {
   const [missing, setMissing] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let active = true;
     void assetExists(entry.asset.id)
@@ -24,8 +25,10 @@ export function AssetImage({ entry, thumbnail = false }: { entry: GalleryEntry; 
     <img
       loading="lazy"
       decoding="async"
+      className={`asset-image${loaded ? " loaded" : ""}`}
       src={imageUrl(thumbnail ? entry.thumbnailPath : entry.path)}
       alt={entry.asset.id}
+      onLoad={() => setLoaded(true)}
       onError={() => setMissing(true)}
     />
   );

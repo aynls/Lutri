@@ -21,6 +21,7 @@ import type { Parameters } from "../domain/types";
 export interface Preferences {
   id: "preferences";
   theme: "system" | "light" | "dark";
+  accent?: "clay" | "graphite" | "indigo" | "moss";
   providers: Record<string, { endpoint?: string; deployment?: string }>;
   cleanup: Record<"generated" | "imported", CleanupPolicy>;
   desktop?: { background: boolean; launchAtLogin: boolean; zoom: number };

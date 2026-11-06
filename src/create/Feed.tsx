@@ -16,6 +16,7 @@ import { ModelIcon } from "../components/ModelIcon";
 import { t } from "../i18n";
 import { combinationById } from "../models";
 import { AssetImage } from "../gallery/AssetImage";
+import { CopyButton } from "../components/CopyButton";
 import { copyAssetImage, exportImages, favorite } from "../gallery/actions";
 import { execute } from "../services/generation";
 import { removeFeed, useApplication } from "../services/store";
@@ -129,20 +130,62 @@ export function Feed({
                       <XIcon />
                     </button>
                     {asset ? (
-                      <button
-                        className="image-button"
-                        onClick={() => {
-                          setViewerContext(
-                            feed.flatMap((slot) => {
-                              const id = taskMap.get(slot.taskId)?.results[slot.resultIndex]?.assetId;
-                              return id ? [id] : [];
-                            }),
-                          );
-                          onView(asset.asset.id);
-                        }}
-                      >
-                        <AssetImage entry={asset} />
-                      </button>
+                      <div className="result-image">
+                        <button
+                          className="image-button"
+                          onClick={() => {
+                            setViewerContext(
+                              feed.flatMap((slot) => {
+                                const id = taskMap.get(slot.taskId)?.results[slot.resultIndex]?.assetId;
+                                return id ? [id] : [];
+                              }),
+                            );
+                            onView(asset.asset.id);
+                          }}
+                        >
+                          <AssetImage entry={asset} />
+                        </button>
+                        <div className="result-actions">
+                          <button title={c("edit")} aria-label={c("edit")} onClick={() => onEdit(asset)}>
+                            <PencilSimpleIcon size={15} />
+                          </button>
+                          <button
+                            title={c("copyImage")}
+                            aria-label={c("copyImage")}
+                            onClick={() => attempt(() => copyAssetImage(asset.asset.id))}
+                          >
+                            <CopyIcon size={15} />
+                          </button>
+                          <button
+                            title={t("useReference")}
+                            aria-label={t("useReference")}
+                            onClick={() => onReference(asset)}
+                          >
+                            <PlusIcon size={15} />
+                          </button>
+                          <button
+                            title={t("favorites")}
+                            aria-label={t("favorites")}
+                            onClick={() => attempt(() => favorite(asset))}
+                          >
+                            <HeartIcon size={15} weight={asset.favorite ? "fill" : "regular"} />
+                          </button>
+                          <button
+                            title={t("saveAs")}
+                            aria-label={t("saveAs")}
+                            onClick={() => attempt(() => exportImages([asset]))}
+                          >
+                            <DownloadSimpleIcon size={15} />
+                          </button>
+                          <button
+                            title={t("related")}
+                            aria-label={t("related")}
+                            onClick={() => onRelated(asset.asset.id)}
+                          >
+                            <ClockCounterClockwiseIcon size={15} />
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <div className="result-placeholder">
                         {busy ? <span className="spinner" /> : <ImageIcon size={28} />}
@@ -170,53 +213,19 @@ export function Feed({
                       </span>
                     </footer>
                     {prompt.trim() ? (
-                      <p className="result-prompt" tabIndex={0} aria-label={t("prompt")}>
-                        {prompt}
-                      </p>
+                      <div className="result-prompt-wrap">
+                        <p className="result-prompt" tabIndex={0} aria-label={t("prompt")}>
+                          {prompt}
+                        </p>
+                        <CopyButton
+                          className="result-prompt-copy"
+                          value={prompt}
+                          title={t("copyPrompt")}
+                          onError={onError}
+                        />
+                      </div>
                     ) : null}
                     <TaskUsage task={task} result={result} compact />
-                    {asset && (
-                      <div className="result-actions">
-                        <button title={c("edit")} aria-label={c("edit")} onClick={() => onEdit(asset)}>
-                          <PencilSimpleIcon size={15} />
-                        </button>
-                        <button
-                          title={c("copyImage")}
-                          aria-label={c("copyImage")}
-                          onClick={() => attempt(() => copyAssetImage(asset.asset.id))}
-                        >
-                          <CopyIcon size={15} />
-                        </button>
-                        <button
-                          title={t("useReference")}
-                          aria-label={t("useReference")}
-                          onClick={() => onReference(asset)}
-                        >
-                          <PlusIcon size={15} />
-                        </button>
-                        <button
-                          title={t("favorites")}
-                          aria-label={t("favorites")}
-                          onClick={() => attempt(() => favorite(asset))}
-                        >
-                          <HeartIcon size={15} weight={asset.favorite ? "fill" : "regular"} />
-                        </button>
-                        <button
-                          title={t("saveAs")}
-                          aria-label={t("saveAs")}
-                          onClick={() => attempt(() => exportImages([asset]))}
-                        >
-                          <DownloadSimpleIcon size={15} />
-                        </button>
-                        <button
-                          title={t("related")}
-                          aria-label={t("related")}
-                          onClick={() => onRelated(asset.asset.id)}
-                        >
-                          <ClockCounterClockwiseIcon size={15} />
-                        </button>
-                      </div>
-                    )}
                   </article>
                 );
               })}
