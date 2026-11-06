@@ -381,10 +381,12 @@ async function runTask(id: string, initial = false) {
     task.status = "generating";
     await saveTask({ ...task });
     let interval = 2000;
+    const deadline = Date.now() + 360000;
     for (;;) {
       const result = await poll(combination, task.recovery);
       if (result.images.length) await receive(task, result.images, result.done, result.metadata);
       if (result.done) return;
+      if (Date.now() >= deadline) throw new Error("Timed out after 360s waiting for the provider.");
       task.status = "generating";
       await saveTask({ ...task });
       await pause(interval);

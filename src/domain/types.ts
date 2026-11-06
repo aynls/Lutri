@@ -87,6 +87,7 @@ export interface Recovery {
   statusUrl?: string;
   resultUrl?: string;
   metadata?: Parameters;
+  transientCount?: number;
 }
 
 export interface GenerationResult {

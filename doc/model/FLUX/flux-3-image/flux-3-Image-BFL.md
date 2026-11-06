@@ -113,7 +113,7 @@ In <ref_image_0>, move the knight <knight_1> upwards and to the left. Keep the n
 | `input_mp` | number 或 null | 输入图像的百万像素数，保留两位小数。 |
 | `output_mp` | number 或 null | 输出图像的百万像素数，保留两位小数。 |
 
-使用相同的 `x-key` 对返回的 `polling_url` 发起 GET 请求。状态为 `Pending` 时继续轮询；`Ready` 时从 `result.sample` 获取结果图片 URL。其他状态包括 `Task not found`、`Request Moderated`、`Content Moderated` 和 `Error`。结果图片的签名 URL 有效期为 10 分钟，应及时获取图片。
+使用相同的 `x-key` 对返回的 `polling_url` 发起 GET 请求。`Pending`、`Reasoning`、`Generating` 表示任务仍在处理，继续轮询；`Ready` 时从 `result.sample` 获取结果图片 URL。任务注册存在传播延迟，期间查询可能返回 HTTP 404 或 `Task not found`，短暂重试后仍出现才视为终态。其他终态包括 `Request Moderated`、`Content Moderated` 和 `Error`。结果图片的签名 URL 有效期为 10 分钟，应及时获取图片。
 
 请求参数校验失败返回 HTTP 422；响应中的 `detail` 数组可包含错误位置 `loc`、消息 `msg` 和错误类型 `type`。
 

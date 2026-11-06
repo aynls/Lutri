@@ -1,7 +1,7 @@
 import type { Json, Recovery, Parameters } from "../domain/types";
 import { request } from "../models/shared";
 import type { ModelCombination } from "../models/types";
-import { array, object, send, string } from "./transport";
+import { array, HttpError, object, send, string } from "./transport";
 import { imageResults, responseMetadata, type RemoteImage } from "./results";
 
 export function recoveryFrom(combination: ModelCombination, response: Json, taskId: string): Recovery | undefined {
@@ -25,23 +25,36 @@ export async function poll(
   combination: ModelCombination,
   recovery: Recovery,
 ): Promise<{ done: boolean; images: RemoteImage[]; metadata?: Parameters }> {
-  let response: Json;
-  if (combination.protocol === "runware")
-    response = await send(
-      request("runware", "https://api.runware.ai/v1", [{ taskType: "getResponse", taskUUID: recovery.remoteId }]),
-    );
-  else {
-    if (!recovery.statusUrl) throw new Error("Original task has no query URL");
-    const query = request(combination.provider, recovery.statusUrl, null);
+  const tolerate = () => (recovery.transientCount = (recovery.transientCount ?? 0) + 1) <= 10;
+  const transient = (error: unknown) =>
+    !(error instanceof HttpError) ||
+    error.status === 429 ||
+    error.status >= 500 ||
+    (error.status === 404 && combination.protocol === "bfl");
+  const query =
+    combination.protocol === "runware"
+      ? request("runware", "https://api.runware.ai/v1", [{ taskType: "getResponse", taskUUID: recovery.remoteId }])
+      : recovery.statusUrl
+        ? request(combination.provider, recovery.statusUrl, null)
+        : undefined;
+  if (!query) throw new Error("Original task has no query URL");
+  if (combination.protocol !== "runware") {
     query.method = "GET";
     if (combination.protocol === "interactions") query.headers = { "Api-Revision": "2026-05-20" };
     delete query.body;
+  }
+  let response: Json;
+  try {
     response = await send(query);
+  } catch (error) {
+    if (!transient(error) || !tolerate()) throw error;
+    return { done: false, images: [] };
   }
   const data = object(response);
   const status = string(data.status);
   if (combination.protocol === "bfl") {
-    if (status === "Pending") return { done: false, images: [] };
+    if (["Pending", "Reasoning", "Generating"].includes(status ?? "")) return { done: false, images: [] };
+    if (status === "Task not found" && tolerate()) return { done: false, images: [] };
     if (status !== "Ready") throw new Error(status ?? JSON.stringify(response));
   }
   if (combination.protocol === "fal") {
@@ -50,7 +63,12 @@ export async function poll(
     const query = request("fal", recovery.resultUrl, null);
     query.method = "GET";
     delete query.body;
-    response = await send(query);
+    try {
+      response = await send(query);
+    } catch (error) {
+      if (!transient(error) || !tolerate()) throw error;
+      return { done: false, images: [] };
+    }
   }
   if (combination.protocol === "runware") {
     const images = imageResults("runware", response);
