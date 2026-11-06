@@ -27,7 +27,7 @@
   flex-shrink: 0;
 }
 .settings-navigation button[aria-current="page"] {
-  color: var(--accent);
+  color: var(--selected-text);
   background: var(--accent-soft);
   font-weight: 600;
 }
@@ -141,6 +141,10 @@
   color: var(--surface);
   background: var(--accent);
   border-color: var(--accent);
+}
+.settings-page .button-row .settings-primary-button:hover {
+  background: var(--accent);
+  filter: brightness(1.08);
 }
 .provider-setting {
   border-bottom: 1px solid var(--line);

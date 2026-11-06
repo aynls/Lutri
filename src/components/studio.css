@@ -129,11 +129,12 @@
 }
 .segmented-control button[aria-pressed="true"] {
   color: var(--text);
-  background: var(--surface);
+  background: var(--raised);
+  border-color: var(--line);
   box-shadow: 0 1px 3px #0001;
 }
 button[aria-pressed="true"] {
-  color: var(--accent);
+  color: var(--selected-text);
   background: var(--accent-soft);
 }
 .danger-button {

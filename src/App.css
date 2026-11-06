@@ -164,7 +164,7 @@ small {
 }
 .navigation button.active {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--selected-text);
 }
 .version {
   font-size: 11px;
@@ -343,14 +343,7 @@ small {
   padding-bottom: 6px;
 }
 .request-preview {
-  margin-top: 14px;
-  border-top: 1px solid var(--line);
   font-size: 12px;
-}
-.request-preview > summary {
-  cursor: pointer;
-  color: var(--muted);
-  padding: 8px 0;
 }
 .request-preview pre {
   max-height: 240px;
@@ -1282,7 +1275,7 @@ small {
   font-size: 12px;
 }
 .model-browser .selected {
-  color: var(--accent);
+  color: var(--selected-text);
   background: var(--accent-soft);
 }
 .model-options {

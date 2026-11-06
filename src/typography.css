@@ -16,6 +16,7 @@
   --line: #ded6cc;
   --accent: #a45b3e;
   --accent-soft: #efe0d4;
+  --selected-text: var(--accent);
 }
 :root:lang(ja) {
   font-family: "Inter Variable", "Noto Sans JP Variable", "Noto Sans SC Variable", sans-serif;
@@ -30,7 +31,8 @@
   --muted: #a69b8e;
   --line: #403a33;
   --accent: #d18d6b;
-  --accent-soft: #423129;
+  --accent-soft: #50372d;
+  --selected-text: #e6a783;
 }
 @media (prefers-color-scheme: dark) {
   :root[data-theme="system"] {
@@ -43,7 +45,8 @@
     --muted: #a69b8e;
     --line: #403a33;
     --accent: #d18d6b;
-    --accent-soft: #423129;
+    --accent-soft: #50372d;
+    --selected-text: #e6a783;
   }
 }
 body {
