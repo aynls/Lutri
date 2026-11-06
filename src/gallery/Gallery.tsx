@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import {
   HeartIcon,
@@ -11,18 +11,21 @@ import {
 } from "@phosphor-icons/react";
 import type { GalleryEntry } from "../domain/types";
 import { t } from "../i18n";
-import { commit, native } from "../services/native";
+import { commit, importAsset, native } from "../services/native";
 import { AssetImage } from "./AssetImage";
 import { getState, refreshGallery, updateState, useApplication } from "../services/store";
 import { Dialog } from "../components/Dialog";
 import { CopyButton } from "../components/CopyButton";
 import { ResizablePanel } from "../components/ResizablePanel";
-import { chooseImages, exportImages, favorite } from "./actions";
+import { chooseImages, copyAssetImage, exportImages, favorite } from "./actions";
+import { lt } from "../i18n/library";
+import { setViewerContext } from "./viewContext";
 export { chooseImages, favorite } from "./actions";
 
 export function Gallery({
   onView,
   onReference,
+  onEdit,
   onRelated,
   onUpscale,
   onError,
@@ -32,6 +35,7 @@ export function Gallery({
 }: {
   onView: (id: string) => void;
   onReference: (entry: GalleryEntry) => void;
+  onEdit?: (entry: GalleryEntry) => void;
   onRelated: (id: string) => void;
   onUpscale?: (entry: GalleryEntry) => void;
   onError: (error: unknown) => void;
@@ -53,37 +57,105 @@ export function Gallery({
   const [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
   const anchor = useRef<string>(undefined);
-  const entries = useMemo(() => {
-    const start = from ? new Date(`${from}T00:00:00`).getTime() : -Infinity;
-    const end = until ? new Date(`${until}T00:00:00`) : undefined;
-    end?.setDate(end.getDate() + 1);
-    const query = search.trim().toLowerCase();
-    return gallery
-      .filter(
-        (entry) =>
-          (filter === "all" ||
-            (filter === "favorites" && entry.favorite) ||
-            entry.source === filter ||
-            entry.boardIds.includes(filter)) &&
-          (entry.asset.id.includes(query) || entry.asset.name.toLowerCase().includes(query)) &&
-          entry.addedAt >= start &&
-          entry.addedAt < (end?.getTime() ?? Infinity) &&
-          (orientation === "all" ||
-            (orientation === "square" && entry.asset.width === entry.asset.height) ||
-            (orientation === "landscape" && entry.asset.width > entry.asset.height) ||
-            (orientation === "portrait" && entry.asset.width < entry.asset.height)),
-      )
-      .sort((a, b) =>
-        sort === "name"
-          ? a.asset.name.localeCompare(b.asset.name)
-          : sort === "oldest"
-            ? a.addedAt - b.addedAt
-            : b.addedAt - a.addedAt,
-      );
-  }, [gallery, filter, search, from, until, orientation, sort]);
-  const visibleIds = new Set(entries.map((entry) => entry.asset.id));
-  const selection = selected.filter((id) => visibleIds.has(id));
-  const selectedEntries = selection.map((id) => entries.find((entry) => entry.asset.id === id)!);
+  const [entries, setEntries] = useState<GalleryEntry[]>([]),
+    [total, setTotal] = useState(0),
+    [loading, setLoading] = useState(false);
+  const [kind, setKind] = useState("all"),
+    [model, setModel] = useState("all"),
+    [provider, setProvider] = useState("all"),
+    [tag, setTag] = useState(""),
+    [availability, setAvailability] = useState("all");
+  const [facets, setFacets] = useState<{
+    model: string[];
+    provider: string[];
+    tags: string[];
+    counts: Record<string, number>;
+  }>({ model: [], provider: [], tags: [], counts: {} });
+  const [editor, setEditor] = useState<{ kind: "url" | "tag" | "rename-tag"; value: string }>();
+  const cache = useRef(new Map<string, GalleryEntry>()),
+    version = useRef(0);
+  const query = useMemo(
+    () => ({
+      collection: filter,
+      search,
+      sort,
+      from: from ? new Date(`${from}T00:00:00`).getTime() : undefined,
+      until: until ? new Date(`${until}T00:00:00`).getTime() + 86400000 : undefined,
+      orientation,
+      kind,
+      model,
+      provider,
+      tag,
+      availability,
+    }),
+    [filter, search, sort, from, until, orientation, kind, model, provider, tag, availability],
+  );
+  const queryKey = JSON.stringify(query);
+  useEffect(() => {
+    setSelected([]);
+    setEntries([]);
+    anchor.current = undefined;
+  }, [queryKey]);
+  useEffect(() => {
+    const current = ++version.current;
+    setLoading(true);
+    void Promise.all([
+      native<{ entries: GalleryEntry[]; total: number }>("gallery_query", { query, limit: 80, offset: 0 }),
+      native<typeof facets>("gallery_facets"),
+      selected.length ? native<string[]>("gallery_ids", { query: { ...query, ids: selected } }) : Promise.resolve([]),
+    ])
+      .then(([page, options, matching]) => {
+        if (current !== version.current) return;
+        for (const entry of page.entries) cache.current.set(entry.asset.id, entry);
+        setEntries(page.entries);
+        setTotal(page.total);
+        setFacets(options);
+        setSelected((previous) => previous.filter((id) => matching.includes(id)));
+      })
+      .catch(onError)
+      .finally(() => {
+        if (current === version.current) setLoading(false);
+      });
+    return () => {
+      version.current++;
+    };
+  }, [queryKey, gallery]);
+  const loadMore = async () => {
+    const current = version.current;
+    setLoading(true);
+    try {
+      const page = await native<{ entries: GalleryEntry[]; total: number }>("gallery_query", {
+        query,
+        limit: 80,
+        offset: entries.length,
+      });
+      if (current !== version.current) return;
+      for (const entry of page.entries) cache.current.set(entry.asset.id, entry);
+      setEntries((previous) => [
+        ...previous,
+        ...page.entries.filter((entry) => !previous.some((old) => old.asset.id === entry.asset.id)),
+      ]);
+      setTotal(page.total);
+    } finally {
+      if (current === version.current) setLoading(false);
+    }
+  };
+  const selection = selected;
+  const selectedEntries = selection
+    .map((id) => cache.current.get(id))
+    .filter((entry): entry is GalleryEntry => !!entry);
+  const selectAllMatches = async () => {
+    const current = version.current;
+    const ids = (await native<string[]>("gallery_ids", { query })).slice(0, limit);
+    const records = await native<GalleryEntry[]>("gallery_entries", { ids });
+    if (current !== version.current) return;
+    for (const entry of records) cache.current.set(entry.asset.id, entry);
+    setSelected(records.map((entry) => entry.asset.id));
+  };
+  const view = async (id: string) => {
+    setViewerContext(await native<string[]>("gallery_ids", { query }));
+    onView(id);
+  };
   const board = boards.find((entry) => entry.id === filter);
   const attempt = (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -93,7 +165,7 @@ export function Gallery({
       .finally(() => setBusy(false));
   };
   const toggle = (id: string, range = false) => {
-    if (limit === 0) return;
+    if (limit === 0 || loading || busy) return;
     const a = entries.findIndex((entry) => entry.asset.id === anchor.current),
       b = entries.findIndex((entry) => entry.asset.id === id);
     if (range && a >= 0) {
@@ -105,10 +177,8 @@ export function Gallery({
       );
     anchor.current = id;
   };
-  const mutateEntries = async (transform: (entry: GalleryEntry) => GalleryEntry) => {
-    await commit(
-      selectedEntries.map((entry) => ({ collection: "gallery", id: entry.asset.id, value: transform(entry) })),
-    );
+  const mutateEntries = async (action: string, value: string) => {
+    await native("gallery_mutate", { ids: selection, action, value });
     await refreshGallery();
   };
   const deleteSelected = async () => {
@@ -147,16 +217,9 @@ export function Gallery({
   };
   const deleteBoard = async () => {
     if (!board || !(await confirm(t("deleteBoardNotice"), { title: t("deleteBoard"), kind: "warning" }))) return;
-    await commit([
-      { collection: "boards", id: board.id },
-      ...gallery
-        .filter((entry) => entry.boardIds.includes(board.id))
-        .map((entry) => ({
-          collection: "gallery",
-          id: entry.asset.id,
-          value: { ...entry, boardIds: entry.boardIds.filter((id) => id !== board.id) },
-        })),
-    ]);
+    const ids = await native<string[]>("gallery_ids", { query: { collection: board.id } });
+    await native("gallery_mutate", { ids, action: "unboard", value: board.id });
+    await commit([{ collection: "boards", id: board.id }]);
     updateState({ boards: getState().boards.filter((entry) => entry.id !== board.id) });
     setFilter("all");
     setSelected([]);
@@ -182,13 +245,7 @@ export function Gallery({
               }}
             >
               {t(id)}
-              <span>
-                {
-                  gallery.filter(
-                    (entry) => id === "all" || entry.source === id || (id === "favorites" && entry.favorite),
-                  ).length
-                }
-              </span>
+              <span>{facets.counts?.[id] ?? 0}</span>
             </button>
           ))}
           <div className="section-heading">
@@ -207,7 +264,7 @@ export function Gallery({
               }}
             >
               <span className="board-name">{entry.name}</span>
-              <small>{gallery.filter((image) => image.boardIds.includes(entry.id)).length}</small>
+              <small>{facets.counts?.[entry.id] ?? 0}</small>
             </button>
           ))}
         </div>
@@ -227,6 +284,7 @@ export function Gallery({
             <option value="newest">{t("newest")}</option>
             <option value="oldest">{t("oldest")}</option>
             <option value="name">{t("nameOrder")}</option>
+            <option value="size">{lt("size")}</option>
           </select>
           <button aria-pressed={filters} onClick={() => setFilters(!filters)} title={t("filters")}>
             <FunnelSimpleIcon />
@@ -234,6 +292,9 @@ export function Gallery({
           <button disabled={busy || limit === 0} onClick={() => attempt(importImages)}>
             <UploadSimpleIcon />
             {t("import")}
+          </button>
+          <button disabled={busy} onClick={() => setEditor({ kind: "url", value: "" })}>
+            {lt("url")}
           </button>
           {board && (
             <details className="action-menu">
@@ -267,8 +328,73 @@ export function Gallery({
                 ))}
               </select>
             </label>
+            {(["kind", "model", "provider", "availability"] as const).map((field) => (
+              <label key={field}>
+                {field === "model" || field === "provider" ? t(field) : lt(field)}
+                <select
+                  value={{ kind, model, provider, availability }[field]}
+                  onChange={(event) =>
+                    ({ kind: setKind, model: setModel, provider: setProvider, availability: setAvailability })[field](
+                      event.target.value,
+                    )
+                  }
+                >
+                  <option value="all">{t("all")}</option>
+                  {(field === "kind"
+                    ? ["generation", "import", "upscale"]
+                    : field === "availability"
+                      ? ["available", "missing", "unknown"]
+                      : facets[field]
+                  ).map((value) => (
+                    <option key={value} value={value}>
+                      {field === "kind"
+                        ? value === "upscale"
+                          ? t("upscale")
+                          : lt(value as "generation" | "import")
+                        : field === "availability"
+                          ? value === "missing"
+                            ? t("missing")
+                            : lt(value as "available" | "unknown")
+                          : value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+            <label>
+              {lt("tags")}
+              <select value={tag} onChange={(event) => setTag(event.target.value)}>
+                <option value="">{t("all")}</option>
+                {facets.tags.map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </select>
+            </label>
+            {tag && (
+              <>
+                <button onClick={() => setEditor({ kind: "rename-tag", value: tag })}>{lt("renameTag")}</button>
+                <button
+                  onClick={() =>
+                    attempt(async () => {
+                      if (!(await confirm(t("confirmDelete")))) return;
+                      const ids = await native<string[]>("gallery_ids", { query: { tag } });
+                      await native("gallery_mutate", { ids, action: "untag", value: tag });
+                      setTag("");
+                      await refreshGallery();
+                    })
+                  }
+                >
+                  {lt("deleteTag")}
+                </button>
+              </>
+            )}
             <button
               onClick={() => {
+                setKind("all");
+                setModel("all");
+                setProvider("all");
+                setAvailability("all");
+                setTag("");
                 setFrom("");
                 setUntil("");
                 setOrientation("all");
@@ -281,7 +407,7 @@ export function Gallery({
         )}
         <div className="selection-toolbar">
           <button
-            disabled={!entries.length || busy}
+            disabled={!entries.length || busy || loading}
             onClick={() =>
               setSelected(
                 selection.length === Math.min(entries.length, limit)
@@ -291,12 +417,19 @@ export function Gallery({
             }
           >
             <CheckIcon />
-            {selection.length ? `${t("selectedCount")} ${selection.length}` : t("selectAll")}
+            {selection.length ? `${t("selectedCount")} ${selection.length}` : lt("loaded")}
           </button>
           {!!selection.length && <button onClick={() => setSelected([])}>{t("deselect")}</button>}
+          {total > entries.length && (
+            <button disabled={busy || loading} onClick={() => attempt(selectAllMatches)}>
+              {lt("selectMatches")} · {total}
+            </button>
+          )}
           <span className="toolbar-spacer" />
           {notice && <span role="status">{notice}</span>}
-          <span className="muted">{entries.length}</span>
+          <span className="muted">
+            {entries.length} / {total}
+          </span>
           <input
             className="thumbnail-size"
             type="range"
@@ -310,7 +443,7 @@ export function Gallery({
         <div className="gallery-scroll">
           <div className="gallery-grid" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${size}px, 1fr))` }}>
             {entries.map((entry, index) => {
-              const day = sort === "name" ? null : new Date(entry.addedAt).toDateString();
+              const day = sort === "name" || sort === "size" ? null : new Date(entry.addedAt).toDateString();
               const newDay =
                 day !== null && (index === 0 || new Date(entries[index - 1].addedAt).toDateString() !== day);
               return (
@@ -324,7 +457,7 @@ export function Gallery({
                         onClick={(event) => {
                           if (picker || event.ctrlKey || event.metaKey || event.shiftKey || selection.length)
                             toggle(entry.asset.id, event.shiftKey);
-                          else onView(entry.asset.id);
+                          else attempt(() => view(entry.asset.id));
                         }}
                       >
                         <AssetImage entry={entry} thumbnail />
@@ -357,7 +490,11 @@ export function Gallery({
                             <DotsThreeIcon size={20} />
                           </summary>
                           <div>
-                            <button onClick={() => onView(entry.asset.id)}>{t("details")}</button>
+                            <button onClick={() => attempt(() => view(entry.asset.id))}>{t("details")}</button>
+                            {onEdit && <button onClick={() => onEdit(entry)}>{lt("edit")}</button>}
+                            <button onClick={() => attempt(() => copyAssetImage(entry.asset.id))}>
+                              {lt("copyImage")}
+                            </button>
                             {onUpscale && <button onClick={() => onUpscale(entry)}>{t("upscale")}</button>}
                             <button onClick={() => onRelated(entry.asset.id)}>{t("related")}</button>
                             <button onClick={() => attempt(() => exportImages([entry]))}>{t("saveAs")}</button>
@@ -371,7 +508,12 @@ export function Gallery({
               );
             })}
           </div>
-          {!entries.length && (
+          {entries.length < total && (
+            <button disabled={loading || busy} onClick={() => attempt(loadMore)}>
+              {lt("more")}
+            </button>
+          )}
+          {!entries.length && !loading && (
             <div className="empty-state">
               <p>{gallery.length ? t("noMatches") : t("empty")}</p>
               <button onClick={() => attempt(importImages)}>
@@ -412,12 +554,7 @@ export function Gallery({
               <button
                 disabled={busy}
                 onClick={() =>
-                  attempt(() =>
-                    mutateEntries((entry) => ({
-                      ...entry,
-                      favorite: !selectedEntries.every((value) => value.favorite),
-                    })),
-                  )
+                  attempt(() => mutateEntries("favorite", String(!selectedEntries.every((value) => value.favorite))))
                 }
               >
                 {selectedEntries.every((entry) => entry.favorite) ? t("removeFavorite") : t("favorites")}
@@ -428,9 +565,7 @@ export function Gallery({
                 disabled={busy || !boards.length}
                 onChange={(event) => {
                   const id = event.target.value;
-                  attempt(() =>
-                    mutateEntries((entry) => ({ ...entry, boardIds: [...new Set([...entry.boardIds, id])] })),
-                  );
+                  attempt(() => mutateEntries("board", id));
                 }}
               >
                 <option value="">{t("addToBoard")}</option>
@@ -441,19 +576,49 @@ export function Gallery({
                 ))}
               </select>
               {board && (
+                <button disabled={busy} onClick={() => attempt(() => mutateEntries("unboard", board.id))}>
+                  {t("removeFromBoard")}
+                </button>
+              )}
+              <button disabled={busy} onClick={() => setEditor({ kind: "tag", value: "" })}>
+                {lt("addTag")}
+              </button>
+              {tag && (
                 <button
                   disabled={busy}
                   onClick={() =>
-                    attempt(() =>
-                      mutateEntries((entry) => ({
-                        ...entry,
-                        boardIds: entry.boardIds.filter((id) => id !== board.id),
-                      })),
-                    )
+                    attempt(async () => {
+                      await native("gallery_mutate", { ids: selection, action: "untag", value: tag });
+                      await refreshGallery();
+                    })
                   }
                 >
-                  {t("removeFromBoard")}
+                  {lt("untag")}
                 </button>
+              )}
+              {board && (
+                <select
+                  value=""
+                  aria-label={lt("move")}
+                  disabled={busy}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    attempt(async () => {
+                      await native("gallery_mutate", { ids: selection, action: "move", value, from: board.id });
+                      setSelected([]);
+                      await refreshGallery();
+                    });
+                  }}
+                >
+                  <option value="">{lt("move")}</option>
+                  {boards
+                    .filter((value) => value.id !== board.id)
+                    .map((value) => (
+                      <option key={value.id} value={value.id}>
+                        {value.name}
+                      </option>
+                    ))}
+                </select>
               )}
               <span className="toolbar-spacer" />
               <button className="danger-button" disabled={busy} onClick={() => attempt(deleteSelected)}>
@@ -463,6 +628,54 @@ export function Gallery({
           )
         )}
       </div>
+      {editor && (
+        <Dialog
+          title={editor.kind === "url" ? lt("url") : editor.kind === "rename-tag" ? lt("renameTag") : lt("addTag")}
+          className="compact-dialog"
+          onClose={() => setEditor(undefined)}
+          footer={
+            <>
+              <button onClick={() => setEditor(undefined)}>{t("cancel")}</button>
+              <button
+                disabled={busy || !editor.value.trim()}
+                onClick={() =>
+                  attempt(async () => {
+                    if (editor.kind === "url") {
+                      const url = new URL(editor.value.trim());
+                      if (!["https:", "http:"].includes(url.protocol)) throw new Error(lt("invalidUrl"));
+                      const entry = await importAsset(url.pathname.split("/").pop() || "Image", { url: url.href });
+                      if (picker) onPick?.([entry]);
+                    } else {
+                      const ids =
+                        editor.kind === "rename-tag"
+                          ? await native<string[]>("gallery_ids", { query: { tag } })
+                          : selection;
+                      await native("gallery_mutate", {
+                        ids,
+                        action: editor.kind === "rename-tag" ? "rename-tag" : "tag",
+                        value: editor.value.trim(),
+                        from: editor.kind === "rename-tag" ? tag : undefined,
+                      });
+                      if (editor.kind === "rename-tag") setTag(editor.value.trim());
+                    }
+                    setEditor(undefined);
+                    await refreshGallery();
+                  })
+                }
+              >
+                {t("save")}
+              </button>
+            </>
+          }
+        >
+          <input
+            autoFocus
+            aria-label={editor.kind === "url" ? "URL" : lt("tagName")}
+            value={editor.value}
+            onChange={(event) => setEditor({ ...editor, value: event.target.value })}
+          />
+        </Dialog>
+      )}
       {boardEditor && (
         <Dialog
           title={boardEditor.id ? t("rename") : t("newBoard")}

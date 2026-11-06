@@ -1,33 +1,74 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { ArrowLeftIcon, ArrowRightIcon, HeartIcon, InfoIcon, XIcon } from "@phosphor-icons/react";
 import { useApplication } from "../services/store";
-import { imageUrl } from "../services/native";
+import { native, imageUrl } from "../services/native";
 import { t } from "../i18n";
 import { ImageStage } from "../components/ImageStage";
 import { CopyButton } from "../components/CopyButton";
 import { ResizablePanel } from "../components/ResizablePanel";
 import { RequestDetails } from "../history/RequestDetails";
-import { exportImages, favorite } from "./actions";
+import { copyAssetImage, exportImages, favorite } from "./actions";
+
+import { getViewerContext } from "./viewContext";
+import { lt } from "../i18n/library";
+import type { GalleryEntry } from "../domain/types";
 
 export function ImageViewer({ assetId }: { assetId: string }) {
   const { gallery, tasks, ready } = useApplication();
   const [current, setCurrent] = useState(assetId),
     [info, setInfo] = useState(true),
     [error, setError] = useState("");
-  const ordered = [...gallery].sort((a, b) => b.addedAt - a.addedAt);
-  const index = ordered.findIndex((entry) => entry.asset.id === current),
-    entry = ordered[index];
+  const [ids] = useState(() => getViewerContext(assetId));
+  const [loaded, setLoaded] = useState<GalleryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ordered = ids.map(
+    (id) => loaded.find((entry) => entry.asset.id === id) ?? gallery.find((entry) => entry.asset.id === id),
+  );
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    void native<GalleryEntry[]>("gallery_entries", { ids: [current] })
+      .then((entries) => {
+        if (active) setLoaded(entries);
+      })
+      .catch(onError)
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [current, gallery]);
+  const index = ids.indexOf(current),
+    entry =
+      ordered[index] ??
+      loaded.find((entry) => entry.asset.id === current) ??
+      gallery.find((entry) => entry.asset.id === current);
   const task = tasks.find((task) => task.results.some((result) => result.assetId === current));
   const onError = (value: unknown) => setError(String(value));
   const attempt = (action: () => Promise<unknown>) => void action().catch(onError);
+  const related = (id: string) => {
+    if (ids.includes(id)) {
+      setCurrent(id);
+      return;
+    }
+    const viewer = new WebviewWindow(`image-${crypto.randomUUID()}`, {
+      url: `index.html?asset=${encodeURIComponent(id)}`,
+      title: "Lutri",
+      width: 1200,
+      height: 800,
+    });
+    void viewer.once("tauri://error", (event) => onError(event.payload));
+  };
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, button")) return;
       if (event.key === "Escape") void getCurrentWindow().close().catch(onError);
-      if (event.key === "ArrowLeft" && index > 0) setCurrent(ordered[index - 1].asset.id);
-      if (event.key === "ArrowRight" && index < ordered.length - 1) setCurrent(ordered[index + 1].asset.id);
+      if (event.key === "ArrowLeft" && index > 0) setCurrent(ids[index - 1]);
+      if (event.key === "ArrowRight" && index < ordered.length - 1) setCurrent(ids[index + 1]);
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
@@ -36,7 +77,7 @@ export function ImageViewer({ assetId }: { assetId: string }) {
     <div className="image-viewer viewer-workspace">
       <header className="viewer-toolbar">
         <div className="button-row">
-          <button disabled={index <= 0} title={t("back")} onClick={() => setCurrent(ordered[index - 1].asset.id)}>
+          <button disabled={index <= 0} title={t("back")} onClick={() => setCurrent(ids[index - 1])}>
             <ArrowLeftIcon />
           </button>
           <span>
@@ -45,7 +86,7 @@ export function ImageViewer({ assetId }: { assetId: string }) {
           <button
             disabled={index < 0 || index >= ordered.length - 1}
             title={t("results")}
-            onClick={() => setCurrent(ordered[index + 1].asset.id)}
+            onClick={() => setCurrent(ids[index + 1])}
           >
             <ArrowRightIcon />
           </button>
@@ -57,6 +98,7 @@ export function ImageViewer({ assetId }: { assetId: string }) {
             <button title={t("favorites")} onClick={() => attempt(() => favorite(entry))}>
               <HeartIcon weight={entry.favorite ? "fill" : "regular"} />
             </button>
+            <button onClick={() => attempt(() => copyAssetImage(entry.asset.id))}>{lt("copyImage")}</button>
             <button onClick={() => attempt(() => exportImages([entry]))}>{t("saveAs")}</button>
             <button title={t("reveal")} onClick={() => attempt(() => revealItemInDir(entry.path))}>
               {t("reveal")}
@@ -74,7 +116,7 @@ export function ImageViewer({ assetId }: { assetId: string }) {
         {entry ? (
           <ImageStage key={current} before={{ dataUrl: imageUrl(entry.path), ...entry.asset }} />
         ) : (
-          <div className="empty-state">{ready ? t("missing") : <span className="spinner" />}</div>
+          <div className="empty-state">{ready && !loading ? t("missing") : <span className="spinner" />}</div>
         )}
         {info && (
           <ResizablePanel
@@ -99,7 +141,7 @@ export function ImageViewer({ assetId }: { assetId: string }) {
                   </div>
                 </section>
               )}
-              {task && <RequestDetails task={task} onView={setCurrent} onError={onError} />}
+              {task && <RequestDetails task={task} onView={related} onError={onError} />}
             </div>
           </ResizablePanel>
         )}

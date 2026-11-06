@@ -16,7 +16,17 @@ pub fn save_asset(store: &Store, bytes: &[u8], name: String, source: &str) -> Re
     save_asset_with_id(store, bytes, name, source, uuid::Uuid::new_v4().to_string())
 }
 
-fn save_asset_with_id(store: &Store, bytes: &[u8], name: String, source: &str, id: String) -> Result<Value, String> {
+pub(crate) fn save_asset_with_id(
+    store: &Store,
+    bytes: &[u8],
+    name: String,
+    source: &str,
+    id: String,
+) -> Result<Value, String> {
+    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
+    if let Ok(existing) = entry(store, &id) {
+        return Ok(existing);
+    }
     let (decoded, extension, media_type) = match image::guess_format(bytes) {
         Ok(format) => (
             image::load_from_memory_with_format(bytes, format).map_err(|e| e.to_string())?,
@@ -40,8 +50,12 @@ fn save_asset_with_id(store: &Store, bytes: &[u8], name: String, source: &str, i
         }
     };
     let (width, height) = decoded.dimensions();
-    let path = store.root.join("assets").join(format!("{id}.{extension}"));
-    let thumbnail = store.root.join("thumbnails").join(format!("{id}.png"));
+    let root = store.library.read().map_err(|e| e.to_string())?;
+    if !root.is_dir() {
+        return Err("Library folder is unavailable".into());
+    }
+    let path = root.join("assets").join(format!("{id}.{extension}"));
+    let thumbnail = root.join("thumbnails").join(format!("{id}.png"));
     std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
     decoded
         .thumbnail(480, 480)
@@ -51,7 +65,8 @@ fn save_asset_with_id(store: &Store, bytes: &[u8], name: String, source: &str, i
         "asset": { "id": id, "name": name, "mediaType": media_type, "width": width, "height": height },
         "path": path, "thumbnailPath": thumbnail, "source": source,
         "addedAt": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|e|e.to_string())?.as_millis() as u64,
-        "favorite": false, "boardIds": []
+        "favorite": false, "boardIds": [], "tags": [], "bytes":bytes.len(), "availability":"available",
+        "provenance":{"kind":if source=="imported"{"import"}else{"generation"}}
     });
     store
         .db
@@ -65,7 +80,7 @@ fn save_asset_with_id(store: &Store, bytes: &[u8], name: String, source: &str, i
     Ok(entry)
 }
 
-fn entry(store: &Store, id: &str) -> Result<Value, String> {
+pub fn entry(store: &Store, id: &str) -> Result<Value, String> {
     let body: String = store
         .db
         .lock()
@@ -154,6 +169,7 @@ pub fn result_stage(store: tauri::State<Store>, data_url: String) -> Result<Stri
 
 #[tauri::command]
 pub fn asset_data(store: tauri::State<Store>, id: String) -> Result<String, String> {
+    let _guard = store.library.read().map_err(|e| e.to_string())?;
     let value = entry(&store, &id)?;
     let path = value["path"].as_str().ok_or("Missing asset path")?;
     let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
@@ -163,6 +179,9 @@ pub fn asset_data(store: tauri::State<Store>, id: String) -> Result<String, Stri
 
 #[tauri::command]
 pub fn asset_exists(store: tauri::State<Store>, id: String) -> bool {
+    let Ok(_guard) = store.library.read() else {
+        return false;
+    };
     entry(&store, &id)
         .ok()
         .and_then(|v| v["path"].as_str().map(|p| Path::new(p).is_file()))
@@ -171,6 +190,7 @@ pub fn asset_exists(store: tauri::State<Store>, id: String) -> bool {
 
 #[tauri::command]
 pub fn asset_export(store: tauri::State<Store>, id: String, destination: String) -> Result<(), String> {
+    let _guard = store.library.read().map_err(|e| e.to_string())?;
     let value = entry(&store, &id)?;
     std::fs::copy(value["path"].as_str().ok_or("Missing asset path")?, destination).map_err(|e| e.to_string())?;
     Ok(())
@@ -178,11 +198,21 @@ pub fn asset_export(store: tauri::State<Store>, id: String, destination: String)
 
 #[tauri::command]
 pub fn asset_delete(store: tauri::State<Store>, id: String) -> Result<(), String> {
-    let value = entry(&store, &id)?;
+    delete_asset(&store, &id)
+}
+
+pub fn delete_asset(store: &Store, id: &str) -> Result<(), String> {
+    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
+    let root = store.library.read().map_err(|e| e.to_string())?;
+    delete_asset_locked(store, id, &root)
+}
+
+pub fn delete_asset_locked(store: &Store, id: &str, root: &Path) -> Result<(), String> {
+    let value = entry(store, id)?;
     for key in ["path", "thumbnailPath"] {
         if let Some(path) = value[key].as_str() {
             let path = Path::new(path);
-            if path.is_file() {
+            if path.is_file() && path.starts_with(root) {
                 std::fs::remove_file(path).map_err(|e| e.to_string())?;
             }
         }

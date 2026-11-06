@@ -3,6 +3,12 @@
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("--upscale-devices") {
+        if let Some(path) = args.get(2) {
+            lutri_lib::upscale::run_device_probe(path);
+        }
+        return;
+    }
     if args.get(1).map(String::as_str) == Some("--upscale-worker") {
         if let Some(path) = args.get(2) {
             if let Err(error) = lutri_lib::upscale::run_worker(path) {
