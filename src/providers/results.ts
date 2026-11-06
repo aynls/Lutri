@@ -75,7 +75,9 @@ export function imageResults(protocol: Protocol, raw: Json): RemoteImage[] {
   if (sample) return [{ url: sample }];
   return array(result.data).flatMap((item) => {
     const value = object(item);
-    const mime = string(value.media_type) ?? string(value.mime_type) ?? "image/png";
+    const outputFormat = string(result.output_format);
+    const formatMime = outputFormat === "jpeg" ? "image/jpeg" : outputFormat === "webp" ? "image/webp" : undefined;
+    const mime = string(value.media_type) ?? string(value.mime_type) ?? formatMime ?? "image/png";
     const base64 = string(value.b64_json) ?? string(value.imageBase64Data);
     const url =
       string(value.url) ??

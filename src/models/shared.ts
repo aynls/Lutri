@@ -5,6 +5,7 @@ import type { CompiledRequest, FieldDefinition, ModelCombination, ProviderId } f
 export const providerNames: Record<ProviderId, string> = {
   bfl: "Black Forest Labs",
   fal: "fal",
+  openai: "OpenAI",
   openrouter: "OpenRouter",
   runware: "Runware",
   comfy: "Comfy Router",

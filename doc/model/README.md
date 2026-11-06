@@ -3,7 +3,7 @@
 | 模型家族 | 文档 |
 | --- | --- |
 | FLUX.3 Image | [完整模型](FLUX/flux-3-image/)、[Klein](FLUX/flux-3-image-klein/) |
-| GPT Image 2.5 | [各供应商](GPT/gpt-image-2.5/) |
+| GPT Image 2.5 / 2.6 | [OpenAI](GPT/gpt-image-OpenAI.md)、[2.5 各供应商](GPT/gpt-image-2.5/)、[2.6 各供应商](GPT/gpt-image-2.6/) |
 | Qwen Image | [各供应商](Qwen/qwen-image/) |
 | Nano Banana | [API 资料](Gemini/Nano-Banana-API.md) |
 | Seedream 5.0 | [各供应商](Seedream/seedream-5/) |

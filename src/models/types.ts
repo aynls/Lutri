@@ -4,6 +4,7 @@ import type { GenerationDraft, Json, Parameters, Recovery } from "../domain/type
 export type ProviderId =
   | "bfl"
   | "fal"
+  | "openai"
   | "openrouter"
   | "runware"
   | "comfy"
