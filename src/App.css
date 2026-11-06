@@ -1203,13 +1203,12 @@ small {
 }
 .result-prompt {
   padding: 0 12px 8px;
+  max-height: 80px;
   font-size: 11px;
   color: var(--muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow-y: auto;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 .result-card:focus-within .card-remove {
   opacity: 1;

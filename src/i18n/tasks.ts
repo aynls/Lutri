@@ -13,8 +13,6 @@ const messages = {
   ),
   deletable: label("Can delete", "可删除", "削除可能"),
   skipped: label("Skipped", "跳过", "対象外"),
-  compiledPrompt: label("Submitted prompt", "实际提交提示词", "送信したプロンプト"),
-  promptUnavailable: label("Not recorded", "未记录", "未記録"),
   providerTask: label("Provider task ID", "供应商任务 ID", "プロバイダーのタスク ID"),
   usage: label("Usage", "用量", "使用量"),
   inputTokens: label("Input tokens", "输入 token", "入力トークン"),

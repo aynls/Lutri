@@ -20,23 +20,9 @@ import { copyAssetImage, exportImages, favorite } from "../gallery/actions";
 import { execute } from "../services/generation";
 import { removeFeed, useApplication } from "../services/store";
 import { c } from "./messages";
-import { taskStatusLabel } from "../i18n/tasks";
 import { TaskUsage } from "../history/TaskUsage";
 import { setViewerContext } from "../gallery/viewContext";
 
-function Timer({ start }: { start: number }) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  const seconds = Math.max(0, Math.floor((now - start) / 1000));
-  return (
-    <small className="task-timer">
-      {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
-    </small>
-  );
-}
 export function Feed({
   onView,
   onReference,
@@ -129,15 +115,10 @@ export function Feed({
                   asset = result?.assetId ? assets.get(result.assetId) : undefined,
                   prompt = displayPrompt(task.draft);
                 const busy = ["queued", "submitting", "generating", "downloading"].includes(task.status);
-                const status = result?.assetId
-                  ? "missing"
-                  : result?.status === "failed"
-                    ? result.url
-                      ? "download-failed"
-                      : "failed"
-                    : result?.status === "downloading"
-                      ? "downloading"
-                      : task.status;
+                const downloading =
+                  !result?.assetId &&
+                  result?.status !== "failed" &&
+                  (result?.status === "downloading" || task.status === "downloading");
                 return (
                   <article className={`result-card ${busy ? "is-busy" : ""}`} key={slot.id}>
                     <button
@@ -165,9 +146,7 @@ export function Feed({
                     ) : (
                       <div className="result-placeholder">
                         {busy ? <span className="spinner" /> : <ImageIcon size={28} />}
-                        <span>{status === "missing" ? t("missing") : taskStatusLabel(status)}</span>
-                        {busy && status !== "downloading" && <Timer start={task.createdAt} />}
-                        {status === "downloading" && <small className="task-timer">{t("downloading")}</small>}
+                        {busy && downloading && <small className="task-timer">{t("downloading")}</small>}
                         {!busy && task.status !== "completed" && task.status !== "cancelled" && (
                           <button
                             className="result-retry"
@@ -191,7 +170,7 @@ export function Feed({
                       </span>
                     </footer>
                     {prompt.trim() ? (
-                      <p className="result-prompt" title={prompt}>
+                      <p className="result-prompt" tabIndex={0} aria-label={t("prompt")}>
                         {prompt}
                       </p>
                     ) : null}

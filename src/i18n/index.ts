@@ -234,7 +234,7 @@ const messages = {
   submitting: ["Submitting", "提交中", "送信中"],
   "submission-unknown": ["Submission unknown", "提交结果未知", "送信結果不明"],
   generating: ["Generating", "生成中", "生成中"],
-  downloading: ["Downloading", "正在下载", "ダウンロード中"],
+  downloading: ["Downloading", "下载中", "ダウンロード中"],
   "download-failed": ["Download failed", "下载失败", "ダウンロード失敗"],
   completed: ["Completed", "已完成", "完了"],
   cancelled: ["Cancelled", "已取消", "キャンセル済み"],

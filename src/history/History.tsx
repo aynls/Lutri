@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
-import { ArrowCounterClockwiseIcon, ClockCounterClockwiseIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
+import {
+  ArrowCounterClockwiseIcon,
+  ClockCounterClockwiseIcon,
+  ImageIcon,
+  MagnifyingGlassIcon,
+} from "@phosphor-icons/react";
 import type { GalleryEntry, GenerationDraft, GenerationTask } from "../domain/types";
 import { displayPrompt } from "../domain/references";
 import { ModelIcon } from "../components/ModelIcon";
@@ -14,7 +19,7 @@ import { parameterAssetIds } from "../services/parameterAssets";
 import { Dialog } from "../components/Dialog";
 import { RequestDetails } from "./RequestDetails";
 import { canDeleteHistory, deleteHistory } from "../services/history";
-import { taskText, taskStatusLabel } from "../i18n/tasks";
+import { taskText } from "../i18n/tasks";
 import { BatchUsage, TaskUsage } from "./TaskUsage";
 import { native } from "../services/native";
 
@@ -256,10 +261,8 @@ export function History({
                       <ModelIcon family={combination.family} size={20} />
                       <strong>{combination.label}</strong>
                       <span className="muted">{providerNames[combination.provider]}</span>
-                      <span className={`status-badge status-${task.status}`}>
-                        {busy && <span className="status-dot" />}
-                        {taskStatusLabel(task.status)}
-                      </span>
+                      {busy && <span className="spinner" />}
+                      {task.status === "downloading" && <span className="muted">{t("downloading")}</span>}
                     </div>
                     <p className="history-prompt">{displayPrompt(task.draft)}</p>
                     <TaskUsage task={task} compact />
@@ -295,12 +298,14 @@ export function History({
                           key={result.id}
                           disabled={!entry}
                           onClick={() => entry && onView(entry.asset.id)}
-                          title={result.error ?? t(result.status)}
+                          title={result.error}
                         >
                           {entry ? (
                             <AssetImage entry={entry} thumbnail />
                           ) : (
-                            <span className="missing-image">{result.assetId ? t("missing") : t(result.status)}</span>
+                            <span className="missing-image">
+                              <ImageIcon size={20} />
+                            </span>
                           )}
                         </button>
                       );

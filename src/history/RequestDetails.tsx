@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { ImageIcon } from "@phosphor-icons/react";
 import type { GalleryEntry, GenerationTask } from "../domain/types";
 import { displayPrompt } from "../domain/references";
 import { combinationById } from "../models";
 import { providerNames } from "../models/shared";
-import { localize, t } from "../i18n";
+import { t } from "../i18n";
 import { useApplication } from "../services/store";
 import { AssetImage } from "../gallery/AssetImage";
 import { CopyButton } from "../components/CopyButton";
-import { taskStatusLabel, taskText } from "../i18n/tasks";
+import { taskText } from "../i18n/tasks";
 import { TaskUsage } from "./TaskUsage";
 import { retryResultExport } from "../services/generation";
 import { native } from "../services/native";
@@ -58,8 +59,7 @@ export function RequestDetails({
         </dd>
         <dt>{t("results")}</dt>
         <dd>
-          {task.results.filter((result) => result.status === "saved").length} / {task.results.length} ·{" "}
-          {taskStatusLabel(task.status)}
+          {task.results.filter((result) => result.status === "saved").length} / {task.results.length}
         </dd>
         {(task.providerTaskId ?? task.recovery?.remoteId) && (
           <>
@@ -90,57 +90,32 @@ export function RequestDetails({
         </div>
         <p className="full-prompt">{displayPrompt(task.draft)}</p>
       </section>
-      <details>
-        <summary>{taskText("compiledPrompt")}</summary>
-        {task.compiledPrompt !== undefined ? (
-          <>
-            <CopyButton value={task.compiledPrompt} onError={onError} />
-            <pre className="full-prompt">{task.compiledPrompt}</pre>
-          </>
-        ) : (
-          <p className="muted">{taskText("promptUnavailable")}</p>
-        )}
-      </details>
       {!!task.draft.references.length && (
         <section>
           <h3>{t("references")}</h3>
           <div className="detail-images">
-            {task.draft.references.map((reference, index) => {
+            {task.draft.references.map((reference) => {
               const entry = gallery.find((value) => value.asset.id === reference.assetId);
               return (
                 <div key={reference.id}>
-                  <button className="image-button" disabled={!entry} onClick={() => onView(reference.assetId)}>
+                  <button
+                    className="image-button"
+                    aria-label={reference.name}
+                    disabled={!entry}
+                    onClick={() => onView(reference.assetId)}
+                  >
                     {entry ? (
                       <AssetImage entry={entry} thumbnail />
                     ) : (
                       <span className="missing-image">{t("missing")}</span>
                     )}
                   </button>
-                  <span>
-                    {index + 1}. {reference.name}
-                  </span>
-                  <code title={reference.assetId}>{reference.assetId}</code>
                 </div>
               );
             })}
           </div>
         </section>
       )}
-      <section>
-        <h3>{t("parameters")}</h3>
-        <dl className="metadata-grid">
-          {Object.entries(task.draft.parameters).map(([key, value]) => (
-            <div className="metadata-row" key={key}>
-              <dt>
-                {localize(
-                  combination.fields.find((field) => field.key === key)?.label ?? { en: key, zh: key, ja: key },
-                )}
-              </dt>
-              <dd>{typeof value === "object" ? <pre>{JSON.stringify(value, null, 2)}</pre> : String(value)}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
       {!!task.draft.regions.length && (
         <details>
           <summary>{t("regions")}</summary>
@@ -157,7 +132,7 @@ export function RequestDetails({
         <section>
           <h3>{t("results")}</h3>
           <div className="detail-images">
-            {task.results.map((result, index) => {
+            {task.results.map((result) => {
               const entry = gallery.find((value) => value.asset.id === result.assetId);
               return (
                 <div key={result.id}>
@@ -165,12 +140,12 @@ export function RequestDetails({
                     {entry ? (
                       <AssetImage entry={entry} thumbnail />
                     ) : (
-                      <span className="missing-image">{result.assetId ? t("missing") : t(result.status)}</span>
+                      <span className="missing-image">
+                        <ImageIcon size={20} />
+                      </span>
                     )}
                   </button>
-                  <span>
-                    {index + 1} · {t(result.status)}
-                  </span>
+                  {result.status === "downloading" && <span>{t("downloading")}</span>}
                   {result.assetId && <CopyButton value={result.assetId} onError={onError} />}
                   {result.error && <p className="error-text">{result.error}</p>}
                   <TaskUsage task={task} result={result} />
@@ -182,7 +157,7 @@ export function RequestDetails({
                       </button>
                     </>
                   )}
-                  {result.metadata && (
+                  {result.metadata && Object.keys(result.metadata).length > 0 && (
                     <details>
                       <summary>{t("details")}</summary>
                       <pre>{JSON.stringify(result.metadata, null, 2)}</pre>
@@ -194,7 +169,7 @@ export function RequestDetails({
           </div>
         </section>
       )}
-      {task.metadata && (
+      {task.metadata && Object.keys(task.metadata).length > 0 && (
         <details>
           <summary>{t("details")}</summary>
           <pre>{JSON.stringify(task.metadata, null, 2)}</pre>
