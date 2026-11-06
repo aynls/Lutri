@@ -149,6 +149,15 @@ export function saveDraft(draft: GenerationDraft) {
       const normalized = { ...draft, parameters: (await storeParameterAssets(draft.parameters)) as Parameters };
       await commit([{ collection: "draft", id: "current", value: normalized }]);
       if (state.draft === draft) updateState({ draft: normalized });
+      const cached = new Set(state.gallery.map((entry) => entry.asset.id));
+      const missing = relatedAssetIds([], normalized).filter((id) => !cached.has(id));
+      if (missing.length) {
+        const entries = await native<GalleryEntry[]>("gallery_entries", { ids: missing });
+        if (entries.length)
+          updateState({
+            gallery: [...new Map([...state.gallery, ...entries].map((entry) => [entry.asset.id, entry])).values()],
+          });
+      }
     });
   return draftWrites;
 }
