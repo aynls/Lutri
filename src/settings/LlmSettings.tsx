@@ -12,6 +12,7 @@ export function LlmSettings({ onError }: { onError: (error: unknown) => void }) 
   const [editing, setEditing] = useState<Writer>();
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
+  const [detecting, setDetecting] = useState(false);
   useEffect(() => {
     void readRecords<Writer>("writers").then(setWriters).catch(onError);
     void readRecords<Specification>("specifications").then(setSpecs).catch(onError);
@@ -36,7 +37,6 @@ export function LlmSettings({ onError }: { onError: (error: unknown) => void }) 
                 name: "",
                 endpoint: "https://openrouter.ai/api/v1",
                 model: "",
-                vision: true,
               });
             }}
           >
@@ -67,8 +67,12 @@ export function LlmSettings({ onError }: { onError: (error: unknown) => void }) 
             className="compact-dialog llm-dialog"
             title={
               existing
-                ? localize(label("Edit model", "编辑模型", "モデルを編集"))
-                : localize(label("Add model", "添加模型", "モデルを追加"))
+                ? localize(
+                    label("Edit OpenAI-compatible model", "编辑 OpenAI-compatible 模型", "OpenAI 互換モデルを編集"),
+                  )
+                : localize(
+                    label("Add OpenAI-compatible model", "添加 OpenAI-compatible 模型", "OpenAI 互換モデルを追加"),
+                  )
             }
             onClose={() => {
               if (!busy) setEditing(undefined);
@@ -136,12 +140,28 @@ export function LlmSettings({ onError }: { onError: (error: unknown) => void }) 
             }
           >
             <div className="llm-fields">
+              <span className="muted">
+                {localize(
+                  label(
+                    "Only models with image input are supported.",
+                    "仅可用支持图片输入的模型。",
+                    "画像入力に対応したモデルのみ利用できます。",
+                  ),
+                )}
+              </span>
               {(["name", "endpoint", "model"] as const).map((key) => (
                 <label key={key}>
                   {key === "name" ? localize(label("Name", "名称", "名前")) : t(key)}
                   <input
+                    disabled={busy}
                     value={editing[key]}
-                    onChange={(event) => setEditing({ ...editing, [key]: event.target.value })}
+                    onChange={(event) =>
+                      setEditing({
+                        ...editing,
+                        [key]: event.target.value,
+                        ...(key === "name" ? {} : { efforts: undefined }),
+                      })
+                    }
                   />
                 </label>
               ))}
@@ -150,18 +170,53 @@ export function LlmSettings({ onError }: { onError: (error: unknown) => void }) 
                 <input
                   type="password"
                   autoComplete="off"
+                  disabled={busy}
                   value={secret}
-                  onChange={(event) => setSecret(event.target.value)}
+                  onChange={(event) => {
+                    setSecret(event.target.value);
+                    setEditing({ ...editing, efforts: undefined });
+                  }}
                 />
               </label>
-              <label className="llm-vision">
-                <input
-                  type="checkbox"
-                  checked={editing.vision}
-                  onChange={(event) => setEditing({ ...editing, vision: event.target.checked })}
-                />
-                {localize(label("Image input", "图像输入", "画像入力"))}
-              </label>
+              <div className="llm-discovery">
+                <button
+                  disabled={busy || !editing.endpoint.trim() || !editing.model.trim() || (!existing && !secret.trim())}
+                  onClick={() => {
+                    setDetecting(true);
+                    attempt(async () => {
+                      try {
+                        const efforts = await native<string[]>("writer_discover_efforts", {
+                          provider: `writer:${editing.id}`,
+                          endpoint: editing.endpoint.trim(),
+                          model: editing.model.trim(),
+                          secret: secret.trim() || null,
+                        }).catch(() => []);
+                        setEditing({ ...editing, efforts });
+                      } finally {
+                        setDetecting(false);
+                      }
+                    });
+                  }}
+                >
+                  {detecting
+                    ? localize(label("Detecting…", "检测中…", "検出中…"))
+                    : localize(label("Detect reasoning levels", "检测思考强度", "推論強度を検出"))}
+                </button>
+                <span className="muted" role="status">
+                  {!detecting &&
+                    (editing.efforts === undefined
+                      ? localize(label("Not checked", "未检测", "未検出"))
+                      : editing.efforts.length
+                        ? editing.efforts.join(", ")
+                        : localize(
+                            label(
+                              "Unavailable · provider default",
+                              "不可用 · 供应商默认",
+                              "利用不可 · プロバイダーの既定値",
+                            ),
+                          ))}
+                </span>
+              </div>
             </div>
           </Dialog>
         )}

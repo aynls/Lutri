@@ -795,10 +795,26 @@ img.asset-image.loaded {
 .writer-queue-item.is-dragging {
   background: var(--accent-soft);
 }
-.writer-queue-item > span {
+.writer-queue-model {
   flex: 1;
   min-width: 0;
-  overflow-wrap: anywhere;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.writer-queue-model > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.writer-queue-item .writer-queue-model .select-trigger {
+  flex-shrink: 0;
+  width: 88px;
+  max-width: 50%;
+  gap: 6px;
+  padding: 6px 8px;
 }
 .writer-queue-item button {
   padding: 4px;

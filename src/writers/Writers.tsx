@@ -27,6 +27,7 @@ interface Output {
   draft: GenerationDraft;
   text: string;
   reasoning: string;
+  effort: string;
   busy: boolean;
   error?: string;
 }
@@ -57,6 +58,7 @@ export function Writers({
     [writerDraft, setWriterDraft] = useState(() => structuredClone(draft)),
     [specs, setSpecs] = useState<Specification[]>(builtInSpecifications),
     [selected, setSelected] = useState(""),
+    [efforts, setEfforts] = useState<Record<string, string>>({}),
     [outputs, setOutputs] = useState<Output[]>([]);
   const resultsArea = useRef<HTMLDivElement>(null);
   const [columnCount, setColumnCount] = useState(1);
@@ -179,12 +181,13 @@ export function Writers({
     void Promise.all([
       readRecords<Writer>("writers"),
       readRecords<Specification>("specifications"),
-      readRecords<{ queue: string[]; selected: string[] }>("writer-session"),
+      readRecords<{ queue: string[]; selected: string[]; efforts?: Record<string, string> }>("writer-session"),
     ])
       .then(([w, s, sessions]) => {
         setWriters(w);
         setSpecs([...builtInSpecifications, ...s]);
         if (sessions[0]) {
+          setEfforts(sessions[0].efforts ?? {});
           setQueue(
             sessions[0].queue
               .filter((id) => w.some((writer) => writer.id === id))
@@ -204,21 +207,21 @@ export function Writers({
         {
           collection: "writer-session",
           id: "current",
-          value: { queue: queue.map((entry) => entry.writerId), selected: selected ? [selected] : [] },
+          value: { queue: queue.map((entry) => entry.writerId), selected: selected ? [selected] : [], efforts },
         },
       ]).catch(onError);
-  }, [queue, selected, loaded, onError]);
-  const run = async (writer: Writer, id: string = crypto.randomUUID()) => {
+  }, [queue, selected, efforts, loaded, onError]);
+  const run = async (writer: Writer, effort: string, id: string = crypto.randomUUID()) => {
     const snapshot = structuredClone(writerDraft);
     setOutputs((current) => [
       ...current.filter((output) => output.id !== id),
-      { id, writer, draft: snapshot, text: "", reasoning: "", busy: true },
+      { id, writer, draft: snapshot, text: "", reasoning: "", effort, busy: true },
     ]);
     const update = (changes: Partial<Output>) =>
       setOutputs((current) => current.map((output) => (output.id === id ? { ...output, ...changes } : output)));
     try {
       const specification = specs.find((spec) => spec.id === selected);
-      const messages = await writerMessages(snapshot, writer.vision, specification?.content);
+      const messages = await writerMessages(snapshot, specification?.content);
       await streamChat(
         {
           url: `${writer.endpoint.replace(/\/$/, "")}/chat/completions`,
@@ -226,7 +229,7 @@ export function Writers({
           provider: `writer:${writer.id}`,
           authHeader: "Authorization",
           authPrefix: "Bearer ",
-          body: { model: writer.model, messages, stream: true },
+          body: { model: writer.model, messages, stream: true, ...(effort ? { reasoning_effort: effort } : {}) },
         },
         (text, reasoning) => update({ text, reasoning }),
       );
@@ -332,7 +335,25 @@ export function Writers({
                       >
                         <DotsSixVerticalIcon aria-hidden="true" />
                       </button>
-                      <span>{writer.name}</span>
+                      <div className="writer-queue-model">
+                        <span title={writer.name}>{writer.name}</span>
+                        {!!writer.efforts?.length && (
+                          <Select
+                            aria-label={localize(label("Reasoning effort", "思考强度", "推論強度"))}
+                            value={writer.efforts.includes(efforts[writer.id]) ? efforts[writer.id] : ""}
+                            onValueChange={(value) => setEfforts((current) => ({ ...current, [writer.id]: value }))}
+                          >
+                            <option value="">
+                              {localize(label("Provider default", "供应商默认", "プロバイダーの既定値"))}
+                            </option>
+                            {writer.efforts.map((level) => (
+                              <option key={level} value={level}>
+                                {level}
+                              </option>
+                            ))}
+                          </Select>
+                        )}
+                      </div>
                       <button
                         title={t("moveUp")}
                         aria-label={t("moveUp")}
@@ -440,7 +461,7 @@ export function Writers({
               onClick={() => {
                 for (const queued of queue) {
                   const writer = writers.find((entry) => entry.id === queued.writerId);
-                  if (writer) void run(writer);
+                  if (writer) void run(writer, writer.efforts?.includes(efforts[writer.id]) ? efforts[writer.id] : "");
                 }
               }}
             >
@@ -488,7 +509,19 @@ export function Writers({
                     </div>
                     {output.error ? <p className="error-text">{output.error}</p> : null}
                     <footer>
-                      <button disabled={output.busy} onClick={() => void run(output.writer, output.id)}>
+                      <button
+                        disabled={output.busy}
+                        onClick={() => {
+                          const current = writers.find((writer) => writer.id === output.writer.id);
+                          const effort =
+                            current?.endpoint === output.writer.endpoint &&
+                            current.model === output.writer.model &&
+                            current.efforts?.includes(output.effort)
+                              ? output.effort
+                              : "";
+                          void run(output.writer, effort, output.id);
+                        }}
+                      >
                         {localize(label("Rewrite", "重写", "書き直す"))}
                       </button>
                       <button

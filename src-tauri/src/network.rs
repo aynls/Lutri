@@ -60,6 +60,59 @@ pub async fn credential_check(provider: String) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+pub async fn writer_discover_efforts(
+    provider: String,
+    endpoint: String,
+    model: String,
+    secret: Option<String>,
+) -> Result<Vec<String>, String> {
+    let secret = match secret.filter(|value| !value.trim().is_empty()) {
+        Some(value) => value,
+        None => credential(&provider)?
+            .get_password()
+            .map_err(|_| "Credential unavailable")?,
+    };
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .map_err(|_| "Discovery unavailable")?;
+    let response = client
+        .get(format!("{}/models", endpoint.trim_end_matches('/')))
+        .bearer_auth(secret)
+        .send()
+        .await
+        .map_err(|_| "Discovery failed")?
+        .error_for_status()
+        .map_err(|_| "Discovery failed")?;
+    let data: Value = response.json().await.map_err(|_| "Invalid model list")?;
+    let models = data.get("data").and_then(Value::as_array).ok_or("Invalid model list")?;
+    let entry = models
+        .iter()
+        .find(|item| item.get("id").and_then(Value::as_str) == Some(&model));
+    let Some(levels) = entry
+        .and_then(|item| item.pointer("/reasoning/supported_efforts"))
+        .and_then(Value::as_array)
+    else {
+        return Ok(Vec::new());
+    };
+    let mut result = Vec::new();
+    for level in levels {
+        let value = level.as_str().ok_or("Invalid reasoning level")?;
+        if value.is_empty()
+            || value.len() > 32
+            || !value.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        {
+            return Err("Invalid reasoning level".into());
+        }
+        if !result.iter().any(|item| item == value) {
+            result.push(value.to_owned());
+        }
+    }
+    Ok(result)
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpRequest {

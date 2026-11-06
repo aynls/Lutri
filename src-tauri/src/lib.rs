@@ -67,6 +67,7 @@ pub fn run() {
             network::credential_present,
             network::credential_remove,
             network::credential_check,
+            network::writer_discover_efforts,
             network::http_request,
             network::http_stream,
             upscale::upscale_models,

@@ -3,5 +3,5 @@ export interface Writer {
   name: string;
   endpoint: string;
   model: string;
-  vision: boolean;
+  efforts?: string[];
 }

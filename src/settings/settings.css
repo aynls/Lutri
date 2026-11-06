@@ -535,14 +535,19 @@
   display: grid;
   gap: 16px;
 }
-.llm-fields label:not(.llm-vision) {
+.llm-fields label {
   display: grid;
   gap: 6px;
 }
-.llm-fields .llm-vision {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+
+.llm-discovery {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+.llm-discovery > span {
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .llm-dialog {
