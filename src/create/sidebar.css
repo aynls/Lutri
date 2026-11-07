@@ -278,14 +278,6 @@
 .generate-submit-row .primary-button kbd {
   font-size: 10px;
 }
-.submit-reason {
-  font-size: 11px;
-  line-height: 1.5;
-  text-align: left;
-  padding: 0;
-  overflow-wrap: anywhere;
-  justify-content: start;
-}
 .validation-notice {
   max-height: min(120px, 20vh);
 }

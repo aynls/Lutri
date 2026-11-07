@@ -624,23 +624,6 @@ export default function App() {
                     </ul>
                   </details>
                 )}
-                {!configured && credential !== undefined ? (
-                  <button
-                    className="submit-reason"
-                    onClick={() => {
-                      sessionStorage.setItem("lutri.settings.provider", combination.provider);
-                      setPage("settings");
-                    }}
-                  >
-                    {c(credential ? "needsConfiguration" : "needsKey")} · {c("configure")}
-                  </button>
-                ) : validation.length ? (
-                  <button className="submit-reason" onClick={() => focusIssue(validation[0])}>
-                    {validation[0]}
-                  </button>
-                ) : promptEmpty ? (
-                  <span className="submit-reason muted">{c("promptRequired")}</span>
-                ) : null}
                 <div className="generate-submit-row">
                   <label>
                     {t("requestCount")}

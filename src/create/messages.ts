@@ -79,7 +79,6 @@ const messages = {
     "この組み合わせは現在のマスクまたは領域に対応していません。削除して切り替えますか？",
   ),
   incomplete: label("Complete the highlighted fields", "请检查标出的参数", "表示された項目を確認してください"),
-  promptRequired: label("Enter a prompt", "请输入提示词", "プロンプトを入力してください"),
   newResults: label("new results", "张新结果", "件の新しい結果"),
   copyImage: label("Copy image", "复制图片", "画像をコピー"),
   queued: label("queued", "个排队请求", "件の待機リクエスト"),
