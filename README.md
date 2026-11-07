@@ -31,7 +31,7 @@ Each model has its own strengths and ways of interpreting an idea. Lutri tailors
 | **Grok** | Grok Imagine Image 2.0 |
 | **MAI Image** | MAI Image 2.6, MAI Image 2.5 |
 | **Muse** | Muse Image |
-| **Recraft** | Recraft v4.1, Recraft v4.1 pro, Recraft v4.1 utility, Recraft v4.1 utility pro, Recraft v4 styles, Recraft v4 styles pro |
+| **Recraft** | Recraft v4.1, Recraft v4.1 pro, Recraft v4.1 utility, Recraft v4.1 utility pro, Recraft v4 styles, Recraft v4 styles pro<br>**SVG:** Recraft V4 Vector, Recraft V4 Pro Vector, Recraft V4.1 Vector, Recraft V4.1 Pro Vector, Recraft V4 Styles Vector, Recraft V4 Styles Pro Vector |
 | **Ideogram** | Ideogram 4.5, Ideogram 4.0 |
 
 ### Providers
