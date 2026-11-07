@@ -20,10 +20,15 @@ export const number = (
   max: number,
   step = 1,
 ): FieldDefinition => ({ key, label: label(...names), kind: "number", min, max, step });
-export const toggle = (key: string, names: [string, string, string]): FieldDefinition => ({
+export const toggle = (
+  key: string,
+  names: [string, string, string],
+  options: { default?: boolean; allowDefault?: boolean } = {},
+): FieldDefinition => ({
   key,
   label: label(...names),
   kind: "toggle",
+  ...options,
 });
 export const text = (key: string, names: [string, string, string], maxLength?: number): FieldDefinition => ({
   key,

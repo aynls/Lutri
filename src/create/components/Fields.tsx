@@ -1,5 +1,5 @@
 import { Select } from "../../components/Select";
-import { useId, useEffect, useRef, useState } from "react";
+import { Fragment, useId, useEffect, useRef, useState } from "react";
 import { DiceFiveIcon } from "@phosphor-icons/react";
 import type { Json } from "../../domain/types";
 import { localize, t } from "../../i18n";
@@ -8,6 +8,7 @@ import { c } from "../messages";
 import { FrameFields } from "./FrameFields";
 import { RememberedDetails } from "./RememberedDetails";
 import { validateFields } from "../../models/shared";
+import { LayerOutputDirectory } from "./LayerOutputDirectory";
 
 function JsonInput({
   id,
@@ -58,7 +59,7 @@ export function ParameterField({
 }: Pick<FormProps, "draft" | "onChange"> & { field: FieldDefinition }) {
   const id = useId();
   if (field.visible && !field.visible(draft)) return null;
-  const value = draft.parameters[field.key];
+  const value = draft.parameters[field.key] ?? (field.allowDefault === false ? field.default : undefined);
   const errors = validateFields([field], draft);
   const update = (next: typeof value | undefined) => {
     const parameters = { ...draft.parameters };
@@ -120,7 +121,7 @@ export function ParameterField({
         </div>
       ) : field.kind === "toggle" ? (
         <div className="segmented-control" role="group" aria-labelledby={id}>
-          {([undefined, true, false] as const).map((option) => (
+          {(field.allowDefault === false ? [true, false] : [undefined, true, false]).map((option) => (
             <button key={String(option)} type="button" aria-pressed={value === option} onClick={() => update(option)}>
               {t(option === undefined ? "automatic" : option ? "enabled" : "disabled")}
             </button>
@@ -167,12 +168,12 @@ export function ParameterFields(props: FormProps) {
     ? [...groups, { id: "advanced" as const, collapsed: true, fields: remaining.map((field) => field.key) }]
     : groups;
   const render = (field: FieldDefinition) => (
-    <ParameterField
-      key={`${props.combination.id}:${field.key}`}
-      field={field}
-      draft={props.draft}
-      onChange={props.onChange}
-    />
+    <Fragment key={`${props.combination.id}:${field.key}`}>
+      <ParameterField field={field} draft={props.draft} onChange={props.onChange} />
+      {field.key === "layer_decomposition" && props.draft.parameters.layer_decomposition === true && (
+        <LayerOutputDirectory draft={props.draft} onChange={props.onChange} />
+      )}
+    </Fragment>
   );
   return (
     <div className="parameter-sections">

@@ -1,6 +1,7 @@
 mod assets;
 mod clipboard;
 mod desktop;
+mod layers;
 mod library;
 mod mcp;
 mod network;
@@ -53,6 +54,8 @@ pub fn run() {
             library::asset_auto_export,
             library::library_stats,
             library::library_maintain,
+            layers::layer_directory_available,
+            layers::layer_result_save,
             assets::asset_import,
             assets::mask_save,
             assets::asset_download,

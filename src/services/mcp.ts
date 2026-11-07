@@ -26,6 +26,11 @@ const buildTools = () => [
       properties: {
         combinationId: { ...string, enum: combinations.map((c) => c.id) },
         prompt: string,
+        layerOutputDirectory: {
+          ...string,
+          description:
+            "Existing absolute folder path required when layer_decomposition is true. Layers are saved here automatically; only the composite enters the gallery.",
+        },
         creationMode: {
           enum: ["generate", "edit", "auto"],
           description:
@@ -170,6 +175,9 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
           regions,
           docs,
           creationControl,
+          ...(fields.some((field) => field.key === "layer_decomposition")
+            ? { layerOutputDirectory: { requiredWhen: "layer_decomposition=true", type: "absolute directory path" } }
+            : {}),
           ...(creationControl
             ? { creationModes: ["generate", "edit", "auto"], defaultCreationMode: "generate", editTargetRequired: true }
             : {}),

@@ -1,5 +1,7 @@
 # Seedream 5.0 API（Runware）
 
+Lutri 的图层拆分默认关闭，开启后必须设置本地图层另存为目录。此目录保存在草稿中，不发送给供应商。完整拆分结果按返回的位置和层序合成；底图、透明 PNG 和 `layers.json` 自动写入目录下的 `Lutri-<结果 ID>` 子目录，图库只保存合成 PNG。底图另存为 PNG；位置清单使用输出底图坐标系。下载与另存为失败保留原任务供重试，成功后移除临时图层来源。
+
 ```http
 POST https://api.runware.ai/v1
 Authorization: Bearer RUNWARE_API_KEY

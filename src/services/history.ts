@@ -46,20 +46,20 @@ export async function purgeHiddenTasks() {
 }
 
 async function discardStagedResults(removed: GenerationTask[]) {
+  const resultUrls = (task: GenerationTask) =>
+    task.results.flatMap((result) => [
+      ...(result.url ? [result.url] : []),
+      ...(result.layerSources ?? []).map((source) => source.url),
+    ]);
   const current = getState();
   const retainedIds = new Set(current.feed.map((slot) => slot.taskId));
-  const retainedUrls = new Set(
-    current.tasks.flatMap((task) => task.results.flatMap((result) => (result.url ? [result.url] : []))),
-  );
+  const retainedUrls = new Set(current.tasks.flatMap(resultUrls));
   const urls = [
     ...new Set(
       removed
         .filter((task) => !retainedIds.has(task.id) && !isTaskScheduled(task.id))
-        .flatMap((task) =>
-          task.results.flatMap((result) =>
-            result.url?.startsWith("staged:") && !retainedUrls.has(result.url) ? [result.url] : [],
-          ),
-        ),
+        .flatMap(resultUrls)
+        .filter((url) => url.startsWith("staged:") && !retainedUrls.has(url)),
     ),
   ];
   if (urls.length) await native("result_discard", { urls });

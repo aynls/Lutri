@@ -7,6 +7,7 @@ const mutations = new Set([
   "asset_import",
   "asset_paste",
   "asset_download",
+  "layer_result_save",
   "asset_delete",
   "asset_provenance",
   "assets_publish",

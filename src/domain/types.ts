@@ -69,6 +69,7 @@ export interface GenerationDraft {
   parameters: Parameters;
   requestCount: number;
   inputPreparation?: { maxEdge?: number; version: 1 };
+  layerOutputDirectory?: string;
 }
 
 export type TaskStatus =
@@ -90,6 +91,16 @@ export interface Recovery {
   transientCount?: number;
 }
 
+/** Transient download inputs, removed after layers are exported and the composite is saved. */
+export interface LayerSource {
+  url: string;
+  zIndex: number;
+  bounds?: number[];
+  normalizedBounds?: number[];
+  name?: string;
+  description?: string;
+}
+
 export interface GenerationResult {
   id: string;
   remoteId?: string;
@@ -101,6 +112,7 @@ export interface GenerationResult {
   error?: string;
   metadata?: Parameters;
   exportError?: string;
+  layerSources?: LayerSource[];
 }
 
 export interface GenerationTask {

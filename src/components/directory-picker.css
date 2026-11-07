@@ -1,0 +1,17 @@
+.directory-picker {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+}
+.directory-picker .folder-button {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+  text-align: left;
+}
+.directory-picker svg {
+  flex-shrink: 0;
+}
+.directory-picker .folder-button[aria-invalid="true"] {
+  border-color: var(--danger);
+}

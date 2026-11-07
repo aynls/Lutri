@@ -1,6 +1,24 @@
 import { label, localize } from "../i18n";
 
 const messages = {
+  layerDirectory: label("Layer output folder", "图层另存为目录", "レイヤー保存先"),
+  layerDirectoryRequired: label(
+    "Choose a layer output folder",
+    "请选择图层另存为目录",
+    "レイヤー保存先を選択してください",
+  ),
+  layerDirectoryUnavailable: label(
+    "Layer output folder is unavailable",
+    "图层另存为目录不可用",
+    "レイヤー保存先を利用できません",
+  ),
+  layerOutputConflict: label(
+    "Layer output folder contains unrelated files",
+    "图层目录中已有其他文件",
+    "レイヤー保存先に別のファイルがあります",
+  ),
+  invalidLayerResult: label("Invalid layer result", "图层结果不完整", "レイヤー結果が不完全です"),
+  invalidLayerBounds: label("Invalid layer placement", "图层位置信息无效", "レイヤーの位置情報が無効です"),
   creationMode: label("Creation mode", "创作方式", "作成モード"),
   generateMode: label("Generate", "生成", "生成"),
   editMode: label("Edit", "编辑", "編集"),

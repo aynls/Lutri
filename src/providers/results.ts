@@ -1,6 +1,7 @@
-import type { Json, Parameters } from "../domain/types";
+import type { Json, LayerSource, Parameters } from "../domain/types";
 import type { Protocol } from "../models/types";
 import { array, object, string } from "./transport";
+import { layerSource, resultUrl } from "./layers";
 
 export interface RemoteImage {
   remoteId?: string;
@@ -8,6 +9,7 @@ export interface RemoteImage {
   mediaType?: string;
   error?: string;
   metadata?: Parameters;
+  layerSources?: LayerSource[];
 }
 
 export function responseMetadata(raw: Json): Parameters {
@@ -33,6 +35,17 @@ export function responseMetadata(raw: Json): Parameters {
 export function imageResults(protocol: Protocol, raw: Json): RemoteImage[] {
   const result = object(raw);
   if (result.error) throw new Error(JSON.stringify(result.error));
+  const separated =
+    protocol === "fal"
+      ? array(result.layers)
+      : protocol === "images" && array(result.data).some((item) => object(item).z_index !== undefined)
+        ? array(result.data)
+        : [];
+  if (separated.length) {
+    const sources = separated.map((item) => layerSource(item));
+    const base = sources.find((source) => source.zIndex === 0);
+    return [{ remoteId: "layers:0", url: base?.url, mediaType: "image/png", layerSources: sources }];
+  }
   if (protocol === "bfl") {
     const sample = string(object(result.result).sample);
     return sample ? [{ url: sample }] : [];
@@ -75,16 +88,13 @@ export function imageResults(protocol: Protocol, raw: Json): RemoteImage[] {
   if (sample) return [{ url: sample }];
   return array(result.data).flatMap((item) => {
     const value = object(item);
-    const outputFormat = string(result.output_format);
+    const outputFormat = string(value.output_format) ?? string(result.output_format);
     const formatMime = outputFormat === "jpeg" ? "image/jpeg" : outputFormat === "webp" ? "image/webp" : undefined;
     const mime = string(value.media_type) ?? string(value.mime_type) ?? formatMime ?? "image/png";
-    const base64 = string(value.b64_json) ?? string(value.imageBase64Data);
-    const url =
-      string(value.url) ??
-      string(value.imageURL) ??
-      string(value.imageDataURI) ??
-      (base64 ? `data:${mime};base64,${base64}` : undefined);
-    if (!url && !value.error) return [];
+    const url = resultUrl(value, outputFormat);
+    const hasLayers = protocol === "runware" && Array.isArray(object(value.outputs).layers);
+    if (!url && !value.error && !hasLayers) return [];
+    const layers = protocol === "runware" ? array(object(value.outputs).layers) : [];
     const metadata = Object.fromEntries(
       [
         "z_index",
@@ -92,7 +102,7 @@ export function imageResults(protocol: Protocol, raw: Json): RemoteImage[] {
         "seed",
         "prompt",
         "resolution",
-        "outputs",
+        ...(hasLayers ? [] : ["outputs"]),
         "is_image_safe",
         "revised_prompt",
         "usage",
@@ -106,6 +116,9 @@ export function imageResults(protocol: Protocol, raw: Json): RemoteImage[] {
         mediaType: mime,
         error: value.error ? JSON.stringify(value.error) : undefined,
         metadata,
+        ...(hasLayers
+          ? { layerSources: [layerSource(value, true), ...layers.map((layer) => layerSource(layer))] }
+          : {}),
       },
     ];
   });

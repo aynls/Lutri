@@ -4,7 +4,10 @@ import { adv, format, select, text, toggle } from "../../fields";
 import { dimensionErrors, request, validateFields, values } from "../../shared";
 import type { FieldDefinition, ModelCombination } from "../../types";
 
-const layer = toggle("layer_decomposition", ["Separate layers", "图层拆分", "レイヤー分離"]);
+const layer = toggle("layer_decomposition", ["Separate layers", "图层拆分", "レイヤー分離"], {
+  default: false,
+  allowDefault: false,
+});
 const watermark = toggle("watermark", ["Watermark", "水印", "透かし"]);
 const size = text("size", ["Image size", "图片尺寸", "画像サイズ"]);
 const enhance = select(

@@ -104,6 +104,12 @@ export function RequestDetails({
           </>
         )}
       </dl>
+      {task.draft.parameters.layer_decomposition === true && task.draft.layerOutputDirectory && (
+        <dl className="metadata-grid">
+          <dt>{c("layerDirectory")}</dt>
+          <dd>{task.draft.layerOutputDirectory}</dd>
+        </dl>
+      )}
       <TaskUsage task={task} />
       {typeof task.draft.parameters.seed === "number" && (
         <p className="muted">

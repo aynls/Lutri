@@ -14,6 +14,8 @@ export function seedreamRegions(context: CompileContext): string {
       const index = context.draft.references.findIndex((reference) => reference.id === region.referenceId);
       const source = index >= 0 && region.source ? `Image ${index + 1} ${bbox(region.source)}` : undefined;
       const target = region.target ? `${context.images.length ? "Image 1 " : ""}${bbox(region.target)}` : undefined;
+      if (context.draft.parameters.layer_decomposition)
+        return `Separate the element at ${source ?? target ?? "Image 1"}. ${region.description}`;
       if (source && !target) return `Remove the object at ${source}. ${region.description}`;
       if (source && target)
         return `${region.operation === "anchor" ? "Keep" : "Place"} the subject from ${source} at ${target}. ${region.description}`;

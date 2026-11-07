@@ -1,4 +1,5 @@
-import type { GenerationBatch, GenerationDraft, GenerationTask, Parameters } from "../domain/types";
+import type { GalleryEntry, GenerationBatch, GenerationDraft, GenerationTask, Parameters } from "../domain/types";
+import { c } from "../create/messages";
 import { compilePrompt } from "../domain/references";
 import { validateDraft } from "../models/validateDraft";
 import { combinationById } from "../models";
@@ -26,6 +27,38 @@ let wake: ReturnType<typeof setTimeout> | undefined;
 const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 let submissions: Promise<unknown> = Promise.resolve();
 
+async function validateLayerDirectory(draft: GenerationDraft) {
+  if (draft.parameters.layer_decomposition !== true) return;
+  if (typeof draft.layerOutputDirectory !== "string" || !draft.layerOutputDirectory.trim())
+    throw new Error(c("layerDirectoryRequired"));
+  if (!(await native<boolean>("layer_directory_available", { directory: draft.layerOutputDirectory })))
+    throw new Error(c("layerDirectoryUnavailable"));
+}
+
+async function stageImage(image: RemoteImage): Promise<RemoteImage> {
+  const staged = new Map<string, string>();
+  const stage = async (url: string | undefined) => {
+    if (!url?.startsWith("data:")) return url;
+    if (!staged.has(url)) staged.set(url, await native<string>("result_stage", { dataUrl: url }));
+    return staged.get(url)!;
+  };
+  const url = await stage(image.url);
+  const layerSources = [];
+  for (const source of image.layerSources ?? []) layerSources.push({ ...source, url: (await stage(source.url))! });
+  return { ...image, url, ...(image.layerSources ? { layerSources } : {}) };
+}
+
+function layerError(error: unknown) {
+  const messages = {
+    layer_directory_unavailable: "layerDirectoryUnavailable",
+    layer_output_conflict: "layerOutputConflict",
+    invalid_layer_result: "invalidLayerResult",
+    invalid_layer_bounds: "invalidLayerBounds",
+  } as const;
+  const key = messages[String(error) as keyof typeof messages];
+  return key ? c(key) : sanitizeDiagnostic(error);
+}
+
 export function submitBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "manual"): Promise<GenerationBatch> {
   const snapshot = structuredClone(draft);
   const result = submissions.catch(() => {}).then(() => createBatch(snapshot, origin));
@@ -39,6 +72,7 @@ async function createBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "m
   if (!draft.prompt.trim() && !draft.parameters.layer_decomposition && !draft.parameters.structured_prompt)
     errors.push("prompt");
   if (errors.length) throw new Error(errors.join("\n"));
+  await validateLayerDirectory(draft);
   if (!(await native<boolean>("credential_present", { provider: combination.provider })))
     throw new Error(`${combination.provider}: API key`);
   draft.parameters = (await storeParameterAssets(draft.parameters)) as Parameters;
@@ -86,14 +120,17 @@ async function receive(
 ): Promise<void> {
   task.awaitingResults = !complete;
   for (const [index, image] of images.entries()) {
+    if (!complete && (image.layerSources || task.draft.parameters.layer_decomposition === true)) continue;
     const remoteId = image.remoteId ?? `result:${index}`;
     const existing = task.results.find((result) => result.remoteId === remoteId);
     if (existing) continue;
+    const staged = await stageImage(image);
     task.results.push({
       id: crypto.randomUUID(),
       remoteId,
       index: task.results.length,
-      url: image.url?.startsWith("data:") ? await native<string>("result_stage", { dataUrl: image.url }) : image.url,
+      url: staged.url,
+      layerSources: staged.layerSources,
       mediaType: image.mediaType,
       status: image.error ? ("failed" as const) : ("pending" as const),
       error: image.error ? sanitizeDiagnostic(image.error) : undefined,
@@ -134,14 +171,29 @@ async function receive(
 
 async function downloadResults(task: GenerationTask) {
   for (const result of task.results) {
-    if (result.assetId || !result.url) continue;
+    if (result.assetId || (!result.url && !result.layerSources)) continue;
     result.status = "downloading";
     await saveTask({ ...task, results: [...task.results] });
     try {
-      const asset = await downloadAsset(result.url, result.id);
+      const layerSources = result.layerSources;
+      const asset = layerSources
+        ? await native<GalleryEntry>("layer_result_save", {
+            directory: task.draft.layerOutputDirectory ?? "",
+            resultId: result.id,
+            sources: layerSources,
+          })
+        : await downloadAsset(result.url!, result.id);
       result.assetId = asset.asset.id;
       result.status = "saved";
       delete result.error;
+      if (layerSources) {
+        const urls = [...new Set(layerSources.map((source) => source.url).filter((url) => url.startsWith("staged:")))];
+        delete result.layerSources;
+        delete result.url;
+        result.mediaType = asset.asset.mediaType;
+        await saveTask({ ...task, results: [...task.results] });
+        if (urls.length) await native("result_discard", { urls }).catch(() => {});
+      }
       const combination = combinationById(task.draft.combinationId);
       try {
         await native("asset_provenance", {
@@ -164,7 +216,7 @@ async function downloadResults(task: GenerationTask) {
       }
     } catch (error) {
       result.status = "failed";
-      result.error = sanitizeDiagnostic(error);
+      result.error = result.layerSources ? layerError(error) : sanitizeDiagnostic(error);
     }
     await saveTask({ ...task, results: [...task.results] });
   }
@@ -172,7 +224,7 @@ async function downloadResults(task: GenerationTask) {
     ? "generating"
     : task.results.every((result) => result.status === "saved")
       ? "completed"
-      : task.results.some((result) => result.url && !result.assetId)
+      : task.results.some((result) => (result.url || result.layerSources) && !result.assetId)
         ? "download-failed"
         : "failed";
   task.updatedAt = Date.now();
@@ -282,17 +334,24 @@ async function runTask(id: string, initial = false) {
   try {
     delete task.error;
     delete task.httpStatus;
-    if (task.results.some((result) => result.url) && !task.awaitingResults) {
+    if (task.results.some((result) => result.url || result.layerSources || result.assetId) && !task.awaitingResults) {
       await downloadResults(task);
       if (task.status === "download-failed" && task.recovery) {
         const refreshed = await poll(combination, task.recovery);
         if (refreshed.done) {
           for (const result of task.results) {
-            const remote = refreshed.images[result.index];
-            if (!result.assetId && remote?.url) {
-              result.url = remote.url.startsWith("data:")
-                ? await native<string>("result_stage", { dataUrl: remote.url })
-                : remote.url;
+            const remote = refreshed.images.find(
+              (image, index) => (image.remoteId ?? `result:${index}`) === result.remoteId,
+            );
+            if (!result.assetId && remote && (remote.url || remote.layerSources)) {
+              const previous = [result.url, ...(result.layerSources ?? []).map((source) => source.url)].filter(
+                (url): url is string => !!url?.startsWith("staged:"),
+              );
+              const staged = await stageImage(remote);
+              result.url = staged.url;
+              result.layerSources = staged.layerSources;
+              await saveTask({ ...task, results: [...task.results] });
+              if (previous.length) await native("result_discard", { urls: [...new Set(previous)] }).catch(() => {});
             }
           }
           await saveTask({ ...task });
@@ -302,6 +361,7 @@ async function runTask(id: string, initial = false) {
       return;
     }
     if (initial && task.status === "queued") {
+      await validateLayerDirectory(task.draft);
       const available = await Promise.all(
         task.draft.references.map(async (reference) => ({ reference, exists: await assetExists(reference.assetId) })),
       );
@@ -315,6 +375,8 @@ async function runTask(id: string, initial = false) {
         mask: task.draft.mask && missingIds.has(task.draft.mask.referenceId) ? undefined : task.draft.mask,
       };
       const creationErrors = validateCreation(executionDraft, combination);
+      if (executionDraft.parameters.layer_decomposition === true)
+        creationErrors.push(...validateDraft(executionDraft, maxRequestCount(getState().preferences)));
       if (creationErrors.length) throw new Error(creationErrors.join("\n"));
       if (
         executionDraft.mask &&

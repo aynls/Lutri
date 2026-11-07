@@ -421,7 +421,7 @@ export default function App() {
     for (let parent = field.parentElement; parent; parent = parent.parentElement)
       if (parent instanceof HTMLDetailsElement) parent.open = true;
     field.scrollIntoView({ block: "center", behavior: "instant" });
-    field.querySelector<HTMLElement>('input:not([type="hidden"]), .select-trigger, textarea')?.focus();
+    field.querySelector<HTMLElement>('input:not([type="hidden"]), .select-trigger, textarea, button')?.focus();
   };
   return (
     <div className="app-shell">

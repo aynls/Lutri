@@ -45,7 +45,7 @@ export function values(fields: FieldDefinition[], draft: GenerationDraft): Param
     fields
       .filter((field) => !field.visible || field.visible(draft))
       .flatMap((field) => {
-        const value = draft.parameters[field.key];
+        const value = draft.parameters[field.key] ?? (field.allowDefault === false ? field.default : undefined);
         return value === undefined || value === null || value === "" ? [] : [[field.key, value]];
       }),
   );

@@ -7,6 +7,11 @@ import { orderedCreationDraft, validateCreation } from "./creation";
 export function validateDraft(draft: GenerationDraft, maxRequests: number): string[] {
   const combination = combinationById(draft.combinationId);
   const errors = [...validateCreation(draft, combination), ...combination.validate(draft)];
+  if (
+    draft.parameters.layer_decomposition === true &&
+    (typeof draft.layerOutputDirectory !== "string" || !draft.layerOutputDirectory.trim())
+  )
+    errors.push(c("layerDirectoryRequired"));
   const supported = new Set(combination.fields.map((field) => field.key));
   for (const key of Object.keys(draft.parameters))
     if (!supported.has(key)) errors.push(`Unsupported parameter: ${key}`);

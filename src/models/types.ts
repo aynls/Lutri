@@ -32,6 +32,7 @@ export interface FieldDefinition {
   integer?: boolean;
   maxLength?: number;
   default?: Json;
+  allowDefault?: boolean;
   advanced?: boolean;
   visible?: (draft: GenerationDraft) => boolean;
 }

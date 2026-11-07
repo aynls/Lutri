@@ -1,4 +1,5 @@
 import { Select } from "../components/Select";
+import { DirectoryPicker } from "../components/DirectoryPicker";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cancelUpscale, runUpscale } from "./queue";
 import { settingsText } from "../settings/messages";
@@ -8,7 +9,6 @@ import {
   XIcon,
   PauseIcon,
   PlayIcon,
-  FolderOpenIcon,
   ArrowUpRightIcon,
   ArrowCounterClockwiseIcon,
   ImagesIcon,
@@ -371,27 +371,7 @@ export function Upscale({
         </label>
         <label>
           {localize(label("Output folder", "输出位置", "出力先"))}
-          <div className="button-row">
-            <button
-              className="folder-button"
-              disabled={busy}
-              onClick={() =>
-                void open({ directory: true })
-                  .then((path) => {
-                    if (typeof path === "string") setDestination(path);
-                  })
-                  .catch(onError)
-              }
-            >
-              <FolderOpenIcon />
-              {destination || t("specifySavePath")}
-            </button>
-            {destination && (
-              <button disabled={busy} title={t("clearDestination")} onClick={() => setDestination("")}>
-                <XIcon />
-              </button>
-            )}
-          </div>
+          <DirectoryPicker value={destination} disabled={busy} onChange={setDestination} onError={onError} />
         </label>
         <label className="spec-option">
           <input

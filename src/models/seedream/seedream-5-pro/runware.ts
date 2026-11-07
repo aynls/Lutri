@@ -5,7 +5,10 @@ import { runware, take } from "../../requests";
 import { dimensionErrors, validateFields, values } from "../../shared";
 import type { FieldDefinition, ModelCombination } from "../../types";
 
-const layer = toggle("layer_decomposition", ["Separate layers", "图层拆分", "レイヤー分離"]);
+const layer = toggle("layer_decomposition", ["Separate layers", "图层拆分", "レイヤー分離"], {
+  default: false,
+  allowDefault: false,
+});
 const fields: FieldDefinition[] = [
   width(64, 4096),
   height(64, 4096),
