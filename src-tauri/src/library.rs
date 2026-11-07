@@ -359,10 +359,9 @@ pub fn staging_purge(store: tauri::State<Store>, keep: Vec<String>) -> Result<Ve
             )
             .map_err(|e| e.to_string())?;
         let rows = stmt
-            .query_map(
-                [serde_json::to_string(&keep).map_err(|e| e.to_string())?],
-                |row| row.get::<_, String>(0),
-            )
+            .query_map([serde_json::to_string(&keep).map_err(|e| e.to_string())?], |row| {
+                row.get::<_, String>(0)
+            })
             .map_err(|e| e.to_string())?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| e.to_string())?;

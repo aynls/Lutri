@@ -215,6 +215,7 @@ button[aria-pressed="true"] {
   background: var(--accent-soft);
 }
 .status-failed,
+.status-retrieval-failed,
 .status-download-failed,
 .status-submission-unknown {
   color: var(--danger);

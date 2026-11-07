@@ -78,7 +78,7 @@ export function History({
             (status === "active"
               ? active.has(task.status)
               : status === "failed"
-                ? ["failed", "download-failed", "submission-unknown"].includes(task.status)
+                ? ["failed", "retrieval-failed", "download-failed", "submission-unknown"].includes(task.status)
                 : task.status === status)) &&
           (!query ||
             displayPrompt(task.draft).toLowerCase().includes(query) ||

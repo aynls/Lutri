@@ -243,6 +243,7 @@ const messages = {
   generating: ["Generating", "生成中", "生成中"],
   downloading: ["Downloading", "下载中", "ダウンロード中"],
   "download-failed": ["Download failed", "下载失败", "ダウンロード失敗"],
+  "retrieval-failed": ["Result retrieval failed", "结果获取失败", "結果の取得に失敗"],
   completed: ["Completed", "已完成", "完了"],
   cancelled: ["Cancelled", "已取消", "キャンセル済み"],
   failed: ["Failed", "生成失败", "失敗"],

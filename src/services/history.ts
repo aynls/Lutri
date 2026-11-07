@@ -5,7 +5,8 @@ import { deletingTaskIds } from "./taskLocks";
 import { native } from "./native";
 
 export const canDeleteHistory = (task: GenerationTask) =>
-  !isTaskScheduled(task.id) && ["completed", "failed", "download-failed", "cancelled"].includes(task.status);
+  !isTaskScheduled(task.id) &&
+  ["completed", "failed", "retrieval-failed", "download-failed", "cancelled"].includes(task.status);
 
 /** Hide history independently from feed slots, recovery and gallery assets. */
 export async function deleteHistory(ids: string[]) {

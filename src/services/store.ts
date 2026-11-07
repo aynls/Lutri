@@ -296,22 +296,43 @@ export async function flushWrites() {
   await Promise.all([draftWrites, feedWrites, taskWrites]);
 }
 let feedWrites = Promise.resolve();
-export function changeFeed(transform: (feed: FeedSlot[]) => FeedSlot[], changes: RecordChange[] = []) {
+export function changeFeed(
+  transform: (feed: FeedSlot[]) => FeedSlot[],
+  changes: RecordChange[] = [],
+  task?: GenerationTask,
+) {
   feedWrites = feedWrites
     .catch(() => {})
     .then(async () => {
       const previous = state.feed;
       const next = transform(previous).slice(0, 200);
+      const updatedTask = task
+        ? structuredClone({
+            ...task,
+            historyDeletedAt: state.tasks.find((entry) => entry.id === task.id)?.historyDeletedAt,
+          })
+        : undefined;
       await commit([
         ...changes,
+        ...(updatedTask ? [{ collection: "tasks", id: updatedTask.id, value: updatedTask }] : []),
         ...next
-          .filter((slot) => !previous.some((old) => old.id === slot.id))
+          .filter(
+            (slot) =>
+              !previous.some(
+                (old) => old.id === slot.id && old.taskId === slot.taskId && old.resultIndex === slot.resultIndex,
+              ),
+          )
           .map((slot) => ({ collection: "feed", id: slot.id, value: slot })),
         ...previous
           .filter((slot) => !next.some((entry) => entry.id === slot.id))
           .map((slot) => ({ collection: "feed", id: slot.id })),
       ]);
-      updateState({ feed: next });
+      updateState({
+        feed: next,
+        ...(updatedTask
+          ? { tasks: state.tasks.map((entry) => (entry.id === updatedTask.id ? updatedTask : entry)) }
+          : {}),
+      });
       if (previous.some((slot) => !next.some((entry) => entry.id === slot.id))) {
         const { purgeHiddenTasks } = await import("./history");
         await purgeHiddenTasks();

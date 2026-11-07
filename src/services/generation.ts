@@ -8,6 +8,7 @@ import { maxRequestCount } from "../models/shared";
 import { HttpError, send } from "../providers/transport";
 import { imageResults, responseMetadata, type RemoteImage } from "../providers/results";
 import { poll, recoveryFrom } from "../providers/recovery";
+import { runwareResponse } from "../providers/runware";
 import { assetData, assetExists, downloadAsset, native } from "./native";
 import { changeFeed, getState, refreshGallery, saveTask, updateState, mutateTasks } from "./store";
 import { prepareGenerationInputs } from "../create/prepareInputs";
@@ -117,17 +118,38 @@ async function createBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "m
 }
 
 async function receive(
-  task: GenerationTask,
+  currentTask: GenerationTask,
   images: RemoteImage[],
   complete = true,
   metadata?: Parameters,
+  failures?: string[],
 ): Promise<void> {
+  const task = structuredClone(currentTask);
   task.awaitingResults = !complete;
+  const previousResults = [...task.results];
+  const remainingFailures = failures?.map(sanitizeDiagnostic);
+  if (remainingFailures) {
+    task.results = task.results.filter((result) => {
+      if (!result.remoteId?.startsWith("runware:error:")) return true;
+      const index = remainingFailures.indexOf(result.error ?? "");
+      if (index < 0) return false;
+      remainingFailures.splice(index, 1);
+      return true;
+    });
+  }
+  const removedCount = previousResults.length - task.results.length;
   for (const [index, image] of images.entries()) {
     if (!complete && (image.layerSources || task.draft.parameters.layer_decomposition === true)) continue;
     const remoteId = image.remoteId ?? `result:${index}`;
     const existing = task.results.find((result) => result.remoteId === remoteId);
-    if (existing) continue;
+    if (existing) {
+      // A later snapshot may renew an expiring result URL.
+      if (!existing.assetId && image.url && !image.url.startsWith("data:") && !image.layerSources) {
+        existing.url = image.url;
+        existing.mediaType = image.mediaType ?? existing.mediaType;
+      }
+      continue;
+    }
     const staged = await stageImage(image);
     task.results.push({
       id: crypto.randomUUID(),
@@ -141,11 +163,18 @@ async function receive(
       metadata: image.metadata,
     });
   }
+  for (const error of remainingFailures ?? []) {
+    const id = crypto.randomUUID();
+    task.results.push({ id, remoteId: `runware:error:${id}`, index: task.results.length, status: "failed", error });
+  }
+  task.results.forEach((result, index) => {
+    result.index = index;
+  });
   task.status = "downloading";
   const publishedThrough =
-    task.feedPublishedThrough ?? combinationById(task.draft.combinationId).outputCount(task.draft.parameters) - 1;
+    (task.feedPublishedThrough ?? combinationById(task.draft.combinationId).outputCount(task.draft.parameters) - 1) -
+    removedCount;
   task.feedPublishedThrough = Math.max(publishedThrough, task.results.length - 1);
-  await saveTask(task);
   if (metadata) {
     const known = new Map<string, string>();
     for (const [index, image] of images.entries()) {
@@ -158,19 +187,32 @@ async function receive(
       }
     }
     task.metadata = { ...task.metadata, ...((await storeParameterAssets(metadata, "", known)) as Parameters) };
-    await saveTask(task);
   }
   // Publish extra results only if the user has retained at least one slot for this task.
-  await changeFeed((feed) => {
-    const current = feed.filter((slot) => slot.taskId === task.id);
-    if (!current.length) return feed;
-    const extra = task.results
-      .filter((result) => result.index > publishedThrough)
-      .map((result) => ({ id: crypto.randomUUID(), taskId: task.id, resultIndex: result.index }));
-    const obsolete = complete ? current.filter((slot) => slot.resultIndex >= task.results.length) : [];
-    return [...extra, ...feed.filter((slot) => !obsolete.some((o) => o.id === slot.id))];
-  });
-  await downloadResults(task);
+  await changeFeed(
+    (feed) => {
+      const current = feed.filter((slot) => slot.taskId === task.id);
+      if (!current.length) return feed;
+      // Keep cards attached to the same successful result when an anonymous error
+      // disappears from a newer snapshot. Shift only unfilled placeholders.
+      const indices = new Map(task.results.map((result) => [result.id, result.index]));
+      const retained = feed.flatMap((slot) => {
+        if (slot.taskId !== task.id) return [slot];
+        const previous = previousResults[slot.resultIndex];
+        const index = previous ? indices.get(previous.id) : slot.resultIndex - removedCount;
+        if (index === undefined || (complete && index >= task.results.length)) return [];
+        return [{ ...slot, resultIndex: index }];
+      });
+      const extra = task.results
+        .filter((result) => result.index > publishedThrough)
+        .map((result) => ({ id: crypto.randomUUID(), taskId: task.id, resultIndex: result.index }));
+      return [...extra, ...retained];
+    },
+    [],
+    task,
+  );
+  Object.assign(currentTask, task);
+  await downloadResults(currentTask);
 }
 
 async function downloadResults(task: GenerationTask) {
@@ -360,8 +402,7 @@ async function runTask(id: string, initial = false) {
               if (previous.length) await native("result_discard", { urls: [...new Set(previous)] }).catch(() => {});
             }
           }
-          await saveTask({ ...task });
-          await downloadResults(task);
+          await receive(task, refreshed.images, true, refreshed.metadata, refreshed.failures);
         }
       }
       return;
@@ -437,22 +478,30 @@ async function runTask(id: string, initial = false) {
       task.metadata = { ...task.metadata, ...metadata };
       task.status = "generating";
       await saveTask({ ...task });
-      const results = imageResults(combination.protocol, response);
-      if (results.length && combination.protocol !== "runware") {
-        await receive(task, results, true, responseMetadata(response));
-        return;
+      if (combination.protocol === "runware") {
+        const result = runwareResponse(response, task.id, "submit");
+        await receive(task, result.images, result.done, result.metadata, result.failures);
+        if (result.done) return;
+      } else {
+        const results = imageResults(combination.protocol, response);
+        if (results.length) {
+          await receive(task, results, true, responseMetadata(response));
+          return;
+        }
       }
       task.status = "generating";
       await saveTask({ ...task });
     }
     if (!task.recovery) throw new Error("Original task cannot be queried; no new request was sent.");
+    task.awaitingResults = true;
     task.status = "generating";
     await saveTask({ ...task });
     let interval = 2000;
     const deadline = Date.now() + 360000;
     for (;;) {
       const result = await poll(combination, task.recovery);
-      if (result.images.length) await receive(task, result.images, result.done, result.metadata);
+      if (result.images.length || result.failures !== undefined || result.done)
+        await receive(task, result.images, result.done, result.metadata, result.failures);
       if (result.done) return;
       if (Date.now() >= deadline) throw new Error("Timed out after 360s waiting for the provider.");
       task.status = "generating";
@@ -465,7 +514,12 @@ async function runTask(id: string, initial = false) {
     if (error instanceof HttpError) task.httpStatus = error.status;
     if (saved.status === "submission-unknown" && !task.results.length) task.status = "submission-unknown";
     else if (task.status !== "submission-unknown" && task.status !== "failed")
-      task.status = task.results.length ? "download-failed" : "failed";
+      task.status =
+        task.awaitingResults && task.recovery
+          ? "retrieval-failed"
+          : task.results.some((result) => (result.url || result.layerSources) && !result.assetId)
+            ? "download-failed"
+            : "failed";
     task.error = sanitizeDiagnostic(error);
     task.updatedAt = Date.now();
     await saveTask({ ...task });

@@ -4,7 +4,7 @@ import { runware, take } from "../../requests";
 import { dimensionErrors, validateFields, values } from "../../shared";
 import type { FieldDefinition, ModelCombination } from "../../types";
 import { background, moderation, quality, sizeErrors } from "../shared";
-import { complexity, groups26, svgFields, validateSvg } from "../shared26";
+import { complexity, groups26, runwareSvgFields, validateRunwareSvg } from "../shared26";
 
 const fields: FieldDefinition[] = [
   width(16, 3840, 16),
@@ -19,7 +19,7 @@ const fields: FieldDefinition[] = [
     ...adv(number("outputQuality", ["Compression quality", "压缩质量", "圧縮品質"], 20, 99)),
     visible: (draft) => draft.parameters.outputFormat !== "SVG",
   },
-  ...svgFields,
+  ...runwareSvgFields,
 ];
 
 export const gptImage26FlareRunware: ModelCombination = {
@@ -51,7 +51,7 @@ export const gptImage26FlareRunware: ModelCombination = {
         draft.parameters.output_format === "jpeg")
     )
       errors.push("transparent: PNG / WebP");
-    errors.push(...validateSvg(draft));
+    errors.push(...validateRunwareSvg(draft));
     return errors;
   },
   compile: (context) => {

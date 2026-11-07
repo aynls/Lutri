@@ -79,6 +79,7 @@ export type TaskStatus =
   | "submitting"
   | "submission-unknown"
   | "generating"
+  | "retrieval-failed"
   | "downloading"
   | "download-failed"
   | "completed"

@@ -1,8 +1,9 @@
 import type { Json, Recovery, Parameters } from "../domain/types";
 import { request } from "../models/shared";
 import type { ModelCombination } from "../models/types";
-import { array, HttpError, object, send, string } from "./transport";
+import { HttpError, object, send, string } from "./transport";
 import { imageResults, responseMetadata, type RemoteImage } from "./results";
+import { runwareResponse } from "./runware";
 
 export function recoveryFrom(combination: ModelCombination, response: Json, taskId: string): Recovery | undefined {
   const data = object(response);
@@ -24,7 +25,7 @@ export function recoveryFrom(combination: ModelCombination, response: Json, task
 export async function poll(
   combination: ModelCombination,
   recovery: Recovery,
-): Promise<{ done: boolean; images: RemoteImage[]; metadata?: Parameters }> {
+): Promise<{ done: boolean; images: RemoteImage[]; failures?: string[]; metadata?: Parameters }> {
   const tolerate = () => (recovery.transientCount = (recovery.transientCount ?? 0) + 1) <= 10;
   const transient = (error: unknown) =>
     !(error instanceof HttpError) ||
@@ -71,12 +72,9 @@ export async function poll(
     }
   }
   if (combination.protocol === "runware") {
-    const images = imageResults("runware", response);
-    images.push(
-      ...array(data.errors).map((error, index) => ({ remoteId: `error:${index}`, error: JSON.stringify(error) })),
-    );
-    const processing = array(data.data).some((item) => object(item).status === "processing");
-    return { done: !processing && images.length > 0, images, metadata: responseMetadata(response) };
+    const result = runwareResponse(response, recovery.remoteId, "poll");
+    delete recovery.transientCount;
+    return result;
   }
   if (data.errors) throw new Error(JSON.stringify(data.errors));
   if (status && ["failed", "error", "cancelled", "canceled"].includes(status.toLowerCase()))

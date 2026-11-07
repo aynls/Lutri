@@ -24,7 +24,7 @@
 | `moderation` | auto、low。 |
 | `user` | 最终用户标识。 |
 
-实时 Schema 明确拒绝 complexity、frame_count、frame_duration_ms，也不支持 SVG 或 GIF。Lutri 不声明这些字段，不将其他供应商的复杂度设置透传到 Comfy。未填写的可选字段省略，由供应商应用默认值。
+实时 Schema 明确拒绝 complexity、frame_count、frame_duration_ms，也不支持 SVG 或 GIF。本次 SVG 对齐再次使用现有 Comfy 凭据只读查询两个实时 Schema，确认 output_format 仍仅为 png、webp、jpeg，未声明 svg 或 svg_model。Lutri 不声明这些字段，不将其他供应商的复杂度或 SVG 转写设置透传到 Comfy。未填写的可选字段省略，由供应商应用默认值。
 
 不开放流式响应：Router 将 stream 设为 false；生成请求的 partial_images 只能为 0 或 null，Lutri 均省略。
 

@@ -13,7 +13,14 @@ pub fn decode_data_url(data: &str) -> Result<Vec<u8>, String> {
 }
 
 pub fn save_asset(store: &Store, bytes: &[u8], source: &str, staged: bool) -> Result<Value, String> {
-    save_image_with_id(store, bytes, source, uuid::Uuid::new_v4().to_string(), "gallery", staged)
+    save_image_with_id(
+        store,
+        bytes,
+        source,
+        uuid::Uuid::new_v4().to_string(),
+        "gallery",
+        staged,
+    )
 }
 
 pub(crate) fn save_asset_with_id(store: &Store, bytes: &[u8], source: &str, id: String) -> Result<Value, String> {

@@ -33,7 +33,7 @@ Lutri 的“生成／编辑／自动”表达创作意图；有参考图时仍�
 
 尺寸预设为 square_hd、square、portrait_4_3、portrait_16_9、landscape_4_3、landscape_16_9、auto。具体尺寸的每边须为 16 的倍数，最长边不超过 3840，比例不超过 3:1，总像素 655360–8294400。未填写的可选字段省略，由 fal 应用默认值。
 
-GIF 与 frame_count、frame_duration_ms 按项目范围不开放。markup_image_url 标注引导编辑暂未接入，不以普通参考图或蒙版冒充。SVG 不接受参考图、蒙版和多图数量；fal 未提供独立 SVG 推理强度字段。
+GIF 与 frame_count、frame_duration_ms 按项目范围不开放。markup_image_url 标注引导编辑暂未接入，不以普通参考图或蒙版冒充。SVG 不接受参考图、蒙版和多图数量；fal 未提供独立 SVG 推理强度字段。本次对齐再次读取四条实时 OpenAPI Schema：两个生成端点包含 svg 与 svg_model，两个编辑端点均不包含 SVG 格式或转写模型。保留 fal 自身的枚举、默认值及单张约束，不套用 Runware 的模型列表、推理强度或数量范围。
 
 ## 响应
 

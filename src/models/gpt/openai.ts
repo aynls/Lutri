@@ -3,7 +3,8 @@ import { count, format, select } from "../fields";
 import { request, validateFields, values } from "../shared";
 import type { FieldDefinition, ModelCombination } from "../types";
 import { background, compression, groups, moderation, quality } from "./shared";
-import { complexity, groups26 } from "./shared26";
+import { complexity, groups26, openAISvgFields, validateOpenAISvg } from "./shared26";
+import { take } from "../requests";
 
 export function openAICombination(model: string, label: string, version26: boolean): ModelCombination {
   const fields: FieldDefinition[] = [
@@ -12,8 +13,9 @@ export function openAICombination(model: string, label: string, version26: boole
     ...(version26 ? [complexity()] : []),
     background(),
     count("n", 10),
-    format(),
+    version26 ? format("output_format", ["jpeg", "png", "webp", "svg"]) : format(),
     { ...compression(), visible: (draft) => ["jpeg", "webp"].includes(String(draft.parameters.output_format)) },
+    ...(version26 ? openAISvgFields : []),
     moderation(),
   ];
   return {
@@ -42,15 +44,25 @@ export function openAICombination(model: string, label: string, version26: boole
       const errors = validateFields(fields, draft);
       if (draft.parameters.background === "transparent" && draft.parameters.output_format === "jpeg")
         errors.push("transparent: PNG / WebP");
+      if (version26) errors.push(...validateOpenAISvg(draft));
       return errors;
     },
-    compile: (context) =>
-      request("openai", `https://api.openai.com/v1/images/${context.images.length ? "edits" : "generations"}`, {
-        ...values(fields, context.draft),
+    compile: (context) => {
+      const p = values(fields, context.draft);
+      const svg = take(p, { svg_model: "model", svg_thinking: "effort" });
+      if (typeof svg.model === "string" && svg.model.trim()) {
+        p.svg = {
+          model: svg.model.trim(),
+          ...(svg.effort ? { reasoning: { effort: svg.effort } } : {}),
+        };
+      }
+      return request("openai", `https://api.openai.com/v1/images/${context.images.length ? "edits" : "generations"}`, {
+        ...p,
         model,
         prompt: context.prompt,
         ...(context.images.length ? { images: context.images.map((image_url) => ({ image_url })) } : {}),
         ...(context.mask && context.images.length ? { mask: { image_url: context.mask } } : {}),
-      }),
+      });
+    },
   };
 }

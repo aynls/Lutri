@@ -34,7 +34,7 @@ export function CopyButton({
           .catch(onError)
       }
     >
-      {label ? (copied ? t("copied") : label) : copied ? <CheckIcon /> : <CopyIcon />}
+      {label ? copied ? t("copied") : label : copied ? <CheckIcon /> : <CopyIcon />}
     </button>
   );
 }

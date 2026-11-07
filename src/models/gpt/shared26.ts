@@ -1,6 +1,6 @@
 import type { GenerationDraft } from "../../domain/types";
 import { localize, label } from "../../i18n";
-import { select } from "../fields";
+import { select, text } from "../fields";
 import type { FieldDefinition, ParameterGroup } from "../types";
 import { groups } from "./shared";
 
@@ -28,18 +28,57 @@ export const falSvgModel: FieldDefinition = {
   visible: (draft) => draft.parameters.output_format === "svg" && !draft.references.length,
 };
 
-export function validateFalSvg(draft: GenerationDraft): string[] {
-  if (draft.parameters.output_format !== "svg") return [];
+function svgInputErrors(draft: GenerationDraft, singleImageKey?: string): string[] {
   const errors: string[] = [];
   if (draft.references.length || draft.mask)
     errors.push(localize(label("SVG requires text-only input", "SVG 仅支持文字输入", "SVG はテキスト入力のみ対応")));
-  if (Number(draft.parameters.num_images ?? 1) !== 1)
+  if (singleImageKey && Number(draft.parameters[singleImageKey] ?? 1) !== 1)
     errors.push(localize(label("SVG: one image per request", "SVG：单次生成 1 张", "SVG：リクエストごとに 1 枚")));
   return errors;
 }
 
-const isSvg = (draft: GenerationDraft) => draft.parameters.outputFormat === "SVG";
-export const svgFields: FieldDefinition[] = [
+export function validateFalSvg(draft: GenerationDraft): string[] {
+  return draft.parameters.output_format === "svg" ? svgInputErrors(draft, "num_images") : [];
+}
+
+const isOpenAISvg = (draft: GenerationDraft) => draft.parameters.output_format === "svg";
+export const openAISvgFields: FieldDefinition[] = [
+  {
+    ...text("svg_model", ["SVG author", "SVG 转写模型", "SVG 作成モデル"]),
+    visible: isOpenAISvg,
+  },
+  {
+    ...select(
+      "svg_thinking",
+      ["SVG reasoning", "SVG 推理强度", "SVG 推論強度"],
+      ["none", "minimal", "low", "medium", "high", "xhigh", "max"],
+    ),
+    visible: isOpenAISvg,
+  },
+];
+
+export function validateOpenAISvg(draft: GenerationDraft): string[] {
+  if (!isOpenAISvg(draft)) return [];
+  const errors = svgInputErrors(draft, "n");
+  const model = draft.parameters.svg_model;
+  const hasModel = typeof model === "string" && model.trim().length > 0;
+  if ((typeof model === "string" && model.length > 0 && !hasModel) || (draft.parameters.svg_thinking && !hasModel))
+    errors.push(localize(label("Choose an SVG author", "请指定 SVG 转写模型", "SVG 作成モデルを指定してください")));
+  if (draft.parameters.background === "transparent")
+    errors.push(
+      localize(
+        label(
+          "Transparent background requires PNG or WebP",
+          "透明背景需使用 PNG 或 WebP",
+          "透明背景には PNG または WebP が必要です",
+        ),
+      ),
+    );
+  return errors;
+}
+
+const isRunwareSvg = (draft: GenerationDraft) => draft.parameters.outputFormat === "SVG";
+export const runwareSvgFields: FieldDefinition[] = [
   {
     ...select(
       "svg_model",
@@ -53,7 +92,7 @@ export const svgFields: FieldDefinition[] = [
         "openai:gpt@6-astra",
       ],
     ),
-    visible: isSvg,
+    visible: isRunwareSvg,
   },
   {
     ...select(
@@ -61,18 +100,14 @@ export const svgFields: FieldDefinition[] = [
       ["SVG reasoning", "SVG 推理强度", "SVG 推論強度"],
       ["none", "low", "medium", "high", "xhigh", "max"],
     ),
-    visible: isSvg,
+    visible: isRunwareSvg,
   },
 ];
 
-export function validateSvg(draft: GenerationDraft): string[] {
-  if (!isSvg(draft)) return [];
-  const errors: string[] = [];
-  if (draft.references.length || draft.mask)
-    errors.push(localize(label("SVG requires text-only input", "SVG 仅支持文字输入", "SVG はテキスト入力のみ対応")));
-  if (Number(draft.parameters.numberResults ?? 1) !== 1)
-    errors.push(localize(label("SVG: one image per request", "SVG：单次生成 1 张", "SVG：リクエストごとに 1 枚")));
-  const model = draft.parameters.svg_model ?? "openai:gpt@5.4-mini";
+export function validateRunwareSvg(draft: GenerationDraft): string[] {
+  if (!isRunwareSvg(draft)) return [];
+  const errors = svgInputErrors(draft);
+  const model = draft.parameters.svg_model || "openai:gpt@5.4-mini";
   const effort = draft.parameters.svg_thinking;
   if (
     (effort === "none" && model === "openai:gpt@6-astra") ||

@@ -26,6 +26,7 @@ export function responseMetadata(raw: Json): Parameters {
       "description",
       "grounding_metadata",
       "usage",
+      "svg_usage",
       "usageMetadata",
       "metrics",
       "seed",
