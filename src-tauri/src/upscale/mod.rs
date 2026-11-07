@@ -204,9 +204,14 @@ pub async fn upscale_run(
             command.creation_flags(0x08000000);
         }
         if let Some(index) = gpu_index {
-            let devices = upscale_devices(app.clone())?;
-            if !devices.iter().any(|d| d["index"].as_i64() == Some(index as i64)) {
-                return Err("The selected GPU is unavailable".into());
+            if index < -1 {
+                return Err("Invalid upscale device".into());
+            }
+            if index >= 0 {
+                let devices = probe_devices(&app)?;
+                if !devices.iter().any(|d| d["index"].as_i64() == Some(index as i64)) {
+                    return Err("The selected device is unavailable".into());
+                }
             }
         }
         let stdout = {
@@ -377,9 +382,15 @@ pub fn run_device_probe(path: &str) {
 }
 
 #[tauri::command]
-pub fn upscale_devices(app: tauri::AppHandle) -> Result<Vec<Value>, String> {
+pub async fn upscale_devices(app: tauri::AppHandle) -> Result<Vec<Value>, String> {
+    tauri::async_runtime::spawn_blocking(move || probe_devices(&app))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn probe_devices(app: &tauri::AppHandle) -> Result<Vec<Value>, String> {
     use std::io::Read;
-    let path = runtime_path(&resources(&app)?)?;
+    let path = runtime_path(&resources(app)?)?;
     let mut command = Command::new(std::env::current_exe().map_err(|e| e.to_string())?);
     command
         .arg("--upscale-devices")
@@ -397,7 +408,7 @@ pub fn upscale_devices(app: tauri::AppHandle) -> Result<Vec<Value>, String> {
         if started.elapsed() > std::time::Duration::from_secs(15) {
             let _ = child.kill();
             let _ = child.wait();
-            return Err("GPU device enumeration timed out".into());
+            return Err("Device enumeration timed out".into());
         }
         std::thread::sleep(std::time::Duration::from_millis(30));
     }
@@ -405,14 +416,14 @@ pub fn upscale_devices(app: tauri::AppHandle) -> Result<Vec<Value>, String> {
     child
         .stdout
         .take()
-        .ok_or("GPU probe output unavailable")?
+        .ok_or("Device probe output unavailable")?
         .read_to_string(&mut body)
         .map_err(|e| e.to_string())?;
     let value: Value = body
         .lines()
         .rev()
         .find_map(|line| serde_json::from_str(line).ok())
-        .ok_or("GPU probe did not respond")?;
+        .ok_or("Device probe did not respond")?;
     if let Some(error) = value["error"].as_str() {
         return Err(error.into());
     }

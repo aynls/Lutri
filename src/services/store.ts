@@ -26,6 +26,7 @@ export interface Preferences {
   providers: Record<string, { endpoint?: string; deployment?: string }>;
   cleanup: Record<"generated" | "imported", CleanupPolicy>;
   desktop?: { background: boolean; launchAtLogin: boolean; zoom: number };
+  // null selects automatically; -1 uses CPU; nonnegative values select a device.
   upscale?: { concurrency: number; gpuIndex: number | null };
   generation?: { maxRequestCount: number };
   mcp?: { port: number; autoStart: boolean };
@@ -33,6 +34,8 @@ export interface Preferences {
 }
 export interface ApplicationState {
   ready: boolean;
+  upscaleDevices: { index: number; name: string }[];
+  loadingUpscaleDevices: boolean;
   gallery: GalleryEntry[];
   masks: StoredImage[];
   boards: Board[];
@@ -44,6 +47,8 @@ export interface ApplicationState {
 }
 let state: ApplicationState = {
   ready: false,
+  upscaleDevices: [],
+  loadingUpscaleDevices: false,
   gallery: [],
   masks: [],
   boards: [],
@@ -70,6 +75,18 @@ export function useApplication() {
       listeners.delete(listener);
     };
   }, getState);
+}
+let deviceRefresh: Promise<void> | undefined;
+export function refreshUpscaleDevices(): Promise<void> {
+  if (deviceRefresh) return deviceRefresh;
+  updateState({ loadingUpscaleDevices: true });
+  deviceRefresh = native<ApplicationState["upscaleDevices"]>("upscale_devices")
+    .then((upscaleDevices) => updateState({ upscaleDevices }))
+    .finally(() => {
+      deviceRefresh = undefined;
+      updateState({ loadingUpscaleDevices: false });
+    });
+  return deviceRefresh;
 }
 let loading: Promise<void> | undefined;
 /** Asset IDs referenced by the last committed draft; staged assets lose library files once unreferenced. */

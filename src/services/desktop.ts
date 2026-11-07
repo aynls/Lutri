@@ -3,7 +3,15 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { label, localize, localePreference, setLocale, type LocalePreference } from "../i18n";
 import { native, readRecords } from "./native";
 import { connection, startMcp, stopMcp } from "./mcp";
-import { flushWrites, getState, refreshGallery, savePreferences, updateState, type Preferences } from "./store";
+import {
+  flushWrites,
+  getState,
+  refreshGallery,
+  refreshUpscaleDevices,
+  savePreferences,
+  updateState,
+  type Preferences,
+} from "./store";
 
 export function desktopLabels() {
   return {
@@ -35,6 +43,7 @@ export async function setZoom(zoom: number) {
 }
 
 export async function initializeDesktop(onError: (error: unknown) => void) {
+  void refreshUpscaleDevices().catch(onError);
   const exitListener = await listen("desktop-exit-request", () => {
     void (async () => {
       try {

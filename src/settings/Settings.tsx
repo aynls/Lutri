@@ -18,7 +18,7 @@ import { lt } from "../i18n/library";
 import { maxRequestCount, providerNames } from "../models/shared";
 import type { ProviderId } from "../models/types";
 import { native } from "../services/native";
-import { getState, savePreferences, useApplication, type Preferences } from "../services/store";
+import { getState, refreshUpscaleDevices, savePreferences, useApplication, type Preferences } from "../services/store";
 import { desktopLabels, selectLocale, setZoom } from "../services/desktop";
 import { settingsText as text } from "./messages";
 import { StorageSettings } from "./StorageSettings";
@@ -141,7 +141,7 @@ function ProviderSettings({ provider, onError }: { provider: ProviderId; onError
 
 export function Settings({ onError }: { onError: (error: unknown) => void }) {
   useLocale();
-  const { preferences } = useApplication();
+  const { preferences, upscaleDevices: devices, loadingUpscaleDevices: loadingDevices } = useApplication();
   const [requestedProvider] = useState(() => sessionStorage.getItem("lutri.settings.provider"));
   const [category, setCategory] = useState<SettingsCategory>(() =>
     requestedProvider ? "providers" : sessionStorage.getItem("lutri.settings.category") === "llm" ? "llm" : "general",
@@ -166,20 +166,12 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
       }
     }
   }, [requestedProvider]);
-  const [devices, setDevices] = useState<{ index: number; name: string }[]>([]);
   const [maxRequests, setMaxRequests] = useState(maxRequestCount(preferences));
-  const [loadingDevices, setLoadingDevices] = useState(false);
   const attempt = (action: () => Promise<unknown>) => void action().catch(onError);
   const save = (next: Partial<Preferences>) => savePreferences({ ...getState().preferences, ...next });
   const desktop = { background: false, launchAtLogin: false, zoom: 1, ...preferences.desktop };
   const upscale = { concurrency: 1, gpuIndex: null as number | null, ...preferences.upscale };
-  const refreshDevices = () => {
-    setLoadingDevices(true);
-    void native<typeof devices>("upscale_devices")
-      .then(setDevices)
-      .catch(onError)
-      .finally(() => setLoadingDevices(false));
-  };
+  const refreshDevices = () => attempt(refreshUpscaleDevices);
   const configureDesktop = async (next: Partial<typeof desktop>) => {
     const value = { ...desktop, ...next };
     if (!value.background) value.launchAtLogin = false;
@@ -430,12 +422,9 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
               />
             </label>
             <label className="settings-row">
-              <span>{text("gpu")}</span>
+              <span>{text("device")}</span>
               <Select
                 value={upscale.gpuIndex ?? "auto"}
-                onFocus={() => {
-                  if (!devices.length && !loadingDevices) refreshDevices();
-                }}
                 onValueChange={(nextValue) =>
                   attempt(() =>
                     save({
@@ -448,9 +437,14 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
                 }
               >
                 <option value="auto">{t("automatic")}</option>
-                {upscale.gpuIndex !== null && !devices.some((device) => device.index === upscale.gpuIndex) && (
-                  <option value={upscale.gpuIndex}>GPU {upscale.gpuIndex}</option>
-                )}
+                <option value={-1}>{text("cpuFallback")}</option>
+                {upscale.gpuIndex !== null &&
+                  upscale.gpuIndex >= 0 &&
+                  !devices.some((device) => device.index === upscale.gpuIndex) && (
+                    <option value={upscale.gpuIndex}>
+                      {loadingDevices ? text("loadingDevices") : `${text("device")} ${upscale.gpuIndex}`}
+                    </option>
+                  )}
                 {devices.map((device) => (
                   <option key={device.index} value={device.index}>
                     {device.name}

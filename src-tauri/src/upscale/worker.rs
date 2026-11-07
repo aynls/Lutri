@@ -161,7 +161,7 @@ pub fn event(phase: &str, completed: u64, total: u64) {
 }
 
 pub fn run(job: &WorkerJob, exit_after_save: bool) -> Result<(), String> {
-    run_backend(job, exit_after_save, true)
+    run_backend(job, exit_after_save, job.gpu_index != Some(-1))
 }
 
 fn run_backend(job: &WorkerJob, exit_after_save: bool, vulkan: bool) -> Result<(), String> {
@@ -211,7 +211,7 @@ fn run_backend(job: &WorkerJob, exit_after_save: bool, vulkan: bool) -> Result<(
             (api.ncnn_option_set_num_threads)(opt, 2);
             // The parent validated explicit indices against NCNN's device list.
             // Absent index keeps NCNN's own choice.
-            if let Some(index) = job.gpu_index {
+            if let Some(index) = job.gpu_index.filter(|&index| vulkan && index >= 0) {
                 let set_device: libloading::Symbol<unsafe extern "C" fn(Handle, c_int)> = api
                     ._library
                     .get(b"ncnn_net_set_vulkan_device\0")
