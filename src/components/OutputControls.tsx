@@ -3,7 +3,7 @@ import { t } from "../i18n";
 import { getState, savePreferences, useApplication } from "../services/store";
 import { DirectoryPicker } from "./DirectoryPicker";
 
-export function AutoSaveControl({
+export function OutputControls({
   kind,
   disabled,
   onError,
@@ -16,6 +16,7 @@ export function AutoSaveControl({
   const [saving, setSaving] = useState(false);
   const output = preferences.outputs ?? {};
   const enabled = output[kind] ?? false;
+  const galleryKey = kind === "generationAuto" ? "generationGallery" : "upscaleGallery";
   const missing = enabled && !output.directory?.trim();
   const change = async (next: typeof output) => {
     setSaving(true);
@@ -29,16 +30,27 @@ export function AutoSaveControl({
     }
   };
   return (
-    <div className="auto-save-control" data-field="autoSave">
-      <label className="spec-option">
-        <input
-          type="checkbox"
-          checked={enabled}
-          disabled={disabled || saving}
-          onChange={(event) => void change({ [kind]: event.target.checked })}
-        />
-        {t("autoSave")}
-      </label>
+    <div className="output-controls" data-field="autoSave">
+      <div className="output-options">
+        <label className="spec-option">
+          <input
+            type="checkbox"
+            checked={enabled}
+            disabled={disabled || saving}
+            onChange={(event) => void change({ [kind]: event.target.checked })}
+          />
+          {t("autoSave")}
+        </label>
+        <label className="spec-option">
+          <input
+            type="checkbox"
+            checked={output[galleryKey] ?? true}
+            disabled={disabled || saving}
+            onChange={(event) => void change({ [galleryKey]: event.target.checked })}
+          />
+          {t("writeToGallery")}
+        </label>
+      </div>
       {enabled && (
         <>
           <DirectoryPicker

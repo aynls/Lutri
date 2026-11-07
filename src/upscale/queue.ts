@@ -3,14 +3,13 @@ import type { GalleryEntry } from "../domain/types";
 import { getState, refreshGallery } from "../services/store";
 import { native } from "../services/native";
 import { t } from "../i18n";
+import { resolveOutputs, type OutputOptions } from "../services/outputs";
 
-export interface UpscaleOptions {
+export interface UpscaleOptions extends OutputOptions {
   assetId: string;
   modelId: string;
   scale: number;
   tileSize: number;
-  destination?: string | null;
-  saveToGallery: boolean;
   jobId?: string;
   gpuIndex?: number | null;
 }
@@ -30,14 +29,7 @@ export interface UpscaleResult {
 
 export async function runUpscale(options: UpscaleOptions, onProgress?: (value: UpscaleProgress) => void) {
   const preferences = getState().preferences;
-  const destination =
-    options.destination === undefined
-      ? preferences.outputs?.upscaleAuto
-        ? preferences.outputs.directory
-        : null
-      : options.destination;
-  if (options.destination === undefined && preferences.outputs?.upscaleAuto && !destination?.trim())
-    throw new Error(t("saveDirectoryRequired"));
+  const output = resolveOutputs("upscale", options);
   await native("upscale_configure", { concurrency: preferences.upscale?.concurrency ?? 1 });
   const channel = new Channel<UpscaleProgress>();
   channel.onmessage = (value) => onProgress?.(value);
@@ -45,7 +37,8 @@ export async function runUpscale(options: UpscaleOptions, onProgress?: (value: U
     ...options,
     jobId: options.jobId ?? crypto.randomUUID(),
     gpuIndex: options.gpuIndex === undefined ? (preferences.upscale?.gpuIndex ?? null) : options.gpuIndex,
-    destination: destination || null,
+    destination: output.directory || null,
+    saveToGallery: output.saveToGallery,
     channel,
   }).catch((error: unknown) => {
     if (String(error) === "SVG_UPSCALE_UNSUPPORTED") throw new Error(t("svgUpscaleUnsupported"));

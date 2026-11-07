@@ -27,7 +27,7 @@ const messages = {
   url: label("Import URL", "从 URL 导入", "URLからインポート"),
   edit: label("Edit with image", "用此图编辑", "この画像で編集"),
   invalidUrl: label("Enter an HTTP(S) image URL.", "请输入 HTTP(S) 图片地址。", "HTTP(S)画像URLを入力してください。"),
-  storage: label("Storage and export", "存储与导出", "ストレージと書き出し"),
+  storage: label("Storage", "存储", "ストレージ"),
   library: label("Library folder", "图库目录", "ライブラリフォルダー"),
   migrate: label("Move library", "迁移图库", "ライブラリを移動"),
   migrateNotice: label(
@@ -43,9 +43,6 @@ const messages = {
     "清理这些缺失的图库条目？历史引用将保留缺失状态。",
     "欠落したライブラリ項目を削除しますか？履歴の参照は欠落状態で残ります。",
   ),
-  output: label("Export folder", "导出目录", "書き出しフォルダー"),
-  autoGeneration: label("Auto-export generations", "自动导出生图结果", "生成画像を自動書き出し"),
-  autoUpscale: label("Auto-export upscales", "自动导出超分结果", "拡大画像を自動書き出し"),
   counted: label("Counted for cleanup", "清理计入数量", "自動削除の対象数"),
   unavailable: label("Folder unavailable", "目录不可用", "フォルダーを利用できません"),
 };

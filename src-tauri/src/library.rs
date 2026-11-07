@@ -155,7 +155,7 @@ pub fn gallery_entries(store: tauri::State<Store>, ids: Vec<String>) -> Result<V
     let db = store.db.lock().map_err(|e| e.to_string())?;
     let mut result = vec![];
     let mut stmt = db
-        .prepare("SELECT body FROM records WHERE collection='gallery' AND id=?1")
+        .prepare("SELECT body FROM records WHERE collection IN ('gallery','outputs') AND id=?1")
         .map_err(|e| e.to_string())?;
     for id in ids {
         if let Ok(body) = stmt.query_row([id], |row| row.get::<_, String>(0)) {
@@ -268,7 +268,7 @@ pub fn gallery_mutate(
 pub fn asset_provenance(store: tauri::State<Store>, id: String, provenance: Value) -> Result<(), String> {
     let db = store.db.lock().map_err(|e| e.to_string())?;
     db.execute(
-        "UPDATE records SET body=json_set(body,'$.provenance',json(?2)) WHERE collection='gallery' AND id=?1",
+        "UPDATE records SET body=json_set(body,'$.provenance',json(?2)) WHERE collection IN ('gallery','outputs') AND id=?1",
         rusqlite::params![id, provenance.to_string()],
     )
     .map_err(|e| e.to_string())?;

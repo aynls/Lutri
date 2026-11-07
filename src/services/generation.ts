@@ -17,6 +17,7 @@ import { sanitizeDiagnostic } from "../providers/diagnostics";
 import { deletingTaskIds } from "./taskLocks";
 import { submittedPrompt } from "../providers/submittedPrompt";
 import { orderedCreationDraft, validateCreation } from "../models/creation";
+import { resolveOutputs, type OutputOptions } from "./outputs";
 
 const running = new Set<string>();
 const providerRuns = new Map<string, number>();
@@ -61,11 +62,19 @@ function layerError(error: unknown) {
   return key ? c(key) : sanitizeDiagnostic(error);
 }
 
-export function submitBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "manual"): Promise<GenerationBatch> {
+export function submitBatch(
+  draft: GenerationDraft,
+  origin: "manual" | "mcp" = "manual",
+  options: OutputOptions = {},
+): Promise<GenerationBatch> {
   const snapshot = structuredClone(draft);
-  const output = getState().preferences.outputs;
-  if (output?.generationAuto && !output.directory?.trim()) return Promise.reject(new Error(t("saveDirectoryRequired")));
-  snapshot.outputDirectory = output?.generationAuto ? output.directory : undefined;
+  try {
+    const output = resolveOutputs("generation", options);
+    snapshot.outputDirectory = output.directory;
+    snapshot.saveToGallery = output.saveToGallery;
+  } catch (error) {
+    return Promise.reject(error);
+  }
   const result = submissions.catch(() => {}).then(() => createBatch(snapshot, origin));
   submissions = result;
   return result;
@@ -227,8 +236,9 @@ async function downloadResults(task: GenerationTask) {
             directory: task.draft.layerOutputDirectory ?? "",
             resultId: result.id,
             sources: layerSources,
+            saveToGallery: task.draft.saveToGallery !== false,
           })
-        : await downloadAsset(result.url!, result.id);
+        : await downloadAsset(result.url!, result.id, task.draft.saveToGallery !== false);
       result.assetId = asset.asset.id;
       result.mediaType = asset.asset.mediaType;
       result.status = "saved";
@@ -257,7 +267,7 @@ async function downloadResults(task: GenerationTask) {
         result.exportError = sanitizeDiagnostic(error);
       }
       try {
-        await refreshGallery();
+        await refreshGallery([asset.asset.id]);
       } catch (error) {
         result.metadata = { ...result.metadata, gallery_refresh_error: sanitizeDiagnostic(error) };
       }

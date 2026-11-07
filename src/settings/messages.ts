@@ -1,7 +1,6 @@
 import { label, localize } from "../i18n";
 const messages = {
   general: label("General", "通用", "一般"),
-  chooseFolder: label("Choose folder", "选择目录", "フォルダーを選択"),
   appearance: label("Appearance", "外观", "外観"),
   themeStyle: label("Theme", "主题", "テーマ"),
   themeSand: label("Sand", "暖砂", "砂色"),

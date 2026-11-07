@@ -164,6 +164,7 @@ export function Feed({
                           <button
                             title={t("favorites")}
                             aria-label={t("favorites")}
+                            disabled={asset.unlisted}
                             onClick={() => attempt(() => favorite(asset))}
                           >
                             <HeartIcon size={15} weight={asset.favorite ? "fill" : "regular"} />

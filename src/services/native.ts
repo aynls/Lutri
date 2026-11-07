@@ -39,5 +39,5 @@ export const importAsset = (source: { path?: string; dataUrl?: string; url?: str
   native<GalleryEntry>("asset_import", { ...source, staged });
 export const assetData = (id: string) => invoke<string>("asset_data", { id });
 export const assetExists = (id: string) => invoke<boolean>("asset_exists", { id });
-export const downloadAsset = (url: string, resultId: string) =>
-  native<GalleryEntry>("asset_download", { url, resultId });
+export const downloadAsset = (url: string, resultId: string, saveToGallery: boolean) =>
+  native<GalleryEntry>("asset_download", { url, resultId, saveToGallery });

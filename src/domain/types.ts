@@ -20,6 +20,8 @@ export interface GalleryEntry extends StoredImage {
   source: "generated" | "imported";
   addedAt: number;
   staged?: boolean;
+  /** Saved result outside the gallery; still addressable from feed and history. */
+  unlisted?: boolean;
   favorite: boolean;
   boardIds: string[];
   bytes?: number;
@@ -72,6 +74,7 @@ export interface GenerationDraft {
   layerOutputDirectory?: string;
   /** Automatic copy destination captured when this request is submitted. */
   outputDirectory?: string;
+  saveToGallery?: boolean;
 }
 
 export type TaskStatus =

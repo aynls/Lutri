@@ -156,7 +156,13 @@ fn resize_layer(image: RgbaImage, width: u32, height: u32) -> RgbaImage {
     })
 }
 
-fn compose_and_save(store: &Store, id: String, target: PathBuf, sources: Vec<LayerSource>) -> Result<Value, String> {
+fn compose_and_save(
+    store: &Store,
+    id: String,
+    target: PathBuf,
+    sources: Vec<LayerSource>,
+    save_to_gallery: bool,
+) -> Result<Value, String> {
     let mut canvas = image::open(target.join("00-base.png"))
         .map_err(|e| e.to_string())?
         .to_rgba8();
@@ -180,7 +186,7 @@ fn compose_and_save(store: &Store, id: String, target: PathBuf, sources: Vec<Lay
         }))
         .map_err(|e| e.to_string())?,
     )?;
-    assets::save_asset_with_id(store, &png, "generated", id)
+    assets::save_generated_with_id(store, &png, id, save_to_gallery)
 }
 
 #[tauri::command]
@@ -189,6 +195,7 @@ pub async fn layer_result_save(
     directory: String,
     result_id: String,
     mut sources: Vec<LayerSource>,
+    save_to_gallery: bool,
 ) -> Result<Value, String> {
     use tauri::Manager;
     let id = uuid::Uuid::parse_str(&result_id)
@@ -236,7 +243,9 @@ pub async fn layer_result_save(
         .map_err(|e| e.to_string())??;
     }
     let worker_app = app.clone();
-    tauri::async_runtime::spawn_blocking(move || compose_and_save(&worker_app.state::<Store>(), id, target, sources))
-        .await
-        .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        compose_and_save(&worker_app.state::<Store>(), id, target, sources, save_to_gallery)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
