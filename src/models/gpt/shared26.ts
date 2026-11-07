@@ -4,15 +4,39 @@ import { select } from "../fields";
 import type { FieldDefinition, ParameterGroup } from "../types";
 import { groups } from "./shared";
 
-export const complexity = () => select("complexity", ["Complexity", "复杂度", "複雑度"], ["low", "medium", "high"]);
+export const complexity = (key = "complexity") =>
+  select(key, ["Complexity", "复杂度", "複雑度"], ["low", "medium", "high"]);
 
 export const groups26: ParameterGroup[] = groups.map((group) => ({
   ...group,
   fields: [
     ...group.fields,
-    ...(group.id === "generation" ? ["complexity"] : group.id === "output" ? ["svg_model", "svg_thinking"] : []),
+    ...(group.id === "generation"
+      ? ["complexity", "reasoning_effort"]
+      : group.id === "output"
+        ? ["svg_model", "svg_thinking"]
+        : []),
   ],
 }));
+
+export const falSvgModel: FieldDefinition = {
+  ...select(
+    "svg_model",
+    ["SVG author", "SVG 转写模型", "SVG 作成モデル"],
+    ["gpt-6-astra", "gpt-5.5", "gpt-5.4", "gpt-5.6-terra", "gpt-6-luna"],
+  ),
+  visible: (draft) => draft.parameters.output_format === "svg" && !draft.references.length,
+};
+
+export function validateFalSvg(draft: GenerationDraft): string[] {
+  if (draft.parameters.output_format !== "svg") return [];
+  const errors: string[] = [];
+  if (draft.references.length || draft.mask)
+    errors.push(localize(label("SVG requires text-only input", "SVG 仅支持文字输入", "SVG はテキスト入力のみ対応")));
+  if (Number(draft.parameters.num_images ?? 1) !== 1)
+    errors.push(localize(label("SVG: one image per request", "SVG：单次生成 1 张", "SVG：リクエストごとに 1 枚")));
+  return errors;
+}
 
 const isSvg = (draft: GenerationDraft) => draft.parameters.outputFormat === "SVG";
 export const svgFields: FieldDefinition[] = [

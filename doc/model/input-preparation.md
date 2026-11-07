@@ -27,6 +27,8 @@
 | FLUX 3 · fal                 | 每边至少 256，超过 4 MP 等比缩小                                                                          | [fal 编辑 Schema](https://fal.ai/models/blackforestlabs/flux-3/edit-image/api)                                          |
 | FLUX 3 · Comfy Router        | 每边至少 256，最多 16 MP，载荷按 20 MB 约束检查                                                           | [现有组合文档](FLUX/flux-3-image/flux-3-Image-Comfy.md)                                                                 |
 | GPT Image 2.5 · Comfy Router | 单图最多 25 MiB、合计 64 MiB，蒙版小于 4 MiB；JPEG、PNG、WebP                                             | [现有组合文档及 Schema 来源](GPT/gpt-image-2.5/gpt-image-2.5-Comfy.md)                                                  |
+| GPT Image 2.6 · Comfy Router | 单图最多 25 MiB、合计 64 MiB，蒙版小于 4 MiB；JPEG、PNG、WebP | [2026-11-07 实时 Schema 核对](GPT/gpt-image-2.6/gpt-image-2.6-Comfy.md) |
+| GPT Image 2.6 · fal | 最多 16 张参考图；白色编辑蒙版；SVG 仅支持无参考图、无蒙版的单张生成 | [fal 生成与编辑 Schema](GPT/gpt-image-2.6/gpt-image-2.6-fal.md) |
 | Seedream · Ark、BytePlus     | 单图最多 30 MB，每边至少 15，比例不超过 16，总像素不超过 3600 万；拆层要求至少 262144 像素并限制 PNG/JPEG | [Ark](Seedream/seedream-5/Seedream-5-Ark.md)、[BytePlus](Seedream/seedream-5/Seedream-5-BytePlus.md)                    |
 | Ideogram · Comfy Router      | 普通单图最多 25 MiB、合计 64 MiB；精确编辑设置 context_window 时为 50 MB、128 MiB；PNG、WebP、JPEG        | [现有组合文档](Ideogram/Ideogram-4.md)                                                                                  |
 
