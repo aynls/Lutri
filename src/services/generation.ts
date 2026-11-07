@@ -125,7 +125,7 @@ async function createBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "m
   return batch;
 }
 
-async function receive(
+export async function receive(
   currentTask: GenerationTask,
   images: RemoteImage[],
   complete = true,
@@ -197,33 +197,35 @@ async function receive(
     task.metadata = { ...task.metadata, ...((await storeParameterAssets(metadata, "", known)) as Parameters) };
   }
   // Publish extra results only if the user has retained at least one slot for this task.
-  await changeFeed(
-    (feed) => {
-      const current = feed.filter((slot) => slot.taskId === task.id);
-      if (!current.length) return feed;
-      // Keep cards attached to the same successful result when an anonymous error
-      // disappears from a newer snapshot. Shift only unfilled placeholders.
-      const indices = new Map(task.results.map((result) => [result.id, result.index]));
-      const retained = feed.flatMap((slot) => {
-        if (slot.taskId !== task.id) return [slot];
-        const previous = previousResults[slot.resultIndex];
-        const index = previous ? indices.get(previous.id) : slot.resultIndex - removedCount;
-        if (index === undefined || (complete && index >= task.results.length)) return [];
-        return [{ ...slot, resultIndex: index }];
-      });
-      const extra = task.results
-        .filter((result) => result.index > publishedThrough)
-        .map((result) => ({ id: crypto.randomUUID(), taskId: task.id, resultIndex: result.index }));
-      return [...extra, ...retained];
-    },
-    [],
-    task,
-  );
+  if (task.cloudGroupId) await saveTask(task);
+  else
+    await changeFeed(
+      (feed) => {
+        const current = feed.filter((slot) => slot.taskId === task.id);
+        if (!current.length) return feed;
+        // Keep cards attached to the same successful result when an anonymous error
+        // disappears from a newer snapshot. Shift only unfilled placeholders.
+        const indices = new Map(task.results.map((result) => [result.id, result.index]));
+        const retained = feed.flatMap((slot) => {
+          if (slot.taskId !== task.id) return [slot];
+          const previous = previousResults[slot.resultIndex];
+          const index = previous ? indices.get(previous.id) : slot.resultIndex - removedCount;
+          if (index === undefined || (complete && index >= task.results.length)) return [];
+          return [{ ...slot, resultIndex: index }];
+        });
+        const extra = task.results
+          .filter((result) => result.index > publishedThrough)
+          .map((result) => ({ id: crypto.randomUUID(), taskId: task.id, resultIndex: result.index }));
+        return [...extra, ...retained];
+      },
+      [],
+      task,
+    );
   Object.assign(currentTask, task);
   await downloadResults(currentTask);
 }
 
-async function downloadResults(task: GenerationTask) {
+export async function downloadResults(task: GenerationTask) {
   for (const result of task.results) {
     if (result.assetId || (!result.url && !result.layerSources)) continue;
     result.status = "downloading";
@@ -293,6 +295,8 @@ export function execute(id: string, initial = false): Promise<void> {
   const existing = waiting.get(id);
   if (existing) return existing.promise;
   const task = getState().tasks.find((entry) => entry.id === id);
+  if (task?.cloudGroupId)
+    return import("../batch/service").then(({ resumeCloudBatch }) => resumeCloudBatch(task.batchId));
   if (!task || task.status === "cancelled" || task.status === "completed") return Promise.resolve();
   if (task.historyDeletedAt && !getState().feed.some((slot) => slot.taskId === id)) return Promise.resolve();
   // A queued task can only be submitted through the initial queue, never by resume_task.
@@ -344,7 +348,7 @@ export async function cancelBatch(batchId: string): Promise<number> {
     let count = 0;
     return {
       tasks: tasks.map((task) => {
-        if (task.batchId !== batchId || task.status !== "queued") return task;
+        if (task.cloudGroupId || task.batchId !== batchId || task.status !== "queued") return task;
         count++;
         return { ...task, status: "cancelled" as const, updatedAt: Date.now() };
       }),
@@ -552,8 +556,11 @@ function providerId(response: import("../domain/types").Json): string | undefine
 
 export async function resumeTasks() {
   for (const saved of getState().tasks) {
+    if (saved.cloudGroupId) continue;
     if (saved.status === "submitting") await saveTask({ ...saved, status: "submission-unknown" });
     else if (saved.status === "queued") void execute(saved.id, true).catch(() => {});
     else if (saved.status === "generating" || saved.status === "downloading") void execute(saved.id).catch(() => {});
   }
+  const { resumeCloudJobs } = await import("../batch/service");
+  await resumeCloudJobs();
 }

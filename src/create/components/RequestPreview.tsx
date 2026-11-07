@@ -6,22 +6,25 @@ import { getState } from "../../services/store";
 import { preparedDimensions } from "../prepareInputs";
 import { RememberedDetails } from "./RememberedDetails";
 import { orderedCreationDraft } from "../../models/creation";
+import { compileBatchRequest } from "../../batch/capabilities";
 
 export function RequestPreview({
   combination,
   draft,
   configuration,
+  batch = false,
 }: {
   combination: ModelCombination;
   draft: GenerationDraft;
   configuration: { endpoint?: string; deployment?: string };
+  batch?: boolean;
 }) {
   let url = "",
     body: Json | undefined,
     error = "";
   try {
     draft = orderedCreationDraft(draft, combination);
-    const compiled = combination.compile({
+    const context = {
       draft,
       prompt: compilePrompt(draft, draft.references),
       images: draft.references.map((reference, index) => {
@@ -32,7 +35,8 @@ export function RequestPreview({
       mask: draft.mask ? "<mask>" : undefined,
       taskId: "<task>",
       configuration,
-    });
+    };
+    const compiled = combination.compile(context);
     url = `${compiled.method} ${compiled.url}`;
     body = compiled.multipart
       ? compiled.multipart.map((part) => ({
@@ -42,6 +46,11 @@ export function RequestPreview({
           ...(part.fileName !== undefined ? { fileName: part.fileName } : {}),
         }))
       : compiled.body;
+    if (batch) {
+      const preview = compileBatchRequest(combination, context);
+      url = `Batch · ${preview.endpoint}`;
+      body = preview.body as Json;
+    }
   } catch (exception) {
     error = String(exception);
   }

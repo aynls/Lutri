@@ -1,0 +1,286 @@
+.task-tabs {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.batch-draft {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.batch-draft-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.batch-draft-header h2 {
+  font-size: 14px;
+  font-weight: 550;
+}
+.batch-draft-header > span {
+  font-size: 12px;
+  margin-left: auto;
+}
+.batch-draft-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 24px;
+}
+.batch-draft-scroll > .empty-state {
+  min-height: 300px;
+  height: 100%;
+}
+.batch-draft-scroll .empty-state h2 {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+}
+.batch-draft-list {
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  max-width: 1080px;
+  display: grid;
+  gap: 10px;
+}
+.batch-draft-item {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+}
+.batch-draft-item.is-editing {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.batch-draft-item.has-error {
+  border-color: var(--danger);
+}
+.batch-item-index {
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 20px;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.batch-item-content {
+  min-width: 0;
+  flex: 1;
+}
+.batch-item-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+.batch-item-heading strong {
+  font-weight: 550;
+  color: var(--text);
+}
+.batch-item-prompt {
+  margin-top: 9px;
+  font-size: 13px;
+  line-height: 1.65;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.batch-item-meta {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.batch-item-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.batch-item-actions button {
+  padding: 5px;
+  color: var(--muted);
+}
+.batch-item-actions button:hover {
+  color: var(--text);
+}
+.batch-item-errors {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+.batch-editing-label {
+  color: var(--accent);
+  font-size: 11px;
+}
+.batch-draft-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+.batch-draft-footer .output-controls {
+  flex: 1;
+  min-width: 210px;
+}
+.batch-draft-footer > button {
+  min-height: 38px;
+  padding-inline: 18px;
+  margin-left: auto;
+}
+.batch-submitted {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 24px;
+  color: var(--muted);
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.batch-submitted button {
+  color: var(--accent);
+}
+.batch-edit-cancel {
+  width: 100%;
+  font-size: 12px;
+}
+.request-quantity {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+.request-quantity label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.request-quantity > label,
+.request-quantity > .field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+}
+.request-quantity input {
+  width: 100%;
+}
+.task-tabs {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.task-tabs .segmented-control {
+  min-width: 210px;
+}
+.tasks-host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.task-view {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+.task-view[hidden],
+.tasks-host[hidden] {
+  display: none;
+}
+.history-batch-toggle {
+  justify-content: flex-start;
+  min-width: 0;
+  text-align: left;
+}
+.history-batch-toggle > span {
+  display: grid;
+  gap: 5px;
+}
+.history-batch-toggle > svg {
+  flex-shrink: 0;
+}
+.cloud-batch-summary {
+  font-size: 12px;
+  color: var(--muted);
+}
+.cloud-batch-details {
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.cloud-batch-details summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+.cloud-group {
+  display: grid;
+  gap: 5px;
+  padding: 10px 0;
+  overflow-wrap: anywhere;
+}
+.cloud-item {
+  border-top: 1px solid var(--line);
+}
+.cloud-item-heading {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.cloud-item-heading button {
+  margin-left: auto;
+}
+.cloud-item-prompt {
+  padding: 0 16px 12px;
+  margin: 0;
+  color: var(--muted);
+}
+.history-filter-date {
+  width: 142px;
+  font-size: 12px;
+}
+.history-scroll .cloud-batch {
+  width: min(100%, 1100px);
+}
+.cloud-batch .history-info {
+  min-width: 0;
+}
+.cloud-batch .history-images {
+  flex-wrap: wrap;
+}
+@media (max-width: 1000px) {
+  .batch-draft-header,
+  .batch-draft-footer {
+    padding: 14px 16px;
+  }
+  .batch-draft-scroll {
+    padding: 16px;
+  }
+  .batch-draft-item {
+    flex-wrap: wrap;
+  }
+  .batch-item-actions {
+    margin-left: auto;
+  }
+}

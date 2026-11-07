@@ -29,6 +29,20 @@ Content-Type: application/json
 
 来源：[图像生成](https://ai.google.dev/gemini-api/docs/image-generation)、[2 Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite-image)、[2.1](https://ai.google.dev/gemini-api/docs/models/gemini-nano-banana-2.1)、[2](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-image)、[Pro](https://ai.google.dev/gemini-api/docs/models/gemini-3-pro-image)。
 
+## Google Batch API
+
+2026-11-07 核对上述四款 Google 模型均支持 Batch。使用 [Batch API](https://ai.google.dev/gemini-api/docs/batch-api) 与 [REST 契约](https://ai.google.dev/api/batch-api)，不向 Interactions 接口添加批处理开关。认证沿用 `x-goog-api-key`。
+
+每行输入 JSONL 为 `{"key":"本地请求ID","request":{...}}`，`request` 使用 `generateContent` 格式。提示词和有序参考图进入 `contents[].parts`，参考图使用 `inlineData`；`generationConfig.responseModalities` 为 `["TEXT","IMAGE"]`。宽高比和分辨率分别映射到 `generationConfig.imageConfig.aspectRatio` 与 `imageSize`；思考强度使用 `thinkingConfig.thinkingLevel`，联网使用 `tools: [{"googleSearch":{}}]`。
+
+`previous_interaction_id` 不能跨接口沿用。Gemini API 的 `ImageConfig` 不支持指定输出 MIME，见 [官方 SDK 字段定义](https://github.com/googleapis/js-genai/blob/main/src/types.ts)。批处理表单不提供这两个字段的新输入；切换时若已有非空值，保留控件并提示用户清除，阻止静默忽略设置。结果格式以实际返回图片为准。
+
+输入使用 Files API 的 resumable upload，随后提交 `POST /v1beta/models/{model}:batchGenerateContent`，请求体为 `batch: {displayName, inputConfig: {fileName}}`。应用按模型及容量拆分，单个文件控制在 100 MB 内，低于官方 2 GB 文件上限。所有配置在首个远程上传前完成本地校验与文件准备。
+
+创建后保存返回的 `name`，查询 `/v1beta/{name}`。REST 响应的 `metadata.state`、`metadata.batchStats` 和 `metadata.output.responsesFile` 分别提供状态、请求计数和结果文件；不将 SDK 的转换后字段当作原始响应。结果文件通过 `/download/v1beta/files/{id}:download?alt=media` 下载，并按 `key` 匹配原请求。取消使用 `/v1beta/{name}:cancel`。
+
+创建不是幂等操作。未知提交先通过批次列表的 `operations` 和 `metadata.displayName` 核对本地分组，找不到时保持未知，不自动再次创建。结果文件逐行读取并复用图片保存流程，任务完成前保证结果落盘。未发起付费 Batch 请求验证。
+
 ## OpenRouter Image API
 
 ```http

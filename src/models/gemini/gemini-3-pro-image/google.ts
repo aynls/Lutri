@@ -24,6 +24,7 @@ export const combination: ModelCombination = {
   label: "Nano Banana Pro",
   provider: "google",
   protocol: "interactions",
+  batch: { protocol: "google", unsupportedFields: ["previous_interaction_id", "mime_type"] },
   maxReferences: 14,
   fields,
   groups: [

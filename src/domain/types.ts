@@ -139,6 +139,8 @@ export interface GenerationTask {
   httpStatus?: number;
   providerTaskId?: string;
   historyDeletedAt?: number;
+  cloudGroupId?: string;
+  draftItemId?: string;
 }
 
 export interface GenerationBatch {
@@ -146,6 +148,51 @@ export interface GenerationBatch {
   createdAt: number;
   origin: "manual" | "mcp";
   taskIds: string[];
+  cloud?: { items: BatchDraftItem[]; groups: CloudBatchGroup[] };
+}
+
+export type CreationMode = "regular" | "batch";
+export interface BatchDraftItem {
+  id: string;
+  draft: GenerationDraft;
+}
+export interface CreationWorkspace {
+  mode: CreationMode;
+  items: BatchDraftItem[];
+  regular?: GenerationDraft;
+  batch?: GenerationDraft;
+  editing?: { id: string; returnDraft: GenerationDraft };
+}
+export type CloudBatchStatus =
+  | "prepared"
+  | "uploading"
+  | "submitting"
+  | "submission-unknown"
+  | "submission-failed"
+  | "queued"
+  | "running"
+  | "cancelling"
+  | "retrieving"
+  | "retrieval-failed"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "expired";
+export interface CloudBatchGroup {
+  id: string;
+  provider: "google" | "openai";
+  model: string;
+  endpoint: string;
+  taskIds: string[];
+  status: CloudBatchStatus;
+  remoteId?: string;
+  inputFileId?: string;
+  outputFileIds?: string[];
+  remoteState?: string;
+  processed?: number;
+  failed?: number;
+  error?: string;
+  updatedAt: number;
 }
 
 /** Removing a feed slot never removes its task or result. */

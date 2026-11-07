@@ -10,6 +10,7 @@ import type {
   GenerationDraft,
   GenerationTask,
   StoredImage,
+  CreationWorkspace,
 } from "../domain/types";
 import { combinationById, combinations } from "../models";
 import { initialDraft } from "../models/shared";
@@ -36,6 +37,8 @@ export interface Preferences {
     upscaleAuto?: boolean;
     generationGallery?: boolean;
     upscaleGallery?: boolean;
+    batchAuto?: boolean;
+    batchGallery?: boolean;
   };
 }
 export interface ApplicationState {
@@ -50,6 +53,7 @@ export interface ApplicationState {
   batches: GenerationBatch[];
   feed: FeedSlot[];
   draft: GenerationDraft;
+  creation: CreationWorkspace;
   preferences: Preferences;
 }
 let state: ApplicationState = {
@@ -63,6 +67,7 @@ let state: ApplicationState = {
   batches: [],
   feed: [],
   draft: initialDraft(combinations[0]),
+  creation: { mode: "regular", items: [] },
   preferences: {
     id: "preferences",
     providers: {},
@@ -100,7 +105,7 @@ let loading: Promise<void> | undefined;
 let committedRelated = new Set<string>();
 export function loadApplication(): Promise<void> {
   return (loading ??= (async () => {
-    const [gallery, masks, boards, tasks, batches, feed, drafts, preferences] = await Promise.all([
+    const [gallery, masks, boards, tasks, batches, feed, drafts, preferences, workspaces] = await Promise.all([
       native<{ entries: GalleryEntry[]; total: number }>("gallery_query", { query: {}, limit: 80, offset: 0 }),
       readRecords<StoredImage>("masks"),
       readRecords<Board>("boards"),
@@ -109,8 +114,11 @@ export function loadApplication(): Promise<void> {
       readRecords<FeedSlot>("feed"),
       readRecords<GenerationDraft>("draft"),
       readRecords<Preferences>("preferences"),
+      readRecords<CreationWorkspace>("creation"),
     ]);
     const draft = drafts[0] ?? state.draft;
+    const creation = workspaces[0] ?? state.creation;
+    const relatedIds = relatedAssetIds(tasks, draft, feed, creation);
     await native("gallery_backfill_provenance", {
       entries: tasks.flatMap((task) => {
         const combination = combinationById(task.draft.combinationId);
@@ -131,7 +139,7 @@ export function loadApplication(): Promise<void> {
         );
       }),
     });
-    const related = await native<GalleryEntry[]>("gallery_entries", { ids: relatedAssetIds(tasks, draft, feed) });
+    const related = await native<GalleryEntry[]>("gallery_entries", { ids: relatedIds });
     const galleryEntries = [
       ...new Map([...gallery.entries, ...related].map((entry) => [entry.asset.id, entry])).values(),
     ];
@@ -155,8 +163,8 @@ export function loadApplication(): Promise<void> {
       };
     });
     combinationById(draft.combinationId);
-    committedRelated = new Set(relatedAssetIds([], draft));
-    await native("staging_purge", { keep: relatedAssetIds(tasks, draft, feed) });
+    committedRelated = new Set(relatedIds);
+    await native("staging_purge", { keep: relatedIds });
     const createdAt = new Map(tasks.map((task) => [task.id, task.createdAt]));
     feed.sort(
       (a, b) => (createdAt.get(b.taskId) ?? 0) - (createdAt.get(a.taskId) ?? 0) || a.resultIndex - b.resultIndex,
@@ -169,6 +177,7 @@ export function loadApplication(): Promise<void> {
       batches,
       feed,
       draft,
+      creation,
       preferences: preferences[0] ?? state.preferences,
       ready: true,
     });
@@ -185,30 +194,59 @@ let draftWrites = Promise.resolve();
 export function saveDraft(draft: GenerationDraft) {
   if (draft.creationMode === "edit" && !draft.editTargetId && draft.references.length)
     draft = { ...draft, editTargetId: draft.references[0].id };
-  updateState({ draft });
+  return saveCreation(draft, state.creation);
+}
+
+/** The editor and its containing draft are one durable write, including all material references. */
+export function saveCreation(draft: GenerationDraft, creation: CreationWorkspace, changes: RecordChange[] = []) {
+  const previous = { draft: state.draft, creation: state.creation };
+  creation = { ...creation, [creation.mode]: draft };
+  updateState({ draft, creation });
   draftWrites = draftWrites
     .catch(() => {})
     .then(async () => {
-      const normalized = {
-        ...draft,
-        parameters: (await storeParameterAssets(draft.parameters, "", new Map(), true)) as Parameters,
-      };
-      await commit([{ collection: "draft", id: "current", value: normalized }]);
-      if (state.draft === draft) updateState({ draft: normalized });
+      let normalized: GenerationDraft;
+      let workspace: CreationWorkspace;
+      try {
+        normalized = {
+          ...draft,
+          parameters: (await storeParameterAssets(draft.parameters, "", new Map(), true)) as Parameters,
+        };
+        workspace = { ...creation, [creation.mode]: normalized };
+        await commit([
+          { collection: "draft", id: "current", value: normalized },
+          { collection: "creation", id: "current", value: workspace },
+          ...changes,
+        ]);
+      } catch (error) {
+        if (state.creation === creation) updateState({ creation: previous.creation });
+        if (state.draft === draft) updateState({ draft: previous.draft });
+        throw error;
+      }
+      updateState({
+        ...(state.draft === draft ? { draft: normalized } : {}),
+        ...(state.creation === creation ? { creation: workspace } : {}),
+      });
       const cached = new Set(state.gallery.map((entry) => entry.asset.id));
-      const missing = relatedAssetIds([], normalized).filter((id) => !cached.has(id));
+      const missing = relatedAssetIds(state.tasks, state.draft).filter((id) => !cached.has(id));
       if (missing.length) {
-        const entries = await native<GalleryEntry[]>("gallery_entries", { ids: missing });
+        const entries = await native<GalleryEntry[]>("gallery_entries", { ids: missing }).catch(() => []);
         if (entries.length)
           updateState({
             gallery: [...new Map([...state.gallery, ...entries].map((entry) => [entry.asset.id, entry])).values()],
           });
       }
-      const keep = new Set(relatedAssetIds([], normalized));
+      // New edits may have arrived while this write was in flight. Protect both snapshots.
+      const keep = new Set([
+        ...relatedAssetIds(state.tasks, normalized, state.feed, workspace),
+        ...relatedAssetIds(state.tasks, state.draft),
+      ]);
       const stale = [...committedRelated].filter((id) => !keep.has(id));
       committedRelated = keep;
       if (!stale.length) return;
-      const orphans = (await native<GalleryEntry[]>("gallery_entries", { ids: stale })).filter((entry) => entry.staged);
+      const orphans = (await native<GalleryEntry[]>("gallery_entries", { ids: stale }).catch(() => [])).filter(
+        (entry) => entry.staged,
+      );
       const removed = new Set<string>();
       for (const entry of orphans)
         try {
@@ -285,18 +323,31 @@ export async function refreshGallery(extraIds: string[] = []) {
     masks,
   });
 }
-function relatedAssetIds(tasks: GenerationTask[], draft: GenerationDraft, feed = state.feed) {
+function relatedAssetIds(
+  tasks: GenerationTask[],
+  draft: GenerationDraft,
+  feed = state.feed,
+  creation = state.creation,
+) {
   const visibleTasks = new Set(feed.map((slot) => slot.taskId));
   const needed = tasks.filter(
     (task) =>
       visibleTasks.has(task.id) ||
       ["queued", "submitting", "submission-unknown", "generating", "downloading"].includes(task.status),
   );
-  const drafts = [draft, ...needed.map((task) => task.draft)];
+  const drafts = [
+    draft,
+    ...creation.items.map((item) => item.draft),
+    ...[creation.regular, creation.batch, creation.editing?.returnDraft].filter(
+      (entry): entry is GenerationDraft => !!entry,
+    ),
+    ...needed.map((task) => task.draft),
+  ];
   return [
     ...new Set([
       ...drafts.flatMap((entry) => [
         ...entry.references.map((reference) => reference.assetId),
+        ...(entry.mask ? [entry.mask.assetId] : []),
         ...parameterAssetIds(entry.parameters),
       ]),
       ...needed.flatMap((task) => task.results.flatMap((result) => (result.assetId ? [result.assetId] : []))),
@@ -304,7 +355,22 @@ function relatedAssetIds(tasks: GenerationTask[], draft: GenerationDraft, feed =
   ];
 }
 export async function flushWrites() {
-  await Promise.all([draftWrites, feedWrites, taskWrites]);
+  await Promise.all([draftWrites, feedWrites, taskWrites, batchWrites]);
+}
+let batchWrites: Promise<unknown> = Promise.resolve();
+export function mutateBatch(id: string, transform: (batch: GenerationBatch) => GenerationBatch) {
+  const operation = batchWrites
+    .catch(() => {})
+    .then(async () => {
+      const current = state.batches.find((batch) => batch.id === id);
+      if (!current) throw new Error("Batch not found");
+      const next = transform(current);
+      await commit([{ collection: "batches", id, value: next }]);
+      updateState({ batches: state.batches.map((batch) => (batch.id === id ? next : batch)) });
+      return next;
+    });
+  batchWrites = operation;
+  return operation;
 }
 let feedWrites = Promise.resolve();
 export function changeFeed(

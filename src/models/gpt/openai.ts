@@ -26,6 +26,7 @@ export function openAICombination(model: string, label: string, version26: boole
     label,
     provider: "openai",
     protocol: "images",
+    ...(!version26 ? { batch: { protocol: "openai" as const } } : {}),
     creationControl: "prompt",
     maxReferences: 16,
     primaryReference: true,

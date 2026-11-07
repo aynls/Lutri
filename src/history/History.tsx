@@ -9,6 +9,8 @@ import {
   MagnifyingGlassIcon,
   PlayIcon,
   TrashIcon,
+  CaretRightIcon,
+  CaretDownIcon,
 } from "@phosphor-icons/react";
 import type { GalleryEntry, GenerationDraft, GenerationTask } from "../domain/types";
 import { displayPrompt } from "../domain/references";
@@ -26,6 +28,7 @@ import { canDeleteHistory, deleteHistory } from "../services/history";
 import { taskText } from "../i18n/tasks";
 import { BatchUsage, TaskUsage } from "./TaskUsage";
 import { native } from "../services/native";
+import { b } from "../batch/messages";
 
 const active = new Set(["queued", "submitting", "generating", "downloading"]);
 export function History({
@@ -45,8 +48,16 @@ export function History({
   const [search, setSearch] = useState(initialSearch),
     [status, setStatus] = useState("all"),
     [model, setModel] = useState("all");
+  const [provider, setProvider] = useState("all");
+  const [since, setSince] = useState("");
+  const [until, setUntil] = useState("");
+  useEffect(() => {
+    setSearch(initialSearch);
+    setPage(1);
+  }, [initialSearch]);
   const [expanded, setExpanded] = useState<string>(),
     [page, setPage] = useState(1);
+  const [openBatches, setOpenBatches] = useState<Set<string>>(() => new Set());
   const [selected, setSelected] = useState<string[]>([]),
     [deleting, setDeleting] = useState(false),
     [notice, setNotice] = useState("");
@@ -58,11 +69,19 @@ export function History({
   );
   const models = [
     ...new Set(
-      tasks.filter((task) => !task.historyDeletedAt).map((task) => combinationById(task.draft.combinationId).model),
+      tasks
+        .filter((task) => !task.cloudGroupId && !task.historyDeletedAt)
+        .map((task) => combinationById(task.draft.combinationId).model),
     ),
   ];
   const query = search.trim().toLowerCase();
   const filtered = batches
+    .filter((batch) => !batch.cloud)
+    .filter(
+      (batch) =>
+        (!since || batch.createdAt >= new Date(`${since}T00:00:00`).getTime()) &&
+        (!until || batch.createdAt <= new Date(`${until}T23:59:59.999`).getTime()),
+    )
     .map((batch) => ({
       batch,
       requests: batch.taskIds
@@ -74,6 +93,7 @@ export function History({
         const combination = combinationById(task.draft.combinationId);
         return (
           (model === "all" || combination.model === model) &&
+          (provider === "all" || combination.provider === provider) &&
           (status === "all" ||
             (status === "active"
               ? active.has(task.status)
@@ -195,6 +215,49 @@ export function History({
             </option>
           ))}
         </Select>
+        <Select
+          aria-label={t("provider")}
+          value={provider}
+          onValueChange={(value) => {
+            setProvider(value);
+            setPage(1);
+          }}
+        >
+          <option value="all">{t("provider")}</option>
+          {[
+            ...new Set(
+              tasks
+                .filter((task) => !task.cloudGroupId && !task.historyDeletedAt)
+                .map((task) => combinationById(task.draft.combinationId).provider),
+            ),
+          ].map((id) => (
+            <option key={id} value={id}>
+              {providerNames[id]}
+            </option>
+          ))}
+        </Select>
+        <input
+          className="history-filter-date"
+          type="date"
+          aria-label={b("since")}
+          title={b("since")}
+          value={since}
+          onChange={(event) => {
+            setSince(event.target.value);
+            setPage(1);
+          }}
+        />
+        <input
+          className="history-filter-date"
+          type="date"
+          aria-label={b("until")}
+          title={b("until")}
+          value={until}
+          onChange={(event) => {
+            setUntil(event.target.value);
+            setPage(1);
+          }}
+        />
         <button onClick={() => setSelected(selection.length === visible.size ? [] : [...visible])}>
           {selection.length ? `${taskText("selecting")} ${selection.length}` : t("selectAll")}
         </button>
@@ -217,17 +280,31 @@ export function History({
         {filtered.slice((currentPage - 1) * 20, currentPage * 20).map(({ batch, requests }) => (
           <section className="history-batch" key={batch.id}>
             <header>
-              <div>
-                <strong>{new Date(batch.createdAt).toLocaleString()}</strong>
-                <small>
-                  {batch.origin === "mcp" ? "MCP" : t("creation")} · {requests.length} {t("request")} ·{" "}
-                  {requests.reduce(
-                    (sum, task) => sum + task.results.filter((result) => result.status === "saved").length,
-                    0,
-                  )}{" "}
-                  {t("saved")}
-                </small>
-              </div>
+              <button
+                className="history-batch-toggle"
+                aria-expanded={openBatches.has(batch.id)}
+                onClick={() =>
+                  setOpenBatches((current) => {
+                    const next = new Set(current);
+                    if (next.has(batch.id)) next.delete(batch.id);
+                    else next.add(batch.id);
+                    return next;
+                  })
+                }
+              >
+                {openBatches.has(batch.id) ? <CaretDownIcon /> : <CaretRightIcon />}
+                <span>
+                  <strong>{new Date(batch.createdAt).toLocaleString()}</strong>
+                  <small>
+                    {batch.origin === "mcp" ? "MCP" : t("creation")} · {requests.length} {t("request")} ·{" "}
+                    {requests.reduce(
+                      (sum, task) => sum + task.results.filter((result) => result.status === "saved").length,
+                      0,
+                    )}{" "}
+                    {t("saved")}
+                  </small>
+                </span>
+              </button>
               <BatchUsage tasks={requests} />
               <div className="history-batch-actions">
                 {requests.some((task) => task.status === "queued") && (
@@ -242,110 +319,111 @@ export function History({
                 </button>
               </div>
             </header>
-            {requests.map((task) => {
-              const combination = combinationById(task.draft.combinationId);
-              const busy = active.has(task.status);
-              return (
-                <div
-                  className="history-task"
-                  key={task.id}
-                  onClick={(event) => {
-                    if ((event.target as HTMLElement).closest("button, input")) return;
-                    const selection = window.getSelection();
-                    if (selection && !selection.isCollapsed) return;
-                    setExpanded(task.id);
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    className="task-select"
-                    aria-label={`${taskText("select")} ${task.id}`}
-                    checked={selection.includes(task.id)}
-                    onChange={() => toggle(task.id)}
-                  />
-                  <div className="history-info">
-                    <div className="history-task-heading">
-                      <ModelIcon family={combination.family} size={18} />
-                      <strong>{combination.label}</strong>
-                      <span className="muted">{providerNames[combination.provider]}</span>
-                      {busy && <span className="spinner" />}
-                      <span className={`status-badge status-${task.status}`}>{t(task.status)}</span>
-                    </div>
-                    <p className="history-prompt" title={displayPrompt(task.draft)}>
-                      {displayPrompt(task.draft)}
-                    </p>
-                    <div className="history-meta">
-                      <TaskUsage task={task} compact />
-                      {!!task.results.length && (
-                        <span>
-                          {task.results.filter((result) => result.status === "saved").length} / {task.results.length}{" "}
-                          {t("results")}
-                        </span>
-                      )}
-                      <div className="history-task-actions">
-                        <button title={t("details")} aria-label={t("details")} onClick={() => setExpanded(task.id)}>
-                          <InfoIcon size={15} />
-                        </button>
-                        <button title={t("restore")} aria-label={t("restore")} onClick={() => onRestore(task.draft)}>
-                          <ArrowCounterClockwiseIcon size={15} />
-                        </button>
-                        {!busy && !["completed", "cancelled"].includes(task.status) && (
+            {openBatches.has(batch.id) &&
+              requests.map((task) => {
+                const combination = combinationById(task.draft.combinationId);
+                const busy = active.has(task.status);
+                return (
+                  <div
+                    className="history-task"
+                    key={task.id}
+                    onClick={(event) => {
+                      if ((event.target as HTMLElement).closest("button, input")) return;
+                      const selection = window.getSelection();
+                      if (selection && !selection.isCollapsed) return;
+                      setExpanded(task.id);
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      className="task-select"
+                      aria-label={`${taskText("select")} ${task.id}`}
+                      checked={selection.includes(task.id)}
+                      onChange={() => toggle(task.id)}
+                    />
+                    <div className="history-info">
+                      <div className="history-task-heading">
+                        <ModelIcon family={combination.family} size={18} />
+                        <strong>{combination.label}</strong>
+                        <span className="muted">{providerNames[combination.provider]}</span>
+                        {busy && <span className="spinner" />}
+                        <span className={`status-badge status-${task.status}`}>{t(task.status)}</span>
+                      </div>
+                      <p className="history-prompt" title={displayPrompt(task.draft)}>
+                        {displayPrompt(task.draft)}
+                      </p>
+                      <div className="history-meta">
+                        <TaskUsage task={task} compact />
+                        {!!task.results.length && (
+                          <span>
+                            {task.results.filter((result) => result.status === "saved").length} / {task.results.length}{" "}
+                            {t("results")}
+                          </span>
+                        )}
+                        <div className="history-task-actions">
+                          <button title={t("details")} aria-label={t("details")} onClick={() => setExpanded(task.id)}>
+                            <InfoIcon size={15} />
+                          </button>
+                          <button title={t("restore")} aria-label={t("restore")} onClick={() => onRestore(task.draft)}>
+                            <ArrowCounterClockwiseIcon size={15} />
+                          </button>
+                          {!busy && !["completed", "cancelled"].includes(task.status) && (
+                            <button
+                              title={t("retry")}
+                              aria-label={t("retry")}
+                              onClick={() => void execute(task.id).catch(onError)}
+                            >
+                              <PlayIcon size={15} />
+                            </button>
+                          )}
                           <button
-                            title={t("retry")}
-                            aria-label={t("retry")}
-                            onClick={() => void execute(task.id).catch(onError)}
+                            className="task-delete"
+                            title={t("delete")}
+                            aria-label={t("delete")}
+                            disabled={deleting || !canDeleteHistory(task)}
+                            onClick={() => void remove([task.id]).catch(onError)}
                           >
-                            <PlayIcon size={15} />
+                            <TrashIcon size={15} />
+                          </button>
+                        </div>
+                      </div>
+                      {task.error && (
+                        <p className="error-text" title={task.error}>
+                          {task.error}
+                        </p>
+                      )}
+                    </div>
+                    {!!task.results.length && (
+                      <div className="history-images">
+                        {task.results.slice(0, 4).map((result) => {
+                          const entry = result.assetId ? assets.get(result.assetId) : undefined;
+                          return (
+                            <button
+                              key={result.id}
+                              disabled={!entry}
+                              onClick={() => entry && onView(entry.asset.id)}
+                              title={result.error}
+                            >
+                              {entry ? (
+                                <AssetImage entry={entry} thumbnail />
+                              ) : (
+                                <span className="missing-image">
+                                  <ImageIcon size={20} />
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                        {task.results.length > 4 && (
+                          <button className="history-images-more" onClick={() => setExpanded(task.id)}>
+                            +{task.results.length - 4}
                           </button>
                         )}
-                        <button
-                          className="task-delete"
-                          title={t("delete")}
-                          aria-label={t("delete")}
-                          disabled={deleting || !canDeleteHistory(task)}
-                          onClick={() => void remove([task.id]).catch(onError)}
-                        >
-                          <TrashIcon size={15} />
-                        </button>
                       </div>
-                    </div>
-                    {task.error && (
-                      <p className="error-text" title={task.error}>
-                        {task.error}
-                      </p>
                     )}
                   </div>
-                  {!!task.results.length && (
-                    <div className="history-images">
-                      {task.results.slice(0, 4).map((result) => {
-                        const entry = result.assetId ? assets.get(result.assetId) : undefined;
-                        return (
-                          <button
-                            key={result.id}
-                            disabled={!entry}
-                            onClick={() => entry && onView(entry.asset.id)}
-                            title={result.error}
-                          >
-                            {entry ? (
-                              <AssetImage entry={entry} thumbnail />
-                            ) : (
-                              <span className="missing-image">
-                                <ImageIcon size={20} />
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                      {task.results.length > 4 && (
-                        <button className="history-images-more" onClick={() => setExpanded(task.id)}>
-                          +{task.results.length - 4}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
           </section>
         ))}
         {!filtered.length && (

@@ -95,6 +95,7 @@ export interface ModelCombination {
   label: string;
   provider: ProviderId;
   protocol: Protocol;
+  batch?: { protocol: "google" | "openai"; unsupportedFields?: string[] };
   maxReferences: number;
   mask?: "alpha" | "white" | "black";
   regions?: "prompt" | "runware" | "fal" | "seedream";

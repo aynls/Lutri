@@ -8,15 +8,17 @@ import { Dialog } from "../../components/Dialog";
 import { ModelIcon } from "../../components/ModelIcon";
 import { t } from "../../i18n";
 
-const models = [...new Map(combinations.map((entry) => [entry.model, entry])).values()];
-const families = [...new Set(models.map((entry) => entry.family))];
 export function ModelSelector({
   value,
   onChange,
+  available = combinations,
 }: {
   value: ModelCombination;
   onChange: (next: ModelCombination) => void;
+  available?: ModelCombination[];
 }) {
+  const models = [...new Map(available.map((entry) => [entry.model, entry])).values()];
+  const families = [...new Set(models.map((entry) => entry.family))];
   const [open, setOpen] = useState(false),
     [search, setSearch] = useState("");
   const [family, setFamily] = useState("all");
@@ -42,9 +44,9 @@ export function ModelSelector({
         {t("provider")}
         <Select
           value={value.id}
-          onValueChange={(nextValue) => onChange(combinations.find((entry) => entry.id === nextValue)!)}
+          onValueChange={(nextValue) => onChange(available.find((entry) => entry.id === nextValue)!)}
         >
-          {combinations
+          {available
             .filter((entry) => entry.model === value.model)
             .map((entry) => (
               <option key={entry.id} value={entry.id}>
@@ -84,8 +86,7 @@ export function ModelSelector({
                   className={entry.model === value.model ? "selected" : ""}
                   onClick={() => {
                     onChange(
-                      combinations.find((next) => next.model === entry.model && next.provider === value.provider) ??
-                        entry,
+                      available.find((next) => next.model === entry.model && next.provider === value.provider) ?? entry,
                     );
                     setOpen(false);
                   }}
@@ -94,7 +95,7 @@ export function ModelSelector({
                   <span>
                     <strong>{entry.label}</strong>
                     <small>
-                      {combinations
+                      {available
                         .filter((next) => next.model === entry.model)
                         .map((next) => providerNames[next.provider])
                         .join(" · ")}

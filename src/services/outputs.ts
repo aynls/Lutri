@@ -8,7 +8,7 @@ export interface OutputOptions {
 }
 
 /** Resolve once at submission so later preference changes cannot affect queued work. */
-export function resolveOutputs(kind: "generation" | "upscale", options: OutputOptions = {}) {
+export function resolveOutputs(kind: "generation" | "upscale" | "batch", options: OutputOptions = {}) {
   const output = getState().preferences.outputs;
   const autoSave =
     options.autoSave ??

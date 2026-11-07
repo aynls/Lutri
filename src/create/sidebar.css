@@ -49,6 +49,9 @@
   flex-direction: column;
   gap: 0;
 }
+.creation-parameters > .layout-section {
+  margin-block: 23px;
+}
 .creation-section {
   border-top: 1px solid var(--line);
   min-width: 0;
@@ -255,18 +258,7 @@
 }
 .generate-submit-row {
   display: grid;
-  grid-template-columns: 78px minmax(0, 1fr);
-  align-items: end;
-  gap: 10px;
-}
-.generate-submit-row > label {
-  display: grid;
-  gap: 5px;
-  font-size: 11px;
-}
-.generate-submit-row > label input {
-  width: 100%;
-  padding: 10px 6px;
+  grid-template-columns: minmax(0, 1fr);
 }
 .generate-submit-row > .primary-button {
   min-width: 0;
@@ -353,10 +345,6 @@
   }
   .submit-panel {
     padding: 10px 12px;
-  }
-  .generate-submit-row {
-    grid-template-columns: 62px minmax(0, 1fr);
-    gap: 6px;
   }
   .generate-submit-row .primary-button kbd {
     display: none;

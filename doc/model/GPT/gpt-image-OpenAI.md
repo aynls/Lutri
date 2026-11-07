@@ -39,3 +39,13 @@ Flare、Sunburst 均提供 `output_format: "svg"`，仅走 generations，不能�
 返回 `data[].b64_json`，Base64 解码后是 SVG XML。结果类型先由响应的 `output_format` 解析，再以保存时识别的文件内容为准；保留 SVG 原文件，生成 PNG 缩略图并回填历史格式。响应的 `svg_usage` 与 `usage` 分别保留在任务元数据中。
 
 当前 OpenAI 组合未开放流式响应与 GIF。
+
+## Batch
+
+2026-11-07 核对：[Batch 指南](https://developers.openai.com/api/docs/guides/batch)、[2.5 Flare](https://developers.openai.com/api/docs/models/gpt-image-2.5-flare)、[2.5 Sunburst](https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst)、[2.6 Flare](https://developers.openai.com/api/docs/models/gpt-image-2.6-flare)、[2.6 Sunburst](https://developers.openai.com/api/docs/models/gpt-image-2.6-sunburst)。本期只开放 2.5 Flare / Sunburst；2.6 模型页标记 Batch 不支持。
+
+复用 Images API 的生成、编辑请求体，包括参考图与蒙版。每行 JSONL 包含 `custom_id`、`method: "POST"`、`url` 和 `body`。同一远程批次只包含同一模型、同一接口路径；`/v1/images/generations` 与 `/v1/images/edits` 分组。输入文件通过 `/v1/files` 上传，`purpose: "batch"`；创建 `/v1/batches` 时传 `input_file_id`、`endpoint`、`completion_window: "24h"`，并用 `metadata.lutri_group` 标识本地远程分组。
+
+官方上限为每文件 50000 次请求、200 MB；应用在 190 MB 前拆分以保留编码余量。输入文件存于本地临时目录，不写入历史请求快照。查询 `/v1/batches/{id}`，下载 `output_file_id` 和 `error_file_id`，通过 `custom_id` 关联结果；文件顺序不能用于匹配请求。输出文件先下载到本地，再逐行读取、保存图片。
+
+提交结果未知时查询批次列表，匹配本地分组标记及输入文件 ID，不直接重发。取消使用 `/v1/batches/{id}/cancel`，以远程确认的状态为准。结果文件有保留期限，应在可用时及时取回。重启只恢复未完成的提交步骤、查询及下载；已发起但未确认的生成提交先核对。未发起付费 Batch 请求验证。

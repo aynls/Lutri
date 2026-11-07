@@ -3,8 +3,11 @@ import { getState, mutateTasks } from "./store";
 import { isTaskScheduled } from "./generation";
 import { deletingTaskIds } from "./taskLocks";
 import { native } from "./native";
+import { canDeleteCloudBatch } from "../batch/service";
 
 export const canDeleteHistory = (task: GenerationTask) =>
+  (!task.cloudGroupId ||
+    !!getState().batches.find((batch) => batch.id === task.batchId && canDeleteCloudBatch(batch))) &&
   !isTaskScheduled(task.id) &&
   ["completed", "failed", "retrieval-failed", "download-failed", "cancelled"].includes(task.status);
 

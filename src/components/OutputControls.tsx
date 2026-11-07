@@ -8,7 +8,7 @@ export function OutputControls({
   disabled,
   onError,
 }: {
-  kind: "generationAuto" | "upscaleAuto";
+  kind: "generationAuto" | "upscaleAuto" | "batchAuto";
   disabled?: boolean;
   onError: (error: unknown) => void;
 }) {
@@ -16,7 +16,8 @@ export function OutputControls({
   const [saving, setSaving] = useState(false);
   const output = preferences.outputs ?? {};
   const enabled = output[kind] ?? false;
-  const galleryKey = kind === "generationAuto" ? "generationGallery" : "upscaleGallery";
+  const galleryKey =
+    kind === "generationAuto" ? "generationGallery" : kind === "batchAuto" ? "batchGallery" : "upscaleGallery";
   const missing = enabled && !output.directory?.trim();
   const change = async (next: typeof output) => {
     setSaving(true);

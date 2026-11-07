@@ -25,7 +25,7 @@ import { ModelSelector } from "./create/components/ModelSelector";
 import { CreationControl } from "./create/components/CreationControl";
 import { editTargetId } from "./models/creation";
 import type { ModelCombination } from "./models/types";
-import type { GalleryEntry, GenerationDraft } from "./domain/types";
+import type { CreationMode, GalleryEntry, GenerationDraft } from "./domain/types";
 import { missingPromptReferences } from "./domain/references";
 import { t } from "./i18n";
 import { validateDraft } from "./models/validateDraft";
@@ -44,6 +44,18 @@ import { InputPreparation } from "./create/components/InputPreparation";
 import { Dialog } from "./components/Dialog";
 import { chooseImages } from "./gallery/actions";
 import { RequestPreview } from "./create/components/RequestPreview";
+import { ParameterField } from "./create/components/Fields";
+import { BatchDraft } from "./batch/BatchDraft";
+import { BatchHistory } from "./batch/BatchHistory";
+import { b } from "./batch/messages";
+import {
+  batchCombinations,
+  batchForm,
+  batchRequestLimit,
+  transferDraft,
+  validateBatchDraft,
+} from "./batch/capabilities";
+import { addBatchItem, appendBatchDrafts, cancelBatchEdit, switchCreationMode } from "./batch/draft";
 import { SavedStyles } from "./create/components/SavedStyles";
 import { Regions } from "./create/components/Regions";
 import { Gallery } from "./gallery/Gallery";
@@ -62,6 +74,7 @@ import "./upscale/upscale.css";
 import "./create/editor.css";
 import "./create/sidebar.css";
 import "./typography.css";
+import "./batch/batch.css";
 
 type Page = "creation" | "upscale" | "gallery" | "history" | "settings";
 const navigation = [
@@ -75,11 +88,15 @@ let started = false;
 export default function App() {
   useLocale();
   const state = useApplication();
+  const isBatch = state.creation.mode === "batch";
+  const [modeBusy, setModeBusy] = useState(false);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [taskTab, setTaskTab] = useState<CreationMode>("regular");
   const [viewer, setViewer] = useState<{ assetId: string; ids: string[] }>();
   const [page, setPage] = useState<Page>("creation"),
     [error, setError] = useState(""),
     [picker, setPicker] = useState(false),
-    [search, setSearch] = useState(""),
+    [search, setSearch] = useState({ regular: "", batch: "" }),
     [writers, setWriters] = useState(false),
     [maskEditor, setMaskEditor] = useState(false);
   const [writerImages, setWriterImages] = useState<{ entries: GalleryEntry[]; nonce: string }>();
@@ -100,6 +117,22 @@ export default function App() {
   const drafts = useRef(new Map<string, GenerationDraft>());
   const onError = useCallback((value: unknown) => setError(String(value)), []);
   const changeDraft = (draft: GenerationDraft) => void saveDraft(draft).catch(onError);
+  const changeMode = async (mode: CreationMode) => {
+    if (modeBusy || batchBusy) return;
+    setModeBusy(true);
+    try {
+      await switchCreationMode(mode);
+    } finally {
+      setModeBusy(false);
+    }
+  };
+  const relatedHistory = (id: string) => {
+    const task = getState().tasks.find((task) => task.results.some((result) => result.assetId === id));
+    const tab = task?.cloudGroupId ? "batch" : "regular";
+    setTaskTab(tab);
+    setSearch((current) => ({ ...current, [tab]: id }));
+    setPage("history");
+  };
   useEffect(() => {
     if (!started) {
       started = true;
@@ -252,6 +285,12 @@ export default function App() {
   };
   const switchModel = async (next: ModelCombination) => {
     const current = getState().draft;
+    if (isBatch) {
+      drafts.current.set(current.combinationId, structuredClone(current));
+      const target = transferDraft(current, next, drafts.current.get(next.id));
+      await saveDraft(target);
+      return;
+    }
     if (
       ((current.mask && !next.mask) || (current.regions.length && !next.regions)) &&
       !(await confirm(c("switchWarning"), { title: "Lutri", kind: "warning" }))
@@ -335,7 +374,14 @@ export default function App() {
       setEditing(entry);
     } else applyEdit(entry, false);
   };
-  const restore = async (draft: GenerationDraft) => {
+  const restore = async (draft: GenerationDraft, mode: CreationMode = "regular") => {
+    if (getState().creation.editing) {
+      onError(b("pendingEdit"));
+      return;
+    }
+    if (getState().draft.prompt.trim() && !(await confirm(b("replaceEditor"), { title: "Lutri", kind: "warning" })))
+      return;
+    await switchCreationMode(mode);
     const availability = await Promise.all(
       draft.references.map(async (ref) => ({ id: ref.id, exists: await assetExists(ref.assetId) })),
     );
@@ -364,6 +410,11 @@ export default function App() {
         return;
       }
       const submittedDraft = getState().draft;
+      if (isBatch) {
+        await addBatchItem();
+        setSent(true);
+        return;
+      }
       if (validateDraft(submittedDraft, maxRequestCount(getState().preferences)).length) return;
       const missing = await Promise.all(
         submittedDraft.references.map(async (ref) => ({ ref, exists: await assetExists(ref.assetId) })),
@@ -392,8 +443,13 @@ export default function App() {
       setSubmitting(false);
     }
   };
-  const combination = combinationById(state.draft.combinationId),
+  const originalCombination = combinationById(state.draft.combinationId);
+  const combination = isBatch ? batchForm(originalCombination) : originalCombination,
     Form = combination.Form;
+  const quantityField = combination.fields.find((field) => ["n", "num_images", "numberResults"].includes(field.key));
+  const formCombination = quantityField
+    ? { ...combination, fields: combination.fields.filter((field) => field !== quantityField) }
+    : combination;
   const maskEntry = state.draft.mask
     ? state.masks.find((entry) => entry.asset.id === state.draft.mask?.assetId)
     : undefined;
@@ -401,8 +457,10 @@ export default function App() {
   const maskReferenceEntry = maskReference
     ? state.gallery.find((entry) => entry.asset.id === maskReference.assetId)
     : undefined;
-  const validation = validateDraft(state.draft, maxRequestCount(state.preferences));
-  if (state.preferences.outputs?.generationAuto && !state.preferences.outputs.directory?.trim())
+  const validation = isBatch
+    ? validateBatchDraft(state.draft, false)
+    : validateDraft(state.draft, maxRequestCount(state.preferences));
+  if (!isBatch && state.preferences.outputs?.generationAuto && !state.preferences.outputs.directory?.trim())
     validation.push(t("saveDirectoryRequired"));
   const configuration = state.preferences.providers[combination.provider];
   const configured =
@@ -412,9 +470,16 @@ export default function App() {
     !state.draft.prompt.trim() &&
     !state.draft.parameters.layer_decomposition &&
     !state.draft.parameters.structured_prompt;
-  const canSubmit = state.ready && !submitting && !!configured && !validation.length && !promptEmpty;
-  const queuedBatches = state.batches.filter((batch) =>
-    state.tasks.some((task) => task.batchId === batch.id && task.status === "queued"),
+  const canSubmit =
+    state.ready &&
+    !submitting &&
+    !batchBusy &&
+    !modeBusy &&
+    (isBatch || !!configured) &&
+    !validation.length &&
+    !promptEmpty;
+  const queuedBatches = state.batches.filter(
+    (batch) => !batch.cloud && state.tasks.some((task) => task.batchId === batch.id && task.status === "queued"),
   );
   const focusIssue = (issue: string) => {
     const field = Array.from(document.querySelectorAll<HTMLElement>(".creation-panel [data-field]")).find(
@@ -452,10 +517,8 @@ export default function App() {
       </nav>
       <main className="workspace">
         <header className="workspace-header">
-          <div>
-            <h1>{t(page)}</h1>
-          </div>
-          {page === "creation" ? (
+          <h1>{t(page)}</h1>
+          {page === "creation" && !isBatch ? (
             <div className="button-row">
               {!!queuedBatches.length && (
                 <button
@@ -463,7 +526,8 @@ export default function App() {
                     void Promise.all(queuedBatches.map((batch) => cancelBatchQueued(batch.id))).catch(onError)
                   }
                 >
-                  {c("stopQueued")} · {state.tasks.filter((task) => task.status === "queued").length}
+                  {c("stopQueued")} ·{" "}
+                  {state.tasks.filter((task) => !task.cloudGroupId && task.status === "queued").length}
                 </button>
               )}
               <button
@@ -499,7 +563,24 @@ export default function App() {
                   scrollPositions.current.set(state.draft.combinationId, event.currentTarget.scrollTop)
                 }
               >
-                <ModelSelector value={combination} onChange={(next) => void switchModel(next).catch(onError)} />
+                <div className="segmented-control" role="group" aria-label={t("creation")}>
+                  {(["regular", "batch"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      aria-pressed={state.creation.mode === mode}
+                      disabled={modeBusy || batchBusy || submitting}
+                      onClick={() => void changeMode(mode).catch(onError)}
+                    >
+                      {b(mode)}
+                    </button>
+                  ))}
+                </div>
+                <ModelSelector
+                  key={state.creation.mode}
+                  available={isBatch ? batchCombinations : undefined}
+                  value={combination}
+                  onChange={(next) => void switchModel(next).catch(onError)}
+                />
                 <div className="creation-credential" role="status">
                   <span className={credential === false ? "error-text" : "muted"}>
                     {credential === undefined
@@ -516,6 +597,22 @@ export default function App() {
                   </button>
                 </div>
                 <CreationControl combination={combination} draft={state.draft} onChange={changeDraft} />
+                {isBatch && state.draft.mask && !combination.mask && (
+                  <div className="batch-item-errors">
+                    <p>{t("unsupportedMask")}</p>
+                    <button onClick={() => changeDraft({ ...state.draft, mask: undefined })}>
+                      {t("remove")} · {t("mask")}
+                    </button>
+                  </div>
+                )}
+                {isBatch && !!state.draft.regions.length && !combination.regions && (
+                  <div className="batch-item-errors">
+                    <p>{t("unsupportedRegions")}</p>
+                    <button onClick={() => changeDraft({ ...state.draft, regions: [] })}>
+                      {t("remove")} · {t("regions")}
+                    </button>
+                  </div>
+                )}
                 <PromptField
                   draft={state.draft}
                   onChange={changeDraft}
@@ -584,7 +681,7 @@ export default function App() {
                     </button>
                   )
                 ) : null}
-                <section>
+                <section className="creation-parameters">
                   <div className="section-heading">
                     <span>{t("parameters")}</span>
                     <button
@@ -601,20 +698,21 @@ export default function App() {
                     </button>
                   </div>
                   <Form
-                    key={parameterReset}
-                    combination={combination}
+                    key={`${state.creation.mode}:${state.creation.editing?.id ?? "new"}:${parameterReset}`}
+                    combination={formCombination}
                     draft={state.draft}
                     onChange={changeDraft}
                     styleControl={<SavedStyles combination={combination} draft={state.draft} onChange={changeDraft} />}
                   />
                   {!!combination.maxReferences && <InputPreparation draft={state.draft} onChange={changeDraft} />}
+                  {combination.regions ? <Regions draft={state.draft} onChange={changeDraft} /> : null}
+                  <RequestPreview
+                    combination={combination}
+                    batch={isBatch}
+                    draft={state.draft}
+                    configuration={state.preferences.providers[combination.provider] ?? {}}
+                  />
                 </section>
-                {combination.regions ? <Regions draft={state.draft} onChange={changeDraft} /> : null}
-                <RequestPreview
-                  combination={combination}
-                  draft={state.draft}
-                  configuration={state.preferences.providers[combination.provider] ?? {}}
-                />
               </div>
               <div className="submit-panel">
                 {!!validation.length && (
@@ -632,43 +730,67 @@ export default function App() {
                     </ul>
                   </details>
                 )}
-                <OutputControls kind="generationAuto" disabled={submitting} onError={onError} />
-                <div className="generate-submit-row">
+                {!isBatch && <OutputControls kind="generationAuto" disabled={submitting} onError={onError} />}
+                <div className="request-quantity">
                   <label>
                     {t("requestCount")}
                     <input
                       type="number"
                       min={1}
-                      max={maxRequestCount(state.preferences)}
+                      max={isBatch ? batchRequestLimit : maxRequestCount(state.preferences)}
                       value={state.draft.requestCount}
                       onChange={(e) => changeDraft({ ...state.draft, requestCount: Number(e.target.value) })}
                     />
                   </label>
+                  {quantityField && <ParameterField field={quantityField} draft={state.draft} onChange={changeDraft} />}
+                </div>
+                <div className="generate-submit-row">
                   <button className="primary-button" disabled={!canSubmit} onClick={() => void submit().catch(onError)}>
                     <SparkleIcon weight="fill" />
                     {submitting
                       ? t("submitting")
-                      : `${sent ? c("sent") : t("generate")}${
-                          state.draft.requestCount * combination.outputCount(state.draft.parameters) > 1
-                            ? ` · ${state.draft.requestCount * combination.outputCount(state.draft.parameters)} ${t("imageCount")}`
-                            : ""
-                        }`}
+                      : isBatch
+                        ? state.creation.editing
+                          ? b("save")
+                          : b("add")
+                        : `${sent ? c("sent") : t("generate")}${
+                            state.draft.requestCount * combination.outputCount(state.draft.parameters) > 1
+                              ? ` · ${state.draft.requestCount * combination.outputCount(state.draft.parameters)} ${t("imageCount")}`
+                              : ""
+                          }`}
                     <kbd>Ctrl ↵</kbd>
                   </button>
                 </div>
+                {isBatch && state.creation.editing && (
+                  <button
+                    className="batch-edit-cancel"
+                    disabled={submitting || batchBusy}
+                    onClick={() => void cancelBatchEdit()?.catch(onError)}
+                  >
+                    {t("cancel")}
+                  </button>
+                )}
               </div>
             </ResizablePanel>
-            <Feed
-              onView={view}
-              onReference={addReference}
-              onEdit={editImage}
-              onRestore={(draft) => void restore(draft).catch(onError)}
-              onRelated={(id) => {
-                setSearch(id);
-                setPage("history");
-              }}
-              onError={onError}
-            />
+            {isBatch ? (
+              <BatchDraft
+                onError={onError}
+                onBusy={setBatchBusy}
+                onTasks={() => {
+                  setTaskTab("batch");
+                  setPage("history");
+                }}
+              />
+            ) : (
+              <Feed
+                onView={view}
+                onReference={addReference}
+                onEdit={editImage}
+                onRestore={(draft) => void restore(draft).catch(onError)}
+                onRelated={relatedHistory}
+                onError={onError}
+              />
+            )}
           </div>
         </div>
         {page === "gallery" ? (
@@ -680,22 +802,42 @@ export default function App() {
             }}
             onReference={addReference}
             onEdit={editImage}
-            onRelated={(id) => {
-              setSearch(id);
-              setPage("history");
-            }}
+            onRelated={relatedHistory}
             onError={onError}
           />
         ) : null}
-        {page === "history" ? (
-          <History
-            key={search}
-            initialSearch={search}
-            onError={onError}
-            onRestore={(draft) => void restore(draft).catch(onError)}
-            onView={view}
-          />
-        ) : null}
+        <div className="tasks-host" hidden={page !== "history"}>
+          <div className="task-tabs">
+            <div className="segmented-control" aria-label={t("history")}>
+              {(["regular", "batch"] as const).map((tab) => (
+                <button key={tab} aria-pressed={taskTab === tab} onClick={() => setTaskTab(tab)}>
+                  {b(tab)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="task-view" hidden={taskTab !== "regular"}>
+            <History
+              initialSearch={search.regular}
+              onError={onError}
+              onRestore={(draft) => void restore(draft).catch(onError)}
+              onView={view}
+            />
+          </div>
+          <div className="task-view" hidden={taskTab !== "batch"}>
+            <BatchHistory
+              initialSearch={search.batch}
+              onError={onError}
+              onView={view}
+              onRestore={(draft) => void restore(draft, "batch").catch(onError)}
+              onRequeue={(drafts) => {
+                void appendBatchDrafts(drafts)
+                  .then(() => setPage("creation"))
+                  .catch(onError);
+              }}
+            />
+          </div>
+        </div>
         {page === "settings" ? <Settings onError={onError} /> : null}
         <div className="upscale-host" hidden={page !== "upscale"}>
           <Upscale onError={onError} incoming={upscaleInput} onReference={useImageAsReference} />

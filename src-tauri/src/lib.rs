@@ -1,4 +1,5 @@
 mod assets;
+mod batch;
 mod clipboard;
 mod desktop;
 mod layers;
@@ -73,6 +74,11 @@ pub fn run() {
             network::writer_discover_efforts,
             network::http_request,
             network::http_stream,
+            batch::batch_input_append,
+            batch::batch_upload,
+            batch::batch_output_fetch,
+            batch::batch_output_read,
+            batch::batch_files_remove,
             upscale::upscale_models,
             upscale::upscale_run,
             upscale::upscale_save,
