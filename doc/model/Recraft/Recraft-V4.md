@@ -1,5 +1,7 @@
 # Recraft V4.1 / V4 Styles API
 
+本文记录栅格模型；独立的 Vector 模型、供应商覆盖及 SVG 请求约束见 [Recraft Vector](Recraft-Vector.md)。
+
 ## Recraft 官方
 
 文字生成使用 `POST https://external.api.recraft.ai/v1/images/generations`，请求头为 `Authorization: Bearer RECRAFT_API_TOKEN`，JSON 请求体。

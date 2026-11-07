@@ -180,7 +180,7 @@ export function RequestDetails({
                   </button>
                   {result.status === "downloading" && <span>{t("downloading")}</span>}
                   {result.error && <p className="error-text">{result.error}</p>}
-                  <TaskUsage task={task} result={result} />
+                  <TaskUsage task={task} result={result} compact />
                   {result.exportError && (
                     <>
                       <p className="error-text">{result.exportError}</p>

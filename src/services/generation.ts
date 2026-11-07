@@ -5,7 +5,7 @@ import { compilePrompt } from "../domain/references";
 import { validateDraft } from "../models/validateDraft";
 import { combinationById } from "../models";
 import { maxRequestCount } from "../models/shared";
-import { HttpError, send } from "../providers/transport";
+import { HttpError, array, object, send } from "../providers/transport";
 import { imageResults, responseMetadata, type RemoteImage } from "../providers/results";
 import { poll, recoveryFrom } from "../providers/recovery";
 import { runwareResponse } from "../providers/runware";
@@ -467,6 +467,7 @@ async function runTask(id: string, initial = false) {
               Number.isFinite(until) ? Math.max(Date.now(), until) : Date.now() + 5000,
             );
           }
+          if (error.status >= 400 && error.status < 500) delete task.recovery;
         }
         task.status =
           error instanceof HttpError && error.status >= 400 && error.status < 500 ? "failed" : "submission-unknown";
@@ -479,6 +480,16 @@ async function runTask(id: string, initial = false) {
       task.status = "generating";
       await saveTask({ ...task });
       if (combination.protocol === "runware") {
+        const body = object(response);
+        if (
+          body.error ||
+          (!array(body.data).length &&
+            array(body.errors).length > 0 &&
+            !array(body.errors).some((entry) => object(entry).taskUUID === task.id))
+        ) {
+          delete task.recovery;
+          delete task.providerTaskId;
+        }
         const result = runwareResponse(response, task.id, "submit");
         await receive(task, result.images, result.done, result.metadata, result.failures);
         if (result.done) return;

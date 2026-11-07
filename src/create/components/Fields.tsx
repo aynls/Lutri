@@ -93,7 +93,9 @@ export function ParameterField({
           value={String(value ?? (field.options?.includes("auto") ? "auto" : ""))}
           onValueChange={(nextValue) => update(nextValue || undefined)}
         >
-          {!field.options?.includes("auto") && <option value="">{t("automatic")}</option>}
+          {field.allowDefault !== false && !field.options?.includes("auto") && (
+            <option value="">{t("automatic")}</option>
+          )}
           {field.options?.map((option) => (
             <option key={option} value={option}>
               {field.optionLabels?.[option] ? localize(field.optionLabels[option]) : option}
