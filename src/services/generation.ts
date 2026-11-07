@@ -1,5 +1,6 @@
 import type { GalleryEntry, GenerationBatch, GenerationDraft, GenerationTask, Parameters } from "../domain/types";
 import { c } from "../create/messages";
+import { t } from "../i18n";
 import { compilePrompt } from "../domain/references";
 import { validateDraft } from "../models/validateDraft";
 import { combinationById } from "../models";
@@ -61,6 +62,9 @@ function layerError(error: unknown) {
 
 export function submitBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "manual"): Promise<GenerationBatch> {
   const snapshot = structuredClone(draft);
+  const output = getState().preferences.outputs;
+  if (output?.generationAuto && !output.directory?.trim()) return Promise.reject(new Error(t("saveDirectoryRequired")));
+  snapshot.outputDirectory = output?.generationAuto ? output.directory : undefined;
   const result = submissions.catch(() => {}).then(() => createBatch(snapshot, origin));
   submissions = result;
   return result;
@@ -204,7 +208,8 @@ async function downloadResults(task: GenerationTask) {
         result.metadata = { ...result.metadata, provenance_error: sanitizeDiagnostic(error) };
       }
       try {
-        await native("asset_auto_export", { id: asset.asset.id, kind: "generation" });
+        if (task.draft.outputDirectory)
+          await native("asset_auto_export", { id: asset.asset.id, directory: task.draft.outputDirectory });
         delete result.exportError;
       } catch (error) {
         result.exportError = sanitizeDiagnostic(error);
@@ -309,7 +314,8 @@ export async function retryResultExport(taskId: string, resultId: string) {
   if (!result?.assetId) return;
   let error: string | undefined;
   try {
-    await native("asset_auto_export", { id: result.assetId, kind: "generation" });
+    if (!saved?.draft.outputDirectory) throw new Error(t("saveDirectoryRequired"));
+    await native("asset_auto_export", { id: result.assetId, directory: saved.draft.outputDirectory });
   } catch (value) {
     error = sanitizeDiagnostic(value);
   }

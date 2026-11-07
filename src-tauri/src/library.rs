@@ -543,6 +543,10 @@ pub fn auto_export(store: &Store, entry: &Value, kind: &str) -> Result<(), Strin
         .as_str()
         .filter(|v| !v.is_empty())
         .ok_or("Output folder is not configured")?;
+    export_to_directory(entry, directory)
+}
+
+fn export_to_directory(entry: &Value, directory: &str) -> Result<(), String> {
     let source = Path::new(entry["path"].as_str().ok_or("Invalid asset")?);
     let target = Path::new(directory).join(source.file_name().ok_or("Invalid filename")?);
     if target.exists() {
@@ -565,7 +569,8 @@ pub fn auto_export(store: &Store, entry: &Value, kind: &str) -> Result<(), Strin
 }
 
 #[tauri::command]
-pub fn asset_auto_export(store: tauri::State<Store>, id: String, kind: String) -> Result<(), String> {
+pub fn asset_auto_export(store: tauri::State<Store>, id: String, directory: String) -> Result<(), String> {
+    let _guard = store.library.read().map_err(|e| e.to_string())?;
     let entry = assets::entry(&store, &id)?;
-    auto_export(&store, &entry, &kind)
+    export_to_directory(&entry, &directory)
 }

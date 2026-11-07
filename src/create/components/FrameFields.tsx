@@ -79,6 +79,17 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
         ? String(draft.parameters[encoded.key] ?? "")
         : "";
   const [sides, setSides] = useState<[string, string]>(["", ""]);
+  const [editingCustom, setEditingCustom] = useState(false);
+  const hasPartialDimensions =
+    width && height && (draft.parameters.width !== undefined || draft.parameters.height !== undefined);
+  const preset =
+    editingCustom || (!current && hasPartialDimensions)
+      ? "custom"
+      : !current
+        ? ""
+        : presets.some(([w, h]) => `${w}x${h}` === current)
+          ? current
+          : "custom";
   useEffect(() => {
     const match = current.match(/^(\d+)\s*[x×*]\s*(\d+)$/);
     setSides(match ? [match[1], match[2]] : ["", ""]);
@@ -90,8 +101,9 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
           <span>{c("preset")}</span>
           <Select
             id={id}
-            value={!current ? "" : presets.some(([w, h]) => `${w}x${h}` === current) ? current : "custom"}
+            value={preset}
             onValueChange={(nextValue) => {
+              setEditingCustom(nextValue === "custom");
               if (nextValue === "custom") return;
               const parameters = nextValue
                 ? parametersFor(...(nextValue.split("x").map(Number) as [number, number]))
@@ -105,20 +117,18 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
                 {w} × {h}
               </option>
             ))}
-            <option value="custom" disabled>
-              {c("custom")}
-            </option>
+            <option value="custom">{c("custom")}</option>
           </Select>
         </label>
       )}
-      {width && height ? (
+      {preset === "custom" && width && height ? (
         <div className="frame-dimensions">
           <ParameterField {...props} field={width} onChange={(next) => updateField("width", next)} />
           <span aria-hidden="true">×</span>
           <ParameterField {...props} field={height} onChange={(next) => updateField("height", next)} />
         </div>
       ) : null}
-      {encoded ? (
+      {preset === "custom" && encoded ? (
         <div className="frame-dimensions">
           {["width", "height"].map((key, index) => {
             return (
@@ -150,7 +160,7 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
           })}
         </div>
       ) : null}
-      {encoded ? (
+      {preset === "custom" && encoded ? (
         <details className="encoded-size">
           <summary>{c("custom")}</summary>
           <ParameterField {...props} field={encoded} />

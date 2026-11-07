@@ -70,6 +70,8 @@ export interface GenerationDraft {
   requestCount: number;
   inputPreparation?: { maxEdge?: number; version: 1 };
   layerOutputDirectory?: string;
+  /** Automatic copy destination captured when this request is submitted. */
+  outputDirectory?: string;
 }
 
 export type TaskStatus =

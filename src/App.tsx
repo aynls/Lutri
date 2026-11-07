@@ -5,6 +5,7 @@ import {
   ApertureIcon,
   ArrowUpRightIcon,
   ClockCounterClockwiseIcon,
+  CaretRightIcon,
   GearSixIcon,
   ImagesIcon,
   PencilSimpleIcon,
@@ -19,6 +20,7 @@ import { useLocale } from "./i18n";
 import { AssetPicker } from "./gallery/AssetPicker";
 import { ResizablePanel } from "./components/ResizablePanel";
 import { BrandMark } from "./components/ModelIcon";
+import { AutoSaveControl } from "./components/AutoSaveControl";
 import { ModelSelector } from "./create/components/ModelSelector";
 import { CreationControl } from "./create/components/CreationControl";
 import { editTargetId } from "./models/creation";
@@ -91,6 +93,7 @@ export default function App() {
     [keepReferences, setKeepReferences] = useState(false);
   const creationScroll = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef(new Map<string, number>());
+  const [parameterReset, setParameterReset] = useState(0);
   const [dragging, setDragging] = useState(false),
     [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
@@ -399,6 +402,8 @@ export default function App() {
     ? state.gallery.find((entry) => entry.asset.id === maskReference.assetId)
     : undefined;
   const validation = validateDraft(state.draft, maxRequestCount(state.preferences));
+  if (state.preferences.outputs?.generationAuto && !state.preferences.outputs.directory?.trim())
+    validation.push(t("saveDirectoryRequired"));
   const configuration = state.preferences.providers[combination.provider];
   const configured =
     credential &&
@@ -583,18 +588,20 @@ export default function App() {
                   <div className="section-heading">
                     <span>{t("parameters")}</span>
                     <button
-                      onClick={() =>
+                      onClick={() => {
+                        setParameterReset((value) => value + 1);
                         changeDraft({
                           ...state.draft,
                           parameters: initialDraft(combination).parameters,
                           requestCount: 1,
-                        })
-                      }
+                        });
+                      }}
                     >
                       {t("reset")}
                     </button>
                   </div>
                   <Form
+                    key={parameterReset}
                     combination={combination}
                     draft={state.draft}
                     onChange={changeDraft}
@@ -613,6 +620,7 @@ export default function App() {
                 {!!validation.length && (
                   <details className="validation-notice">
                     <summary>
+                      <CaretRightIcon size={16} aria-hidden="true" />
                       {t("validateParameters")} · {validation.length}
                     </summary>
                     <ul>
@@ -624,6 +632,7 @@ export default function App() {
                     </ul>
                   </details>
                 )}
+                <AutoSaveControl kind="generationAuto" disabled={submitting} onError={onError} />
                 <div className="generate-submit-row">
                   <label>
                     {t("requestCount")}

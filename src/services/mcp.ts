@@ -287,7 +287,7 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
         modelId: fileId,
         scale,
         tileSize: Number(args.tileSize ?? 128),
-        destination: typeof args.destination === "string" ? args.destination : null,
+        destination: typeof args.destination === "string" ? args.destination : undefined,
         saveToGallery: args.saveToGallery !== false,
         jobId: typeof args.jobId === "string" ? args.jobId : undefined,
       });

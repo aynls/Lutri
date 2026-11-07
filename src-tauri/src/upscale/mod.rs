@@ -256,7 +256,6 @@ pub async fn upscale_run(
             return Err(error.unwrap_or_else(|| format!("Upscale worker exited: {status}")));
         }
         cleanup.complete = true;
-        let explicit_destination = destination.is_some();
         let mut saved_path = output.clone();
         let mut export_error: Option<String> = None;
         if let Some(directory) = destination {
@@ -285,11 +284,6 @@ pub async fn upscale_run(
                 "UPDATE records SET body=?1 WHERE collection='gallery' AND id=?2",
                 rusqlite::params![entry.to_string(),asset_id],
             ).map_err(|e|e.to_string())?;
-            if !explicit_destination {
-                if let Err(error) = crate::library::auto_export(&store, entry, "upscale") {
-                    if export_error.is_none() { export_error = Some(error); }
-                }
-            }
         }
         Ok(json!({"jobId":id,"path":output,"exportedPath":saved_path,"gallery":gallery,"exportError":export_error,"galleryError":gallery_error}))
     })

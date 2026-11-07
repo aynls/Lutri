@@ -2,6 +2,7 @@ import { Channel } from "@tauri-apps/api/core";
 import type { GalleryEntry } from "../domain/types";
 import { getState, refreshGallery } from "../services/store";
 import { native } from "../services/native";
+import { t } from "../i18n";
 
 export interface UpscaleOptions {
   assetId: string;
@@ -29,6 +30,14 @@ export interface UpscaleResult {
 
 export async function runUpscale(options: UpscaleOptions, onProgress?: (value: UpscaleProgress) => void) {
   const preferences = getState().preferences;
+  const destination =
+    options.destination === undefined
+      ? preferences.outputs?.upscaleAuto
+        ? preferences.outputs.directory
+        : null
+      : options.destination;
+  if (options.destination === undefined && preferences.outputs?.upscaleAuto && !destination?.trim())
+    throw new Error(t("saveDirectoryRequired"));
   await native("upscale_configure", { concurrency: preferences.upscale?.concurrency ?? 1 });
   const channel = new Channel<UpscaleProgress>();
   channel.onmessage = (value) => onProgress?.(value);
@@ -36,10 +45,7 @@ export async function runUpscale(options: UpscaleOptions, onProgress?: (value: U
     ...options,
     jobId: options.jobId ?? crypto.randomUUID(),
     gpuIndex: options.gpuIndex === undefined ? (preferences.upscale?.gpuIndex ?? null) : options.gpuIndex,
-    destination:
-      options.destination ||
-      (!options.saveToGallery && preferences.outputs?.upscaleAuto ? preferences.outputs.directory : null) ||
-      null,
+    destination: destination || null,
     channel,
   });
   try {

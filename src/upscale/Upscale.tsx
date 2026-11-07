@@ -1,5 +1,5 @@
 import { Select } from "../components/Select";
-import { DirectoryPicker } from "../components/DirectoryPicker";
+import { AutoSaveControl } from "../components/AutoSaveControl";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cancelUpscale, runUpscale } from "./queue";
 import { settingsText } from "../settings/messages";
@@ -20,7 +20,7 @@ import { chooseImages } from "../gallery/actions";
 import { AssetPicker } from "../gallery/AssetPicker";
 import { ImageViewer } from "../gallery/ImageViewer";
 import { imageUrl, native } from "../services/native";
-import { refreshGallery } from "../services/store";
+import { refreshGallery, useApplication } from "../services/store";
 import { PathPreview } from "../components/PathPreview";
 import { ResizablePanel } from "../components/ResizablePanel";
 import { UpscaleModelSelector } from "./ModelSelector";
@@ -70,8 +70,11 @@ export function Upscale({
   const [noise, setNoise] = useState<Noise>("no-denoise");
   const [scale, setScale] = useState(4),
     [tile, setTile] = useState(128);
-  const [destination, setDestination] = useState(""),
-    [saveToGallery, setSaveToGallery] = useState(true);
+  const [saveToGallery, setSaveToGallery] = useState(true);
+  const { preferences } = useApplication();
+  const autoSave = preferences.outputs?.upscaleAuto ?? false;
+  const destination = autoSave ? (preferences.outputs?.directory ?? "") : "";
+  const missingDestination = autoSave && !destination.trim();
   const { single, jobs, batch, busy } = useSyncExternalStore(subscribe, snapshot);
   const setSingle = (next: Job | undefined | ((value: Job | undefined) => Job | undefined)) =>
     publish({ single: typeof next === "function" ? next(workspace.single) : next });
@@ -140,6 +143,7 @@ export function Upscale({
     setSingle((current) => (current?.id === id ? { ...current, ...changes } : current));
   };
   const execute = async (job: Job) => {
+    if (missingDestination) throw new Error(t("saveDirectoryRequired"));
     const fileId = resolveUpscaleModel(models, model, scale, noise);
     update(job.id, { status: "queued", progress: 0, error: undefined, scale });
     try {
@@ -240,6 +244,7 @@ export function Upscale({
     setSingle((current) => (current?.id === id ? undefined : current));
   };
   const retry = (job: Job) => {
+    if (missingDestination) return;
     const next = makeJob(job.input);
     if (view === job.id) setView(next.id);
     setJobs((current) => current.map((entry) => (entry.id === job.id ? next : entry)));
@@ -310,7 +315,12 @@ export function Upscale({
           </button>
         )}
         {(job.status === "cancelled" || job.status === "failed") && (
-          <button disabled={!model} title={t("runAgain")} aria-label={t("runAgain")} onClick={() => retry(job)}>
+          <button
+            disabled={!model || missingDestination}
+            title={t("runAgain")}
+            aria-label={t("runAgain")}
+            onClick={() => retry(job)}
+          >
             <ArrowCounterClockwiseIcon size={16} />
           </button>
         )}
@@ -369,10 +379,6 @@ export function Upscale({
             ))}
           </Select>
         </label>
-        <label>
-          {localize(label("Output folder", "输出位置", "出力先"))}
-          <DirectoryPicker value={destination} disabled={busy} onChange={setDestination} onError={onError} />
-        </label>
         <label className="spec-option">
           <input
             type="checkbox"
@@ -405,6 +411,7 @@ export function Upscale({
             )}
           </div>
           {!batch && single && jobFooter(single)}
+          <AutoSaveControl kind="upscaleAuto" disabled={busy} onError={onError} />
           {busy ? (
             <button
               disabled={pausing}
@@ -419,7 +426,11 @@ export function Upscale({
               {settingsText("stopQueued")}
             </button>
           ) : (
-            <button className="primary-button" disabled={!model || !pending} onClick={() => void run().catch(onError)}>
+            <button
+              className="primary-button"
+              disabled={!model || !pending || missingDestination}
+              onClick={() => void run().catch(onError)}
+            >
               <PlayIcon weight="fill" />
               {t("upscale")}
             </button>
