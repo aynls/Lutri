@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowClockwiseIcon,
+  ArrowCounterClockwiseIcon,
   ImageIcon,
   XIcon,
   HeartIcon,
@@ -10,7 +11,7 @@ import {
   CopyIcon,
   PencilSimpleIcon,
 } from "@phosphor-icons/react";
-import type { FeedSlot, GalleryEntry } from "../domain/types";
+import type { FeedSlot, GalleryEntry, GenerationDraft } from "../domain/types";
 import { displayPrompt } from "../domain/references";
 import { ModelIcon } from "../components/ModelIcon";
 import { t } from "../i18n";
@@ -26,12 +27,14 @@ export function Feed({
   onView,
   onReference,
   onEdit,
+  onRestore,
   onRelated,
   onError,
 }: {
   onView: (id: string, ids?: string[]) => void;
   onReference: (entry: GalleryEntry) => void;
   onEdit: (entry: GalleryEntry) => void;
+  onRestore: (draft: GenerationDraft) => void;
   onRelated: (id: string) => void;
   onError: (error: unknown) => void;
 }) {
@@ -144,6 +147,9 @@ export function Feed({
                           <AssetImage entry={asset} />
                         </button>
                         <div className="result-actions">
+                          <button title={t("restore")} aria-label={t("restore")} onClick={() => onRestore(task.draft)}>
+                            <ArrowCounterClockwiseIcon size={15} />
+                          </button>
                           <button title={c("edit")} aria-label={c("edit")} onClick={() => onEdit(asset)}>
                             <PencilSimpleIcon size={15} />
                           </button>

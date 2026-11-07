@@ -662,6 +662,7 @@ export default function App() {
               onView={view}
               onReference={addReference}
               onEdit={editImage}
+              onRestore={(draft) => void restore(draft).catch(onError)}
               onRelated={(id) => {
                 setSearch(id);
                 setPage("history");
