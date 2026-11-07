@@ -97,10 +97,6 @@
 }
 .frame-presets,
 .input-preparation-setting {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(100px, 1fr);
-  gap: 12px;
-  align-items: center;
   font-size: 13px;
   color: var(--muted);
 }
@@ -348,21 +344,6 @@
   }
   .generate-submit-row .primary-button kbd {
     display: none;
-  }
-}
-@container (min-width: 440px) {
-  .parameter-fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .parameter-fields > .field {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-  .parameter-fields > .field-text,
-  .parameter-fields > .field-json {
-    grid-column: 1 / -1;
   }
 }
 

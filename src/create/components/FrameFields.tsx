@@ -97,7 +97,7 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
   return (
     <div className="frame-controls">
       {custom && (
-        <label className="frame-presets" htmlFor={id}>
+        <label className="field frame-presets" htmlFor={id}>
           <span>{c("preset")}</span>
           <Select
             id={id}

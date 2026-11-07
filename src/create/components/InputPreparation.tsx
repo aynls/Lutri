@@ -13,7 +13,7 @@ export function InputPreparation({
   const maximum = draft.inputPreparation?.maxEdge;
   return (
     <RememberedDetails name={`${draft.combinationId}.inputs`} title={c("prepare")}>
-      <label className="input-preparation-setting">
+      <label className="field input-preparation-setting">
         <span>{c("maxEdge")}</span>
         <Select
           value={maximum ?? ""}
