@@ -71,6 +71,10 @@ export function validateFields(fields: FieldDefinition[], draft: GenerationDraft
       errors.push(`${name}: ${field.options?.join(", ")}`);
     if (field.kind === "toggle" && typeof value !== "boolean") errors.push(`${name}: true / false`);
     if ((field.kind === "text" || field.kind === "size") && typeof value !== "string") errors.push(`${name}: text`);
+    if (["size", "image_size"].includes(field.key) && typeof value === "string") {
+      const dimensions = value.match(/^(\d*)\s*[x×*]\s*(\d*)$/);
+      if (dimensions && (!dimensions[1] || !dimensions[2])) errors.push(`${name}: W × H`);
+    }
     if (field.maxLength && typeof value === "string" && value.length > field.maxLength)
       errors.push(`${name}: ≤ ${field.maxLength}`);
   }

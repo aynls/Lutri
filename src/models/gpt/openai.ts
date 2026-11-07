@@ -1,14 +1,15 @@
 import { ParameterFields } from "../../create/components/Fields";
-import { count, format, select } from "../fields";
-import { request, validateFields, values } from "../shared";
+import { count, format, select, text } from "../fields";
+import { dimensionErrors, request, validateFields, values } from "../shared";
 import type { FieldDefinition, ModelCombination } from "../types";
-import { background, compression, groups, moderation, quality } from "./shared";
+import { background, compression, groups, moderation, quality, sizeErrors } from "./shared";
 import { complexity, groups26, openAISvgFields, validateOpenAISvg } from "./shared26";
 import { take } from "../requests";
+import { label as localizedLabel, localize } from "../../i18n";
 
 export function openAICombination(model: string, label: string, version26: boolean): ModelCombination {
   const fields: FieldDefinition[] = [
-    select("size", ["Size", "尺寸", "サイズ"], ["auto", "1024x1024", "1536x1024", "1024x1536"]),
+    { ...text("size", ["Size", "尺寸", "サイズ"]), min: 16, max: 3840, step: 16 },
     version26 ? select("quality", ["Quality", "质量", "品質"], ["auto", "low", "medium", "high"]) : quality(),
     ...(version26 ? [complexity()] : []),
     background(),
@@ -42,6 +43,19 @@ export function openAICombination(model: string, label: string, version26: boole
     outputCount: (p) => Number(p.n ?? 1),
     validate: (draft) => {
       const errors = validateFields(fields, draft);
+      const size = draft.parameters.size;
+      if (size !== undefined && size !== null && size !== "" && size !== "auto") {
+        if (typeof size !== "string" || !/^\d+x\d+$/.test(size))
+          errors.push(
+            localize(
+              localizedLabel("Size: auto or WIDTHxHEIGHT", "尺寸：auto 或 宽x高", "サイズ：auto または 幅x高さ"),
+            ),
+          );
+        else {
+          errors.push(...dimensionErrors(draft.parameters, 655360, 8294400, 3));
+          errors.push(...sizeErrors(draft));
+        }
+      }
       if (draft.parameters.background === "transparent" && draft.parameters.output_format === "jpeg")
         errors.push("transparent: PNG / WebP");
       if (version26) errors.push(...validateOpenAISvg(draft));

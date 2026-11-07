@@ -85,14 +85,14 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
   const preset =
     editingCustom || (!current && hasPartialDimensions)
       ? "custom"
-      : !current
+      : !current || current === "auto"
         ? ""
         : presets.some(([w, h]) => `${w}x${h}` === current)
           ? current
           : "custom";
   useEffect(() => {
-    const match = current.match(/^(\d+)\s*[x×*]\s*(\d+)$/);
-    setSides(match ? [match[1], match[2]] : ["", ""]);
+    const parts = current.split(/\s*[x×*]\s*/);
+    setSides(parts.length === 2 ? [parts[0], parts[1]] : ["", ""]);
   }, [current]);
   return (
     <div className="frame-controls">
@@ -136,8 +136,9 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
                 <span>{key === "width" ? "W" : "H"}</span>
                 <input
                   type="number"
-                  min={1}
-                  step={1}
+                  min={encoded.min ?? 1}
+                  max={encoded.max}
+                  step={encoded.step ?? 1}
                   value={sides[index]}
                   required={sides.some(Boolean)}
                   placeholder={c("automatic")}
@@ -146,13 +147,12 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
                     next[index] = event.target.value;
                     setSides(next);
                     const parameters = { ...draft.parameters };
-                    if (next.every(Boolean)) {
+                    if (next.some(Boolean)) {
                       parameters[encoded.key] = next.join("x");
-                      onChange({ ...draft, parameters });
-                    } else if (next.every((side) => !side)) {
+                    } else {
                       delete parameters[encoded.key];
-                      onChange({ ...draft, parameters });
                     }
+                    onChange({ ...draft, parameters });
                   }}
                 />
               </label>
