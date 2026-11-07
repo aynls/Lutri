@@ -20,7 +20,6 @@ import { orderedCreationDraft, validateCreation } from "../models/creation";
 import { resolveOutputs, type OutputOptions } from "./outputs";
 
 const running = new Set<string>();
-const providerRuns = new Map<string, number>();
 const providerBlockedUntil = new Map<string, number>();
 const waiting = new Map<
   string,
@@ -288,7 +287,7 @@ async function downloadResults(task: GenerationTask) {
   await saveTask({ ...task });
 }
 
-/** Every manual, MCP and recovered task shares the same provider limits. */
+/** Deduplicate tasks and respect provider cooldowns without limiting concurrency. */
 export function execute(id: string, initial = false): Promise<void> {
   if (deletingTaskIds.has(id)) return Promise.resolve();
   const existing = waiting.get(id);
@@ -327,15 +326,12 @@ function pump() {
       nextWake = Math.min(nextWake, delay);
       continue;
     }
-    if ((providerRuns.get(provider) ?? 0) >= 2) continue;
     running.add(id);
-    providerRuns.set(provider, (providerRuns.get(provider) ?? 0) + 1);
     void runTask(id, entry.initial)
       .then(entry.resolve, entry.reject)
       .finally(() => {
         waiting.delete(id);
         running.delete(id);
-        providerRuns.set(provider, Math.max(0, (providerRuns.get(provider) ?? 1) - 1));
         pump();
         updateState({ tasks: [...getState().tasks] });
       });
