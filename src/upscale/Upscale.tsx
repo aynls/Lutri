@@ -1,5 +1,5 @@
 import { Select } from "../components/Select";
-import { AutoSaveControl } from "../components/AutoSaveControl";
+import { OutputControls } from "../components/OutputControls";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cancelUpscale, runUpscale } from "./queue";
 import { settingsText } from "../settings/messages";
@@ -71,8 +71,8 @@ export function Upscale({
   const [noise, setNoise] = useState<Noise>("no-denoise");
   const [scale, setScale] = useState(4),
     [tile, setTile] = useState(128);
-  const [saveToGallery, setSaveToGallery] = useState(true);
   const { preferences } = useApplication();
+  const saveToGallery = preferences.outputs?.upscaleGallery ?? true;
   const autoSave = preferences.outputs?.upscaleAuto ?? false;
   const destination = autoSave ? (preferences.outputs?.directory ?? "") : "";
   const missingDestination = autoSave && !destination.trim();
@@ -385,15 +385,6 @@ export function Upscale({
             ))}
           </Select>
         </label>
-        <label className="spec-option">
-          <input
-            type="checkbox"
-            checked={saveToGallery}
-            disabled={busy}
-            onChange={(event) => setSaveToGallery(event.target.checked)}
-          />
-          {t("saveToGallery")}
-        </label>
         <div className="button-row">
           <button onClick={() => void chooseImages().then(add).catch(onError)}>
             <PlusIcon />
@@ -417,7 +408,7 @@ export function Upscale({
             )}
           </div>
           {!batch && single && jobFooter(single)}
-          <AutoSaveControl kind="upscaleAuto" disabled={busy} onError={onError} />
+          <OutputControls kind="upscaleAuto" disabled={busy} onError={onError} />
           {busy ? (
             <button
               disabled={pausing}

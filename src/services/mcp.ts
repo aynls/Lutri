@@ -9,8 +9,31 @@ import { getState, refreshGallery } from "./store";
 
 import { loadUpscaleModels, resolveUpscaleModel, noiseOptions } from "../upscale/catalog";
 import { runUpscale } from "../upscale/queue";
+import type { OutputOptions } from "./outputs";
 
 const string = { type: "string" };
+const outputProperties = {
+  autoSave: {
+    type: "boolean",
+    description:
+      "Automatically save a copy to destination. Defaults to the page setting (initially false). False disables the copy even when destination is supplied.",
+  },
+  destination: {
+    ...string,
+    description:
+      "Existing absolute folder for the extra copy. Providing it enables auto save unless autoSave is false. Falls back to the configured folder when autoSave is true.",
+  },
+  saveToGallery: {
+    type: "boolean",
+    description:
+      "Add results to the gallery. Defaults to the page setting (initially true). False retains saved files without adding gallery records.",
+  },
+};
+const outputArguments = (args: Record<string, unknown>): OutputOptions => ({
+  autoSave: typeof args.autoSave === "boolean" ? args.autoSave : undefined,
+  destination: typeof args.destination === "string" ? args.destination : undefined,
+  saveToGallery: typeof args.saveToGallery === "boolean" ? args.saveToGallery : undefined,
+});
 const buildTools = () => [
   {
     name: "list_models",
@@ -24,12 +47,13 @@ const buildTools = () => [
     inputSchema: {
       type: "object",
       properties: {
+        ...outputProperties,
         combinationId: { ...string, enum: combinations.map((c) => c.id) },
         prompt: string,
         layerOutputDirectory: {
           ...string,
           description:
-            "Existing absolute folder path required when layer_decomposition is true. Layers are saved here automatically; only the composite enters the gallery.",
+            "Existing absolute folder path required when layer_decomposition is true. Layers are saved here automatically; saveToGallery controls whether the composite enters the gallery.",
         },
         creationMode: {
           enum: ["generate", "edit", "auto"],
@@ -106,7 +130,7 @@ const buildTools = () => [
   },
   {
     name: "get_image",
-    description: "Read an image by its gallery asset ID.",
+    description: "Read an image by its asset ID, including saved generation results outside the gallery.",
     inputSchema: {
       type: "object",
       properties: { assetId: string },
@@ -130,13 +154,12 @@ const buildTools = () => [
     inputSchema: {
       type: "object",
       properties: {
+        ...outputProperties,
         assetId: string,
         modelId: string,
         noise: { enum: noiseOptions.map((option) => option.id) },
         scale: { type: "integer", minimum: 1, maximum: 4 },
         tileSize: { type: "integer", minimum: 32, maximum: 512 },
-        destination: string,
-        saveToGallery: { type: "boolean" },
         jobId: string,
       },
       required: ["assetId", "modelId"],
@@ -193,7 +216,7 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
         name: ref.name ?? t("referenceAlias"),
         purpose: ref.purpose ?? "reference",
       }));
-      return submitBatch(draft, "mcp");
+      return submitBatch(draft, "mcp", outputArguments(args));
     }
     case "get_tasks": {
       const tasks = getState().tasks.filter(
@@ -239,6 +262,7 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
         .gallery.filter(
           (entry) =>
             !entry.staged &&
+            !entry.unlisted &&
             (!args.source || entry.source === args.source) &&
             (!args.query || entry.asset.id.toLowerCase().includes(String(args.query).toLowerCase())),
         )
@@ -287,8 +311,7 @@ async function dispatch(name: string, args: Record<string, unknown>): Promise<un
         modelId: fileId,
         scale,
         tileSize: Number(args.tileSize ?? 128),
-        destination: typeof args.destination === "string" ? args.destination : undefined,
-        saveToGallery: args.saveToGallery !== false,
+        ...outputArguments(args),
         jobId: typeof args.jobId === "string" ? args.jobId : undefined,
       });
       await refreshGallery();

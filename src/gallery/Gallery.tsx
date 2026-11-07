@@ -632,7 +632,7 @@ export function Gallery({
           )}
           {!entries.length && !loading && (
             <div className="empty-state">
-              <p>{gallery.some((entry) => !entry.staged) ? t("noMatches") : t("empty")}</p>
+              <p>{gallery.some((entry) => !entry.staged && !entry.unlisted) ? t("noMatches") : t("empty")}</p>
               <button onClick={() => attempt(importImages)}>
                 <PlusIcon />
                 {t("import")}

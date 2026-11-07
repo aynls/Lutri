@@ -152,17 +152,7 @@ pub async fn upscale_run(
             .find(|m| m["id"].as_str() == Some(&model_id))
             .ok_or("Unknown upscale model")?;
         let store = app.state::<Store>();
-        let body: String = store
-            .db
-            .lock()
-            .map_err(|e| e.to_string())?
-            .query_row(
-                "SELECT body FROM records WHERE collection='gallery' AND id=?1",
-                [asset_id],
-                |row| row.get(0),
-            )
-            .map_err(|e| e.to_string())?;
-        let entry: Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+        let entry = assets::entry(&store, &asset_id)?;
         let root = resources(&app)?;
         let output = store.root.join("staging").join(format!("{id}.png"));
         let runtime = runtime_path(&root)?;

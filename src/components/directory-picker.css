@@ -3,16 +3,21 @@
   min-width: 0;
   width: 100%;
 }
-.auto-save-control {
+.output-controls {
   display: grid;
   gap: 8px;
   min-width: 0;
   font-size: 13px;
 }
-.auto-save-control .spec-option {
+.output-controls .spec-option {
   justify-content: flex-start;
 }
-.auto-save-control input[type="checkbox"] {
+.output-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.output-controls input[type="checkbox"] {
   width: 16px;
   height: 16px;
   margin: 0;

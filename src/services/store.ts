@@ -30,12 +30,19 @@ export interface Preferences {
   upscale?: { concurrency: number; gpuIndex: number | null };
   generation?: { maxRequestCount: number };
   mcp?: { port: number; autoStart: boolean };
-  outputs?: { directory?: string; generationAuto?: boolean; upscaleAuto?: boolean };
+  outputs?: {
+    directory?: string;
+    generationAuto?: boolean;
+    upscaleAuto?: boolean;
+    generationGallery?: boolean;
+    upscaleGallery?: boolean;
+  };
 }
 export interface ApplicationState {
   ready: boolean;
   upscaleDevices: { index: number; name: string }[];
   loadingUpscaleDevices: boolean;
+  /** Image cache for gallery entries, staged inputs and unlisted results used by the workspace. */
   gallery: GalleryEntry[];
   masks: StoredImage[];
   boards: Board[];
@@ -259,10 +266,14 @@ export function saveTask(task: GenerationTask) {
     result: undefined,
   }));
 }
-export async function refreshGallery() {
+export async function refreshGallery(extraIds: string[] = []) {
   await cleanGallery();
   const ids = [
-    ...new Set([...state.gallery.map((entry) => entry.asset.id), ...relatedAssetIds(state.tasks, state.draft)]),
+    ...new Set([
+      ...extraIds,
+      ...state.gallery.map((entry) => entry.asset.id),
+      ...relatedAssetIds(state.tasks, state.draft),
+    ]),
   ];
   const [entries, page, masks] = await Promise.all([
     native<GalleryEntry[]>("gallery_entries", { ids }),

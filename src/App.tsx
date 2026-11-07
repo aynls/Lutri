@@ -20,7 +20,7 @@ import { useLocale } from "./i18n";
 import { AssetPicker } from "./gallery/AssetPicker";
 import { ResizablePanel } from "./components/ResizablePanel";
 import { BrandMark } from "./components/ModelIcon";
-import { AutoSaveControl } from "./components/AutoSaveControl";
+import { OutputControls } from "./components/OutputControls";
 import { ModelSelector } from "./create/components/ModelSelector";
 import { CreationControl } from "./create/components/CreationControl";
 import { editTargetId } from "./models/creation";
@@ -632,7 +632,7 @@ export default function App() {
                     </ul>
                   </details>
                 )}
-                <AutoSaveControl kind="generationAuto" disabled={submitting} onError={onError} />
+                <OutputControls kind="generationAuto" disabled={submitting} onError={onError} />
                 <div className="generate-submit-row">
                   <label>
                     {t("requestCount")}

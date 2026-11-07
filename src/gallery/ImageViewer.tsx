@@ -210,7 +210,7 @@ export function ImageViewer({
             {entry && (
               <>
                 <button
-                  disabled={acting}
+                  disabled={acting || entry.unlisted}
                   title={entry?.favorite ? t("removeFavorite") : t("favorites")}
                   aria-label={entry?.favorite ? t("removeFavorite") : t("favorites")}
                   aria-pressed={entry?.favorite ?? false}

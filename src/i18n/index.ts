@@ -195,6 +195,7 @@ const messages = {
   saveAs: ["Save as", "另存为", "名前を付けて保存"],
   specifySavePath: ["Specify save path", "指定另存为路径", "保存先を指定"],
   autoSave: ["Auto save as", "自动另存为", "自動で別名保存"],
+  writeToGallery: ["Add to gallery", "写入图库", "ギャラリーに追加"],
   saveDirectoryRequired: ["Choose a save folder", "请选择另存为目录", "保存先フォルダーを選択してください"],
   retry: ["Resume task", "继续获取结果", "結果を再取得"],
   restore: ["Restore parameters", "恢复参数", "設定を復元"],
