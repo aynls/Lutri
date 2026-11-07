@@ -20,10 +20,21 @@ Flare、Sunburst 均提供 `output_format: "svg"`，仅走 generations，不能�
 
 | 界面参数 | 请求字段 | 规则 |
 | --- | --- | --- |
-| `svg_model` | `svg.model` | 可选的 SVG 转写模型 ID；官方定义为非空字符串，未公布固定枚举，因此使用文本输入，不借用 fal 或 Runware 的列表。 |
+| `svg_model` | `svg.model` | 可输入的下拉框，提供供应商默认及推荐模型 ID，也允许自定义输入；候选项不是接口枚举限制。 |
 | `svg_thinking` | `svg.reasoning.effort` | none、minimal、low、medium、high、xhigh、max；指定时必须同时填写转写模型，具体可用强度由该模型决定。 |
 
 自选转写模型需要账户具备 SVG model selection 权限。两个字段都留空时完全省略 `svg` 对象，使用供应商默认行为；仅填写模型时省略 reasoning，使用模型默认强度。字段只在 SVG 输出时显示和发送，切回位图保留草稿值但不发送。`complexity` 和 `quality` 控制中间参考图，与 SVG 转写推理强度独立。
+
+推荐项按用户提供的官方推荐列表添加，并于 2026-11-07 逐项核对官方模型页的 API ID：
+
+| 界面名称 | 模型 ID |
+| --- | --- |
+| GPT-6 Astra | [`gpt-6-astra`](https://developers.openai.com/api/docs/models/gpt-6-astra) |
+| GPT-6.1 Sol | [`gpt-6.1-sol`](https://developers.openai.com/api/docs/models/gpt-6.1-sol) |
+| GPT-6.1 Terra | [`gpt-6.1-terra`](https://developers.openai.com/api/docs/models/gpt-6.1-terra) |
+| GPT-6 Luna | [`gpt-6-luna`](https://developers.openai.com/api/docs/models/gpt-6-luna) |
+
+下拉选项及选中后的输入框显示模型名称；进入输入框编辑时显示实际 ID。输入其他非空 ID 时按原样保留，发送前去掉首尾空白；选择供应商默认或清空输入会移除 `svg_model`。模型可用性仍由账户权限和供应商决定，未发起付费 SVG 请求验证。
 
 返回 `data[].b64_json`，Base64 解码后是 SVG XML。结果类型先由响应的 `output_format` 解析，再以保存时识别的文件内容为准；保留 SVG 原文件，生成 PNG 缩略图并回填历史格式。响应的 `svg_usage` 与 `usage` 分别保留在任务元数据中。
 

@@ -39,6 +39,7 @@ export const localize = (value: Localized) => value[locale];
 export const label = (en: string, zh: string, ja: string): Localized => ({ en, zh, ja });
 
 const messages = {
+  providerDefault: ["Provider default", "供应商默认", "プロバイダー既定"],
   unsupportedMask: [
     "This model does not support masks.",
     "此模型不支持蒙版。",

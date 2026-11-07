@@ -2,6 +2,7 @@ import {
   Children,
   Fragment,
   isValidElement,
+  useLayoutEffect,
   useRef,
   useState,
   type ComponentPropsWithoutRef,
@@ -22,6 +23,8 @@ type OptionProps = {
 type SelectProps = Omit<ComponentPropsWithoutRef<"button">, "value" | "defaultValue" | "onChange" | "children"> & {
   value: string | number | undefined;
   onValueChange: (value: string) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: ReactNode;
 };
 
@@ -50,9 +53,22 @@ function readOptions(children: ReactNode, group?: string, groupDisabled = false)
   });
 }
 
-export function Select({ value, onValueChange, children, className = "", disabled, name, ...props }: SelectProps) {
+export function Select({
+  value,
+  onValueChange,
+  open,
+  onOpenChange,
+  children,
+  className = "",
+  disabled,
+  name,
+  ...props
+}: SelectProps) {
   const trigger = useRef<HTMLButtonElement>(null);
   const [container, setContainer] = useState<HTMLElement | undefined>();
+  useLayoutEffect(() => {
+    if (open) setContainer(trigger.current?.closest("dialog") ?? undefined);
+  }, [open]);
   const options = readOptions(children);
   const selected = options.find((option) => option.value === String(value)) ?? options[0];
   // Prefix every value so an empty value remains a selectable choice in Radix.
@@ -80,11 +96,13 @@ export function Select({ value, onValueChange, children, className = "", disable
   }
   return (
     <Primitive.Root
+      open={open}
       value={selected ? encode(selected.value) : ""}
       disabled={disabled}
       onValueChange={(next) => onValueChange(next.slice(6))}
       onOpenChange={(open) => {
         if (open) setContainer(trigger.current?.closest("dialog") ?? undefined);
+        onOpenChange?.(open);
       }}
     >
       {name && <input type="hidden" name={name} value={value ?? ""} disabled={disabled} />}

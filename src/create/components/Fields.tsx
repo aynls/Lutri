@@ -1,4 +1,5 @@
 import { Select } from "../../components/Select";
+import { EditableSelect } from "../../components/EditableSelect";
 import { Fragment, useId, useEffect, useRef, useState } from "react";
 import { DiceFiveIcon } from "@phosphor-icons/react";
 import type { Json } from "../../domain/types";
@@ -60,6 +61,7 @@ export function ParameterField({
   const id = useId();
   if (field.visible && !field.visible(draft)) return null;
   const value = draft.parameters[field.key] ?? (field.allowDefault === false ? field.default : undefined);
+  const fieldKind = field.kind === "text" && field.suggestions ? "editable-select" : field.kind;
   const errors = validateFields([field], draft);
   const update = (next: typeof value | undefined) => {
     const parameters = { ...draft.parameters };
@@ -69,7 +71,7 @@ export function ParameterField({
   };
   return (
     <div
-      className={`field field-${field.kind}${errors.length ? " has-error" : ""}`}
+      className={`field field-${fieldKind}${errors.length ? " has-error" : ""}`}
       data-field={field.key}
       role="group"
       aria-invalid={!!errors.length || undefined}
@@ -98,6 +100,21 @@ export function ParameterField({
             </option>
           ))}
         </Select>
+      ) : field.kind === "text" && field.suggestions ? (
+        <EditableSelect
+          id={id}
+          value={value === undefined ? "" : String(value)}
+          suggestions={field.suggestions.map((value) => ({
+            value,
+            label: field.optionLabels?.[value] ? localize(field.optionLabels[value]) : value,
+          }))}
+          defaultLabel={t("providerDefault")}
+          menuLabel={localize(field.label)}
+          maxLength={field.maxLength}
+          aria-invalid={!!errors.length || undefined}
+          aria-describedby={errors.length ? `${id}-error` : undefined}
+          onValueChange={(nextValue) => update(nextValue || undefined)}
+        />
       ) : field.kind === "seed" ? (
         <div className="field-inline">
           <input

@@ -25,6 +25,8 @@ export interface FieldDefinition {
   label: Localized;
   kind: "text" | "number" | "select" | "toggle" | "json" | "size" | "seed";
   options?: readonly string[];
+  /** Suggestions for a free-text field; values outside this list remain valid. */
+  suggestions?: readonly string[];
   optionLabels?: Record<string, Localized>;
   min?: number;
   max?: number;

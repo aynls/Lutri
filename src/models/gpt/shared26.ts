@@ -45,6 +45,13 @@ const isOpenAISvg = (draft: GenerationDraft) => draft.parameters.output_format =
 export const openAISvgFields: FieldDefinition[] = [
   {
     ...text("svg_model", ["SVG author", "SVG 转写模型", "SVG 作成モデル"]),
+    suggestions: ["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"],
+    optionLabels: {
+      "gpt-6-astra": label("GPT-6 Astra", "GPT-6 Astra", "GPT-6 Astra"),
+      "gpt-6.1-sol": label("GPT-6.1 Sol", "GPT-6.1 Sol", "GPT-6.1 Sol"),
+      "gpt-6.1-terra": label("GPT-6.1 Terra", "GPT-6.1 Terra", "GPT-6.1 Terra"),
+      "gpt-6-luna": label("GPT-6 Luna", "GPT-6 Luna", "GPT-6 Luna"),
+    },
     visible: isOpenAISvg,
   },
   {
