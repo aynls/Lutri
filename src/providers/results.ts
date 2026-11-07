@@ -1,7 +1,9 @@
 import type { Json, LayerSource, Parameters } from "../domain/types";
 import type { Protocol } from "../models/types";
 import { array, object, string } from "./transport";
-import { layerSource, resultUrl } from "./layers";
+import { layerSource } from "./layers";
+import { resultMediaType, resultUrl } from "./media";
+import { imageMediaType, imageSourceMediaType } from "../domain/media";
 
 export interface RemoteImage {
   remoteId?: string;
@@ -48,18 +50,18 @@ export function imageResults(protocol: Protocol, raw: Json): RemoteImage[] {
   }
   if (protocol === "bfl") {
     const sample = string(object(result.result).sample);
-    return sample ? [{ url: sample }] : [];
+    return sample ? [{ url: sample, mediaType: imageSourceMediaType(sample) }] : [];
   }
   if (protocol === "fal")
     return array(result.images).map((item) => ({
       url: string(object(item).url),
-      mediaType: string(object(item).content_type),
+      mediaType: resultMediaType(object(item)),
     }));
   if (protocol === "qwen")
     return array(object(result.output).choices).flatMap((choice) =>
       array(object(object(choice).message).content).flatMap((part) => {
         const url = string(object(part).image);
-        return url ? [{ url }] : [];
+        return url ? [{ url, mediaType: imageSourceMediaType(url) }] : [];
       }),
     );
   if (protocol === "gemini")
@@ -68,9 +70,11 @@ export function imageResults(protocol: Protocol, raw: Json): RemoteImage[] {
         const value = object(part),
           inline = object(value.inlineData);
         const data = string(inline.data),
-          mime = string(inline.mimeType) ?? "image/png";
-        const url = data ? `data:${mime};base64,${data}` : string(object(value.fileData).fileUri);
-        return url ? [{ url, mediaType: mime }] : [];
+          mime = imageMediaType(string(inline.mimeType));
+        const url = data
+          ? `data:${mime ?? "application/octet-stream"};base64,${data}`
+          : string(object(value.fileData).fileUri);
+        return url ? [{ url, mediaType: mime ?? imageSourceMediaType(url) }] : [];
       }),
     );
   if (protocol === "interactions")
@@ -81,16 +85,16 @@ export function imageResults(protocol: Protocol, raw: Json): RemoteImage[] {
         const value = object(part);
         if (value.type !== "image") return [];
         const data = string(value.data),
-          mime = string(value.mime_type) ?? "image/png";
-        return [{ url: data ? `data:${mime};base64,${data}` : string(value.uri), mediaType: mime }];
+          mime = imageMediaType(string(value.mime_type));
+        const url = data ? `data:${mime ?? "application/octet-stream"};base64,${data}` : string(value.uri);
+        return [{ url, mediaType: mime ?? imageSourceMediaType(url) }];
       });
   const sample = string(object(result.result).sample);
-  if (sample) return [{ url: sample }];
+  if (sample) return [{ url: sample, mediaType: imageSourceMediaType(sample) }];
   return array(result.data).flatMap((item) => {
     const value = object(item);
-    const outputFormat = string(value.output_format) ?? string(result.output_format);
-    const formatMime = outputFormat === "jpeg" ? "image/jpeg" : outputFormat === "webp" ? "image/webp" : undefined;
-    const mime = string(value.media_type) ?? string(value.mime_type) ?? formatMime ?? "image/png";
+    const outputFormat = string(result.output_format) ?? string(result.outputFormat);
+    const mime = resultMediaType(value, outputFormat);
     const url = resultUrl(value, outputFormat);
     const hasLayers = protocol === "runware" && Array.isArray(object(value.outputs).layers);
     if (!url && !value.error && !hasLayers) return [];

@@ -12,6 +12,7 @@ import {
   CheckIcon,
 } from "@phosphor-icons/react";
 import type { GalleryEntry } from "../domain/types";
+import { isSvgAsset } from "../domain/media";
 import { t } from "../i18n";
 import { commit, importAsset, native } from "../services/native";
 import { AssetImage } from "./AssetImage";
@@ -600,7 +601,15 @@ export function Gallery({
                             <button onClick={() => attempt(() => copyAssetImage(entry.asset.id))}>
                               {lt("copyImage")}
                             </button>
-                            {onUpscale && <button onClick={() => onUpscale(entry)}>{t("upscale")}</button>}
+                            {onUpscale && (
+                              <button
+                                disabled={isSvgAsset(entry.asset)}
+                                title={isSvgAsset(entry.asset) ? t("svgUpscaleUnsupported") : undefined}
+                                onClick={() => onUpscale(entry)}
+                              >
+                                {t("upscale")}
+                              </button>
+                            )}
                             <button onClick={() => onRelated(entry.asset.id)}>{t("related")}</button>
                             <button onClick={() => attempt(() => exportImages([entry]))}>{t("saveAs")}</button>
                             <CopyButton value={entry.asset.id} label={t("copyId")} onError={onError} />

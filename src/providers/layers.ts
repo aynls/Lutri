@@ -1,21 +1,6 @@
-import type { Json, LayerSource, Parameters } from "../domain/types";
+import type { Json, LayerSource } from "../domain/types";
 import { array, object, string } from "./transport";
-
-export function resultUrl(value: Parameters, fallbackFormat?: string): string | undefined {
-  const format = string(value.output_format) ?? fallbackFormat;
-  const mime =
-    string(value.content_type) ??
-    string(value.media_type) ??
-    string(value.mime_type) ??
-    (format === "jpeg" ? "image/jpeg" : format === "webp" ? "image/webp" : "image/png");
-  const base64 = string(value.b64_json) ?? string(value.imageBase64Data);
-  return (
-    string(value.url) ??
-    string(value.imageURL) ??
-    string(value.imageDataURI) ??
-    (base64 ? `data:${mime};base64,${base64}` : undefined)
-  );
-}
+import { resultUrl } from "./media";
 
 export function layerSource(raw: Json, base = false): LayerSource {
   const value = object(raw);

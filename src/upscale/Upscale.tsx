@@ -15,6 +15,7 @@ import {
   StopIcon,
 } from "@phosphor-icons/react";
 import type { GalleryEntry } from "../domain/types";
+import { isSvgAsset } from "../domain/media";
 import { label, localize, t } from "../i18n";
 import { chooseImages } from "../gallery/actions";
 import { AssetPicker } from "../gallery/AssetPicker";
@@ -105,11 +106,16 @@ export function Upscale({
     heights[column] += (256 * job.input.asset.height) / job.input.asset.width + 60 + (job.error ? 130 : 0);
   }
   const add = (entries: GalleryEntry[]) => {
-    if (!entries.length) return;
+    if (!entries.length) return false;
+    if (entries.some((entry) => isSvgAsset(entry.asset))) {
+      onError(new Error(t("svgUpscaleUnsupported")));
+      return false;
+    }
     if (batch || entries.length > 1 || workspace.busy) {
       setJobs((current) => [...current, ...entries.map(makeJob)]);
       setBatch(true);
     } else setSingle(makeJob(entries[0]));
+    return true;
   };
   useEffect(() => {
     if (incoming && incoming.nonce !== received.current) {
@@ -499,8 +505,7 @@ export function Upscale({
       {picker && (
         <AssetPicker
           onSelect={(entries) => {
-            add(entries);
-            setPicker(false);
+            if (add(entries)) setPicker(false);
           }}
           onClose={() => setPicker(false)}
           onError={onError}

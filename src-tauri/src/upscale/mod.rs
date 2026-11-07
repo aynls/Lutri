@@ -132,6 +132,10 @@ pub async fn upscale_run(
     let control = {
         let store = app.state::<Store>();
         let _admission = store.library_mutation.lock().map_err(|e| e.to_string())?;
+        let entry = assets::entry(&store, &asset_id)?;
+        if entry["asset"]["mediaType"].as_str() == Some("image/svg+xml") {
+            return Err("SVG_UPSCALE_UNSUPPORTED".into());
+        }
         scheduler.register(&id, &asset_id, &model_id, scale)?
     };
     let _ = channel.send(json!({"phase":"queued"}));

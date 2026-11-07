@@ -24,6 +24,7 @@ import { copyAssetImage, exportImages, favorite } from "./actions";
 
 import { lt } from "../i18n/library";
 import type { GalleryEntry } from "../domain/types";
+import { isSvgAsset } from "../domain/media";
 
 export interface ImageViewerItem {
   id: string;
@@ -193,10 +194,15 @@ export function ImageViewer({
             </button>
             {onUpscale && (
               <button
-                disabled={acting}
-                title={t("upscale")}
+                disabled={acting || (entry && isSvgAsset(entry.asset))}
+                title={entry && isSvgAsset(entry.asset) ? t("svgUpscaleUnsupported") : t("upscale")}
                 aria-label={t("upscale")}
-                onClick={() => withEntry(onUpscale)}
+                onClick={() =>
+                  withEntry((resolved) => {
+                    if (isSvgAsset(resolved.asset)) throw new Error(t("svgUpscaleUnsupported"));
+                    return onUpscale(resolved);
+                  })
+                }
               >
                 <ArrowUpRightIcon />
               </button>

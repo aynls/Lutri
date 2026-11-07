@@ -188,13 +188,13 @@ async function downloadResults(task: GenerationTask) {
           })
         : await downloadAsset(result.url!, result.id);
       result.assetId = asset.asset.id;
+      result.mediaType = asset.asset.mediaType;
       result.status = "saved";
       delete result.error;
       if (layerSources) {
         const urls = [...new Set(layerSources.map((source) => source.url).filter((url) => url.startsWith("staged:")))];
         delete result.layerSources;
         delete result.url;
-        result.mediaType = asset.asset.mediaType;
         await saveTask({ ...task, results: [...task.results] });
         if (urls.length) await native("result_discard", { urls }).catch(() => {});
       }

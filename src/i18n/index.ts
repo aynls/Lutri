@@ -174,6 +174,7 @@ const messages = {
   exportedCount: ["Exported", "已导出", "書き出し済み"],
   creation: ["Creation", "创作", "制作"],
   upscale: ["Upscale", "超分辨率", "高解像度化"],
+  svgUpscaleUnsupported: ["SVG cannot be upscaled", "SVG 不支持超分辨率", "SVG は高解像度化に対応していません"],
   gallery: ["Gallery", "图库", "ギャラリー"],
   history: ["History", "历史", "履歴"],
   settings: ["Settings", "设置", "設定"],
