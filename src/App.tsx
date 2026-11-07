@@ -608,13 +608,13 @@ export default function App() {
                     styleControl={<SavedStyles combination={combination} draft={state.draft} onChange={changeDraft} />}
                   />
                   {!!combination.maxReferences && <InputPreparation draft={state.draft} onChange={changeDraft} />}
-                  <RequestPreview
-                    combination={combination}
-                    draft={state.draft}
-                    configuration={state.preferences.providers[combination.provider] ?? {}}
-                  />
                 </section>
                 {combination.regions ? <Regions draft={state.draft} onChange={changeDraft} /> : null}
+                <RequestPreview
+                  combination={combination}
+                  draft={state.draft}
+                  configuration={state.preferences.providers[combination.provider] ?? {}}
+                />
               </div>
               <div className="submit-panel">
                 {!!validation.length && (
