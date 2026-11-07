@@ -24,6 +24,7 @@ export interface Preferences {
   id: "preferences";
   palette?: Palette;
   accent?: Accent;
+  fontScale?: number;
   providers: Record<string, { endpoint?: string; deployment?: string }>;
   cleanup: Record<"generated" | "imported", CleanupPolicy>;
   desktop?: { background: boolean; launchAtLogin: boolean; zoom: number };

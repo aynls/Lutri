@@ -23,7 +23,7 @@
   background: var(--panel);
 }
 .history-batch > header strong {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-weight: 500;
 }
 .history-batch > header > div {
@@ -52,7 +52,7 @@
   margin-left: auto;
 }
 .task-usage-summary {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   color: var(--muted);
   overflow-wrap: anywhere;
 }
@@ -71,7 +71,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .history-task-heading .spinner {
   width: 13px;
@@ -90,7 +90,7 @@
   align-items: center;
   gap: 10px;
   margin-top: 6px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   color: var(--muted);
 }
 .history-task-actions {
@@ -111,7 +111,7 @@
 }
 .history-info .error-text {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   display: -webkit-box;
@@ -141,12 +141,12 @@
   object-fit: cover;
 }
 .history-images .missing-image {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   min-height: 0;
   height: 100%;
 }
 .history-images-more {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--muted);
 }
 .pagination {

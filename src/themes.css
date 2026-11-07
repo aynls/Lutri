@@ -72,7 +72,7 @@
   --selected-text: var(--accent);
 }
 :root {
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   color-scheme: dark;
   --on-accent: #181a1c;
   --danger: #e29b8b;

@@ -32,7 +32,7 @@
   border-bottom: 1px solid var(--line);
 }
 .region-list-toolbar strong {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 550;
 }
 .region-list-toolbar button {
@@ -55,7 +55,7 @@
   text-align: left;
   justify-content: flex-start;
   gap: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .region-list > button > span:nth-child(2) {
   flex: 1;
@@ -64,7 +64,7 @@
   text-overflow: ellipsis;
 }
 .region-list > button > small {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .region-list > button.selected {
   background: var(--raised);
@@ -82,17 +82,17 @@
   gap: 18px;
 }
 .region-properties label {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--muted);
 }
 .region-properties input,
 .region-properties textarea,
 .region-properties .select-trigger {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--text);
 }
 .region-properties h3 {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--muted);
   font-weight: 500;
   margin: 0 0 10px;
@@ -114,14 +114,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   color: var(--muted);
   white-space: nowrap;
 }
 .rectangle-fields input {
   min-width: 0;
   padding: 6px 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-variant-numeric: tabular-nums;
 }
 .source-binding {
@@ -147,7 +147,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .region-selection-empty {
   min-height: 230px;
@@ -156,7 +156,7 @@
   justify-items: center;
   gap: 12px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .layout-stage {
   display: flex;
@@ -175,13 +175,13 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--muted);
   white-space: nowrap;
 }
 .layout-background-toolbar .select-trigger {
   width: 160px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .opacity-control input {
   appearance: none;
@@ -224,7 +224,7 @@
   flex-shrink: 0;
 }
 .canvas-toolbar button {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   padding: 6px 8px;
 }
 .canvas-tools {
@@ -242,13 +242,13 @@
 }
 .canvas-dimensions {
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   font-variant-numeric: tabular-nums;
   margin-left: 8px;
 }
 .zoom-level {
   min-width: 48px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -278,7 +278,7 @@
   transform: translate(-50%, -50%);
   color: var(--muted);
   pointer-events: none;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .canvas-error {
   position: absolute;
@@ -296,7 +296,7 @@
   background: var(--surface);
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   flex-shrink: 0;
 }
 .source-region-dialog {
@@ -323,7 +323,7 @@
   border: 1px solid var(--line);
   background: var(--surface);
   padding: 12px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .layout-miniature {
   position: relative;
@@ -385,7 +385,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--muted);
 }
 .mask-options label input {
@@ -394,7 +394,7 @@
   accent-color: var(--accent);
 }
 .mask-options button {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .mask-rectangle-preview {
   position: absolute;
@@ -414,7 +414,7 @@
   gap: 10px;
   padding: 12px 20px;
   border-top: 1px solid var(--line);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 @media (max-width: 1100px) {
   .layout-background-toolbar {
@@ -465,7 +465,7 @@
   border: 1px solid var(--line);
   border-radius: 5px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }

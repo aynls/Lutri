@@ -1,6 +1,6 @@
 [package]
 name = "lutri"
-version = "0.2.3"
+version = "0.2.4"
 description = "Lutri desktop application"
 edition = "2021"
 

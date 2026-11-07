@@ -44,7 +44,6 @@ import { InputPreparation } from "./create/components/InputPreparation";
 import { Dialog } from "./components/Dialog";
 import { chooseImages } from "./gallery/actions";
 import { RequestPreview } from "./create/components/RequestPreview";
-import { ParameterField } from "./create/components/Fields";
 import { BatchDraft } from "./batch/BatchDraft";
 import { BatchHistory } from "./batch/BatchHistory";
 import { b } from "./batch/messages";
@@ -145,8 +144,8 @@ export default function App() {
     }
   }, [onError]);
   useLayoutEffect(
-    () => applyAppearance(state.preferences.palette, state.preferences.accent),
-    [state.preferences.palette, state.preferences.accent],
+    () => applyAppearance(state.preferences.palette, state.preferences.accent, state.preferences.fontScale),
+    [state.preferences.palette, state.preferences.accent, state.preferences.fontScale],
   );
   useEffect(() => {
     let disposed = false;
@@ -446,10 +445,6 @@ export default function App() {
   const originalCombination = combinationById(state.draft.combinationId);
   const combination = isBatch ? batchForm(originalCombination) : originalCombination,
     Form = combination.Form;
-  const quantityField = combination.fields.find((field) => ["n", "num_images", "numberResults"].includes(field.key));
-  const formCombination = quantityField
-    ? { ...combination, fields: combination.fields.filter((field) => field !== quantityField) }
-    : combination;
   const maskEntry = state.draft.mask
     ? state.masks.find((entry) => entry.asset.id === state.draft.mask?.assetId)
     : undefined;
@@ -699,7 +694,7 @@ export default function App() {
                   </div>
                   <Form
                     key={`${state.creation.mode}:${state.creation.editing?.id ?? "new"}:${parameterReset}`}
-                    combination={formCombination}
+                    combination={combination}
                     draft={state.draft}
                     onChange={changeDraft}
                     styleControl={<SavedStyles combination={combination} draft={state.draft} onChange={changeDraft} />}
@@ -731,33 +726,33 @@ export default function App() {
                   </details>
                 )}
                 {!isBatch && <OutputControls kind="generationAuto" disabled={submitting} onError={onError} />}
-                <div className="request-quantity">
-                  <label>
-                    {t("requestCount")}
-                    <input
-                      type="number"
-                      min={1}
-                      max={isBatch ? batchRequestLimit : maxRequestCount(state.preferences)}
-                      value={state.draft.requestCount}
-                      onChange={(e) => changeDraft({ ...state.draft, requestCount: Number(e.target.value) })}
-                    />
-                  </label>
-                  {quantityField && <ParameterField field={quantityField} draft={state.draft} onChange={changeDraft} />}
-                </div>
                 <div className="generate-submit-row">
+                  <input
+                    type="number"
+                    aria-label={t("requestCount")}
+                    title={t("requestCount")}
+                    min={1}
+                    max={isBatch ? batchRequestLimit : maxRequestCount(state.preferences)}
+                    value={state.draft.requestCount}
+                    onChange={(e) => changeDraft({ ...state.draft, requestCount: Number(e.target.value) })}
+                  />
                   <button className="primary-button" disabled={!canSubmit} onClick={() => void submit().catch(onError)}>
-                    <SparkleIcon weight="fill" />
-                    {submitting
-                      ? t("submitting")
-                      : isBatch
-                        ? state.creation.editing
-                          ? b("save")
-                          : b("add")
-                        : `${sent ? c("sent") : t("generate")}${
-                            state.draft.requestCount * combination.outputCount(state.draft.parameters) > 1
-                              ? ` · ${state.draft.requestCount * combination.outputCount(state.draft.parameters)} ${t("imageCount")}`
-                              : ""
-                          }`}
+                    <span className="generate-button-label">
+                      <SparkleIcon weight="fill" />
+                      <span>
+                        {submitting
+                          ? t("submitting")
+                          : isBatch
+                            ? state.creation.editing
+                              ? b("save")
+                              : b("add")
+                            : `${sent ? c("sent") : t("generate")}${
+                                state.draft.requestCount * combination.outputCount(state.draft.parameters) > 1
+                                  ? ` · ${state.draft.requestCount * combination.outputCount(state.draft.parameters)} ${t("imageCount")}`
+                                  : ""
+                              }`}
+                      </span>
+                    </span>
                     <kbd>Ctrl ↵</kbd>
                   </button>
                 </div>

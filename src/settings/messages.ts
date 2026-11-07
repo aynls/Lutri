@@ -17,6 +17,7 @@ const messages = {
   accentViolet: label("Violet", "鸢紫", "すみれ"),
   accentRose: label("Rose", "蔷薇", "ローズ"),
   language: label("Language", "语言", "言語"),
+  fontSize: label("Text size", "文字大小", "文字サイズ"),
   zoom: label("Interface scale", "界面缩放", "表示倍率"),
   configured: label("Configured", "已配置", "設定済み"),
   unconfigured: label("Not configured", "未配置", "未設定"),

@@ -43,7 +43,7 @@
   flex-shrink: 0;
 }
 .studio-dialog > header h2 {
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale, 1));
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -134,7 +134,7 @@
 }
 .segmented-control button {
   flex: 1;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   padding: 7px;
   color: var(--muted);
 }
@@ -191,7 +191,7 @@ button[aria-pressed="true"] {
   text-align: left;
   justify-content: flex-start;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   white-space: nowrap;
   color: var(--text);
 }
@@ -207,7 +207,7 @@ button[aria-pressed="true"] {
   border-radius: 4px;
   background: var(--panel);
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .status-completed,
 .status-saved {
@@ -250,13 +250,13 @@ button[aria-pressed="true"] {
   gap: 6px;
 }
 .image-compare-toolbar button {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .image-compare-scale {
   color: var(--muted);
   min-width: 42px;
   text-align: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-variant-numeric: tabular-nums;
 }
 .image-compare-viewport {
@@ -372,7 +372,7 @@ button[aria-pressed="true"] {
   grid-template-columns: minmax(90px, 0.8fr) minmax(0, 1.5fr);
   gap: 10px 16px;
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .metadata-grid dt {
   color: var(--muted);
@@ -395,7 +395,7 @@ button[aria-pressed="true"] {
   overflow: auto;
   margin: 0;
   white-space: pre-wrap;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   overflow-wrap: anywhere;
 }
 .request-details {
@@ -403,7 +403,7 @@ button[aria-pressed="true"] {
   gap: 24px;
 }
 .request-details h3 {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 600;
   margin: 0 0 12px;
 }
@@ -411,7 +411,7 @@ button[aria-pressed="true"] {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   line-height: 1.8;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .detail-images {
   display: grid;
@@ -424,7 +424,7 @@ button[aria-pressed="true"] {
   flex-wrap: wrap;
   gap: 5px;
   align-items: center;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .detail-images .image-button {
   width: 100%;
@@ -449,6 +449,6 @@ button[aria-pressed="true"] {
 }
 .request-details details > summary {
   cursor: pointer;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   margin-bottom: 10px;
 }

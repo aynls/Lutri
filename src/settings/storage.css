@@ -23,7 +23,7 @@
   border-radius: 5px;
   background: var(--surface);
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .storage-settings details {
   max-height: 220px;

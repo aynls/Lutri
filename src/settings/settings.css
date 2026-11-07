@@ -52,12 +52,12 @@
 }
 .settings-panel h2 {
   margin-bottom: 16px;
-  font-size: 18px;
+  font-size: calc(18px * var(--font-scale, 1));
   font-weight: 700;
   line-height: 26px;
 }
 .settings-page label {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .settings-row {
   display: flex;
@@ -82,6 +82,23 @@
 }
 .settings-row > input[type="number"] {
   width: 112px;
+}
+.font-size-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 280px;
+  max-width: 55%;
+}
+.font-size-control input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+.font-size-control output {
+  min-width: 42px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .settings-row .segmented-control button {
   white-space: nowrap;
@@ -123,7 +140,7 @@
   gap: 14px;
   padding: 14px 0 24px;
   border-bottom: 1px solid var(--line);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .theme-options {
   display: grid;
@@ -156,7 +173,7 @@
   justify-content: space-between;
   gap: 4px;
   padding: 0 4px 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .theme-option-label svg {
   flex-shrink: 0;
@@ -334,7 +351,7 @@
   border-radius: 6px;
   cursor: pointer;
   list-style: none;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .provider-setting > summary::-webkit-details-marker {
   display: none;
@@ -353,7 +370,7 @@
 }
 .provider-setting > summary > span {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .provider-chevron {
   flex-shrink: 0;
@@ -388,7 +405,7 @@
 }
 .mcp-status {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .mcp-status.is-running {
   display: inline-flex;
@@ -431,7 +448,7 @@
   gap: 6px;
   min-width: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .mcp-connection-value {
   display: flex;
@@ -546,7 +563,7 @@
   gap: 6px;
 }
 .llm-discovery > span {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   overflow-wrap: anywhere;
 }
 

@@ -1,5 +1,5 @@
 import { Select } from "../components/Select";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { accents, palettes } from "../appearance";
 import {
   ArrowUpRightIcon,
@@ -167,6 +167,21 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
     }
   }, [requestedProvider]);
   const [maxRequests, setMaxRequests] = useState(maxRequestCount(preferences));
+  const [fontScale, setFontScale] = useState(preferences.fontScale ?? 1);
+  const fontTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const pendingFontScale = useRef<number | undefined>(undefined);
+  const errorHandler = useRef(onError);
+  errorHandler.current = onError;
+  useEffect(
+    () => () => {
+      clearTimeout(fontTimer.current);
+      if (pendingFontScale.current !== undefined)
+        void savePreferences({ ...getState().preferences, fontScale: pendingFontScale.current }).catch(
+          errorHandler.current,
+        );
+    },
+    [],
+  );
   const attempt = (action: () => Promise<unknown>) => void action().catch(onError);
   const save = (next: Partial<Preferences>) => savePreferences({ ...getState().preferences, ...next });
   const desktop = { background: false, launchAtLogin: false, zoom: 1, ...preferences.desktop };
@@ -254,6 +269,31 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
                 ))}
               </div>
             </div>
+            <label className="settings-row">
+              <span>{text("fontSize")}</span>
+              <div className="font-size-control">
+                <input
+                  type="range"
+                  min={80}
+                  max={140}
+                  step={5}
+                  value={Math.round(fontScale * 100)}
+                  aria-label={text("fontSize")}
+                  onChange={(event) => {
+                    const value = Number(event.target.value) / 100;
+                    setFontScale(value);
+                    document.documentElement.style.setProperty("--font-scale", String(value));
+                    pendingFontScale.current = value;
+                    clearTimeout(fontTimer.current);
+                    fontTimer.current = setTimeout(() => {
+                      pendingFontScale.current = undefined;
+                      void savePreferences({ ...getState().preferences, fontScale: value }).catch(errorHandler.current);
+                    }, 250);
+                  }}
+                />
+                <output>{Math.round(fontScale * 100)}%</output>
+              </div>
+            </label>
             <label className="settings-row">
               <span>{text("language")}</span>
               <Select

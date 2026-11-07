@@ -47,7 +47,7 @@ button.select-trigger[data-state="open"] {
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow-md);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   line-height: 1.5;
   animation: select-appear 100ms ease-out;
 }
@@ -88,7 +88,7 @@ button.select-trigger[data-state="open"] {
 .select-group-label {
   padding: 8px 9px 4px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .select-scroll {
   display: flex;

@@ -30,17 +30,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   margin-top: -8px;
 }
 .creation-credential button {
   padding: 2px 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .prompt-length {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   margin-top: 4px;
   font-variant-numeric: tabular-nums;
 }
@@ -58,7 +58,7 @@
 }
 .creation-section > summary {
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-weight: 550;
   min-height: 44px;
   line-height: 20px;
@@ -97,11 +97,11 @@
 }
 .frame-presets,
 .input-preparation-setting {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--muted);
 }
 .encoded-size > summary {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   color: var(--muted);
   cursor: pointer;
 }
@@ -113,11 +113,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .fixed-field-value button {
   padding: 2px 4px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .creation-panel .has-error input,
 .creation-panel .has-error .select-trigger,
@@ -127,7 +127,7 @@
 }
 .field-error {
   grid-column: 1 / -1;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -165,12 +165,12 @@
   min-width: 0;
 }
 :is(.creation-panel, .writer-panel) .reference-name input {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   min-width: 0;
 }
 :is(.creation-panel, .writer-panel) .reference-dims {
   padding: 0;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 :is(.creation-panel, .writer-panel) .reference-actions {
   justify-content: flex-start;
@@ -241,11 +241,11 @@
   min-width: 90px;
 }
 .saved-styles label {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--muted);
 }
 .saved-styles button {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .submit-panel {
   flex-shrink: 0;
@@ -254,17 +254,40 @@
 }
 .generate-submit-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
 }
-.generate-submit-row > .primary-button {
+.generate-submit-row > input {
+  width: 100%;
   min-width: 0;
   min-height: 42px;
-  padding: 10px;
-  flex-wrap: wrap;
-  gap: 5px;
+  padding: 10px 6px;
+  text-align: center;
+}
+.generate-submit-row > .primary-button {
+  position: relative;
+  justify-content: center;
+  text-align: center;
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px 48px;
+}
+.generate-button-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+.generate-button-label > svg {
+  flex-shrink: 0;
 }
 .generate-submit-row .primary-button kbd {
-  font-size: 10px;
+  position: absolute;
+  right: 10px;
+  margin: 0;
+  font-size: calc(10px * var(--font-scale, 1));
 }
 .validation-notice {
   max-height: min(120px, 20vh);
@@ -274,7 +297,7 @@
   align-items: center;
   gap: 8px;
   list-style: none;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .validation-notice summary::-webkit-details-marker {
   display: none;
@@ -342,6 +365,11 @@
   .submit-panel {
     padding: 10px 12px;
   }
+}
+@container (max-width: 440px) {
+  .generate-submit-row > .primary-button {
+    padding-inline: 10px;
+  }
   .generate-submit-row .primary-button kbd {
     display: none;
   }
@@ -353,7 +381,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .reference-name .reference-rename {
   padding: 3px;

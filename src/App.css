@@ -56,12 +56,12 @@ p {
   margin: 0;
 }
 h1 {
-  font-size: 17px;
+  font-size: calc(17px * var(--font-scale, 1));
   font-weight: 580;
   letter-spacing: -0.5px;
 }
 h2 {
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale, 1));
   font-weight: 600;
 }
 label {
@@ -92,7 +92,7 @@ small {
   align-items: center;
   gap: 9px;
   padding: 0 9px 26px;
-  font-size: 25px;
+  font-size: calc(25px * var(--font-scale, 1));
   font-weight: 650;
   letter-spacing: -1px;
 }
@@ -135,7 +135,7 @@ small {
 }
 .eyebrow {
   display: block;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   letter-spacing: 1.8px;
   color: var(--muted);
   margin-bottom: 6px;
@@ -172,13 +172,13 @@ small {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 600;
   margin-bottom: 9px;
 }
 .section-heading button {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   padding: 3px 6px;
 }
 .prompt-field textarea {
@@ -193,7 +193,7 @@ small {
   margin-top: 6px;
 }
 .reference-tokens button {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   background: var(--accent-soft);
   color: var(--accent);
   border-radius: 12px;
@@ -222,13 +222,13 @@ small {
   left: 4px;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale, 1));
   padding: 1px 6px;
   border-radius: 8px;
 }
 .reference-dims {
   display: block;
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale, 1));
   padding: 0 4px;
 }
 .reference-item > img {
@@ -244,7 +244,7 @@ small {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .reference-actions {
   display: flex;
@@ -280,7 +280,7 @@ small {
 }
 .advanced-fields > summary {
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--muted);
   padding: 8px 0;
 }
@@ -288,7 +288,7 @@ small {
   padding-bottom: 6px;
 }
 .request-preview {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .request-preview pre {
   max-height: 240px;
@@ -298,7 +298,7 @@ small {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 6px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -313,12 +313,12 @@ small {
   align-items: center;
 }
 .field label {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--muted);
 }
 .field input,
 .field .select-trigger {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   padding: 7px;
 }
 .field-json {
@@ -341,7 +341,7 @@ small {
   align-items: center;
   justify-content: space-between;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .submit-panel input {
   width: 70px;
@@ -435,7 +435,7 @@ img.asset-image.loaded {
   padding: 11px 12px;
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   color: var(--muted);
   gap: 10px;
 }
@@ -443,7 +443,7 @@ img.asset-image.loaded {
   color: var(--text);
 }
 .card-error {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   max-height: 72px;
   overflow: auto;
   color: var(--danger);
@@ -472,7 +472,7 @@ img.asset-image.loaded {
   color: var(--muted);
   column-span: all;
   height: 100%;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .region-editor {
   display: grid;
@@ -486,14 +486,14 @@ img.asset-image.loaded {
   grid-template-columns: 45px repeat(4, 1fr);
   gap: 3px;
   align-items: center;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .rectangle input {
   padding: 5px 1px;
 }
 .region-editor > button {
   justify-self: end;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--muted);
 }
 .gallery-workspace {
@@ -511,7 +511,7 @@ img.asset-image.loaded {
 .library-nav > button {
   justify-content: space-between;
   text-align: left;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--muted);
 }
 .library-nav > button.selected {
@@ -521,7 +521,7 @@ img.asset-image.loaded {
 .library-sidebar .section-heading {
   margin: 30px 8px 6px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .gallery-content {
   flex: 1;
@@ -540,7 +540,7 @@ img.asset-image.loaded {
 }
 .content-toolbar button {
   white-space: nowrap;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   border: 1px solid var(--line);
 }
 .content-toolbar .select-trigger {
@@ -587,7 +587,7 @@ img.asset-image.loaded {
   display: flex;
   justify-content: space-between;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .gallery-card footer span {
   overflow: hidden;
@@ -596,14 +596,14 @@ img.asset-image.loaded {
 }
 .gallery-card footer small {
   white-space: nowrap;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .gallery-actions {
   display: flex;
   flex-wrap: wrap;
 }
 .gallery-actions button {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   color: var(--muted);
   padding: 4px;
 }
@@ -622,10 +622,10 @@ img.asset-image.loaded {
   display: flex;
   justify-content: space-between;
   border-bottom: 1px solid var(--line);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .history-batch > header span {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   color: var(--muted);
 }
 .history-task {
@@ -643,7 +643,7 @@ img.asset-image.loaded {
 }
 .history-prompt {
   margin: 6px 0 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -711,7 +711,7 @@ img.asset-image.loaded {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 @media (max-width: 1050px) {
   .creation-panel {
@@ -786,7 +786,7 @@ img.asset-image.loaded {
   min-height: 48px;
   padding: 6px 4px;
   border-radius: 6px;
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale, 1));
 }
 .writer-queue.is-dragging {
   user-select: none;
@@ -831,13 +831,13 @@ img.asset-image.loaded {
 }
 .writer-queue-empty {
   padding: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .spec-option {
   display: flex;
   gap: 8px;
   align-items: center;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .spec-option small {
   margin-left: auto;
@@ -845,7 +845,7 @@ img.asset-image.loaded {
 .file-button {
   cursor: pointer;
   color: var(--accent);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .file-button input {
   display: none;
@@ -892,7 +892,7 @@ img.asset-image.loaded {
 .writer-results article p {
   white-space: pre-wrap;
   line-height: 1.7;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
 }
 .writer-result-prompt {
   position: relative;
@@ -902,7 +902,7 @@ img.asset-image.loaded {
   top: 0;
   right: 0;
   padding: 6px;
-  font-size: 18px;
+  font-size: calc(18px * var(--font-scale, 1));
   color: var(--muted);
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -921,7 +921,7 @@ img.asset-image.loaded {
 .writer-results details {
   margin-bottom: 18px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .writer-results article > footer {
   display: flex;
@@ -963,7 +963,7 @@ img.asset-image.loaded {
 }
 .folder-button {
   border: 1px solid var(--line);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   overflow-wrap: anywhere;
 }
 .upscale-grid {
@@ -1036,7 +1036,7 @@ img.asset-image.loaded {
   width: 200px;
 }
 .mask-toolbar label {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .mask-stage {
   flex: 1;
@@ -1085,7 +1085,7 @@ img.asset-image.loaded {
   color: var(--accent);
   border-radius: 12px;
   padding: 0 7px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   margin: 0 2px;
   user-select: all;
 }
@@ -1179,7 +1179,7 @@ img.asset-image.loaded {
 }
 .result-actions button {
   padding: 5px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   color: var(--muted);
   flex-shrink: 0;
 }
@@ -1192,7 +1192,7 @@ img.asset-image.loaded {
   margin-inline: auto;
   padding: 0 12px 8px;
   max-height: 144px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   color: var(--muted);
   overflow-y: auto;
   scrollbar-gutter: stable both-edges;
@@ -1208,7 +1208,7 @@ img.asset-image.loaded {
   top: 0;
   right: 10px;
   padding: 3px;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   color: var(--muted);
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -1240,12 +1240,12 @@ img.asset-image.loaded {
   gap: 4px;
 }
 .model-trigger small {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   letter-spacing: 0.7px;
   text-transform: uppercase;
 }
 .model-trigger strong {
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale, 1));
   font-weight: 550;
 }
 .model-dialog {
@@ -1281,7 +1281,7 @@ img.asset-image.loaded {
 .model-browser nav button {
   text-align: left;
   justify-content: flex-start;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .model-browser .selected {
   color: var(--selected-text);
@@ -1306,11 +1306,11 @@ img.asset-image.loaded {
   gap: 6px;
 }
 .model-options strong {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 550;
 }
 .model-options small {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   line-height: 1.5;
 }
 .reference-preview {
@@ -1327,20 +1327,20 @@ img.asset-image.loaded {
   gap: 3px;
 }
 .reference-name input {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   padding: 3px;
   border: 0;
   background: none;
 }
 .reference-name small {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .reference-preview .missing-image {
   min-height: 0;
   white-space: normal;
 }
 .validation-notice {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--danger);
   max-height: 120px;
   overflow: auto;
@@ -1354,7 +1354,7 @@ img.asset-image.loaded {
 }
 .primary-button kbd {
   font: inherit;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   margin-left: auto;
   opacity: 0.7;
 }
