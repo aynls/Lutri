@@ -99,6 +99,8 @@ export interface ModelCombination {
   maxReferences: number;
   mask?: "alpha" | "white" | "black";
   regions?: "prompt" | "runware" | "fal" | "seedream";
+  /** Provider-documented region cap; combinations without one fall back to `defaultMaxRegions`. */
+  maxRegions?: number;
   fields: FieldDefinition[];
   groups?: ParameterGroup[];
   primaryReference?: boolean;

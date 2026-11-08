@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { MinusIcon, PlusIcon, HandIcon, CursorIcon, BoundingBoxIcon } from "@phosphor-icons/react";
 import type { Rectangle } from "../../domain/types";
 import { useCanvasViewport } from "../../components/canvas/useCanvasViewport";
@@ -22,6 +22,8 @@ interface CanvasBox {
   id: string;
   value: Rectangle;
   color: string;
+  /** Read-only text rendered inside the box, e.g. the region description. */
+  label?: string;
 }
 type Tool = "select" | "draw" | "pan";
 type Gesture = { pointerId: number } & (
@@ -45,6 +47,7 @@ export function RegionCanvas({
   opacity = 0.7,
   boxes,
   selected,
+  canCreate = true,
   onSelect,
   onChange,
   onCreate,
@@ -55,6 +58,7 @@ export function RegionCanvas({
   opacity?: number;
   boxes: CanvasBox[];
   selected?: string;
+  canCreate?: boolean;
   onSelect: (id?: string) => void;
   onChange: (id: string, rectangle: Rectangle) => void;
   onCreate: (rectangle: Rectangle) => void;
@@ -69,6 +73,10 @@ export function RegionCanvas({
   const gesture = useRef<Gesture>(undefined),
     latest = useRef<typeof preview>(undefined);
   const [missing, setMissing] = useState(false);
+  const clipBase = useId().replace(/:/g, "");
+  useEffect(() => {
+    if (!canCreate && tool === "draw") setTool("select");
+  }, [canCreate, tool]);
   const publishPreview = (value: typeof preview) => {
     latest.current = value;
     setPreview(value);
@@ -120,6 +128,7 @@ export function RegionCanvas({
     setHover(point);
     // Right-drag always starts a new box, including over existing boxes and handles.
     if (event.button === 2 || (tool === "draw" && event.button === 0 && !space)) {
+      if (!canCreate) return;
       if (point.x < 0 || point.x > width || point.y < 0 || point.y > height) return;
       publishGesture({ kind: "draw", x: point.x, y: point.y, pointerId });
       publishPreview({ rect: { ...point, w: 0, h: 0 } });
@@ -185,6 +194,8 @@ export function RegionCanvas({
     const rect = preview?.id === box.id ? preview.rect : toPixels(box.value, width, height);
     const isSelected = selected === box.id;
     const tagWidth = Math.min(240, 18 + box.id.length * 7.5) / canvas.view.scale;
+    const label = box.label?.trim();
+    const labelSize = label ? Math.min(14 / canvas.view.scale, rect.h * 0.55, (rect.w * 1.7) / label.length) : 0;
     return (
       <g key={box.id}>
         <rect
@@ -193,11 +204,33 @@ export function RegionCanvas({
           width={rect.w}
           height={rect.h}
           fill={box.color}
-          fillOpacity={isSelected ? 0.14 : 0.06}
+          fillOpacity={isSelected ? 0.24 : 0.12}
           stroke={box.color}
-          strokeWidth={isSelected ? 2 : 1.5}
+          strokeWidth={isSelected ? 2.5 : 2}
           vectorEffect="non-scaling-stroke"
         />
+        {label ? (
+          <g pointerEvents="none" clipPath={`url(#${clipBase}-${box.id})`}>
+            <clipPath id={`${clipBase}-${box.id}`}>
+              <rect x={rect.x} y={rect.y} width={rect.w} height={rect.h} />
+            </clipPath>
+            <text
+              x={rect.x + rect.w / 2}
+              y={rect.y + rect.h / 2}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={labelSize}
+              fill="#fff"
+              stroke="#161514"
+              strokeOpacity={0.7}
+              strokeWidth={Math.max(1.2 / canvas.view.scale, labelSize * 0.22)}
+              paintOrder="stroke"
+              strokeLinejoin="round"
+            >
+              {label}
+            </text>
+          </g>
+        ) : null}
         <g transform={`translate(${rect.x},${Math.max(0, rect.y - 23 / canvas.view.scale)})`} pointerEvents="none">
           <rect width={tagWidth} height={22 / canvas.view.scale} fill={box.color} rx={3 / canvas.view.scale} />
           <text x={6 / canvas.view.scale} y={15 / canvas.view.scale} fontSize={12 / canvas.view.scale} fill="#161514">
@@ -254,6 +287,7 @@ export function RegionCanvas({
               title={t(title)}
               aria-label={t(title)}
               aria-pressed={tool === id}
+              disabled={id === "draw" && !canCreate}
               onClick={() => setTool(id)}
             >
               <Icon size={18} />

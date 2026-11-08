@@ -8,6 +8,12 @@ export function maxRequestCount(preferences: { generation?: { maxRequestCount?: 
   return value !== undefined && Number.isSafeInteger(value) && value >= 1 ? value : defaultMaxRequestCount;
 }
 
+/** fal documents `bounding_boxes` ≤ 32; other providers publish no limit, so the same cap applies. */
+export const defaultMaxRegions = 32;
+export function regionLimit(combination: ModelCombination): number {
+  return combination.regions ? (combination.maxRegions ?? defaultMaxRegions) : 0;
+}
+
 export const providerNames: Record<ProviderId, string> = {
   bfl: "Black Forest Labs",
   fal: "fal",

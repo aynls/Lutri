@@ -40,14 +40,39 @@
 }
 .region-list {
   padding: 8px;
-  max-height: 220px;
   overflow: auto;
   display: grid;
   gap: 3px;
+  align-content: start;
+  flex-shrink: 0;
   border-bottom: 1px solid var(--line);
 }
 .region-list:empty {
   display: none;
+}
+.region-list-resizer {
+  height: 8px;
+  margin: -4px 0;
+  position: relative;
+  z-index: 2;
+  cursor: row-resize;
+  flex-shrink: 0;
+  touch-action: none;
+}
+.region-list-resizer::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 2px;
+  border-radius: 1px;
+  transform: translate(-50%, -50%);
+  background: var(--line);
+}
+.region-list-resizer:hover::after,
+.region-list-resizer:focus-visible::after {
+  background: var(--accent);
 }
 .region-list > button {
   display: flex;

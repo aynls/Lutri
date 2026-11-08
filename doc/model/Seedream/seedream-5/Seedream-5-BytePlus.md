@@ -56,6 +56,6 @@ curl 'https://ark.ap-southeast.bytepluses.com/api/v3/images/generations' \
 
 ## 交互编辑与布局（2026-11-05 核对）
 
-Seedream 5.0 Pro / Flash 的交互编辑使用提示词中的 `<bbox>x0 y0 x1 y1</bbox>`，不新增请求体字段。坐标针对每一张参考图归一化到 **0–999**，顺序是左、上、右、下。跨图编辑通过 `Image 1`、`Image 2` 等显式绑定图片。前端内部仍保留稳定参考 ID 和统一的 0–1000 矩形；仅在 Seedream 请求编译时转换顺序并将边界裁至 999。该能力没有为 Lite 开启。
+Seedream 5.0 Pro / Flash 的交互编辑使用提示词中的 `<bbox>x0 y0 x1 y1</bbox>`，不新增请求体字段。坐标针对每一张参考图归一化到 **0–999**，顺序是左、上、右、下。跨图编辑通过 `Image 1`、`Image 2` 等显式绑定图片。前端内部仍保留稳定参考 ID 和统一的 0–1000 矩形；仅在 Seedream 请求编译时转换顺序并将边界裁至 999。供应商未给出区域数量上限，Lutri 统一按 32 个限制。该能力没有为 Lite 开启。
 
 来源：[BytePlus 官方交互编辑指南](https://docs.byteplus.com/en/docs/modelark/seedream-5-0-pro-editing-guide)、[Seedream 5.0 Pro / Flash 能力说明](https://docs.byteplus.com/en/docs/modelark/seedream-5-0-pro)。此机制经由已有 prompt 字段传输，所有 Pro / Flash 的供应商组合共用该编译器；供应商实际效果尚未逐一调用验证。

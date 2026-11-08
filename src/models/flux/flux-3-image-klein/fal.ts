@@ -24,6 +24,7 @@ export const combination: ModelCombination = {
   creationControl: "prompt",
   maxReferences: 10,
   regions: "fal",
+  maxRegions: 32,
   fields,
   inputPolicy: undefined,
   groups: [

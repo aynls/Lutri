@@ -235,6 +235,8 @@ const messages = {
   cleanup: ["Automatic cleanup", "自动清理", "自動整理"],
   capacity: ["Image capacity", "图片容量", "画像上限"],
   regions: ["Regions", "区域", "領域"],
+  clearRegions: ["Clear all regions", "清空区域", "すべての領域を削除"],
+  resizeRegions: ["Resize region list", "调整区域列表高度", "領域リストの高さを変更"],
   description: ["Description", "描述", "説明"],
   source: ["Source", "来源", "ソース"],
   target: ["Target", "目标", "ターゲット"],

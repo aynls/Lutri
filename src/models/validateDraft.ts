@@ -3,6 +3,7 @@ import { combinationById } from ".";
 import { t } from "../i18n";
 import { c } from "../create/messages";
 import { orderedCreationDraft, validateCreation } from "./creation";
+import { regionLimit } from "./shared";
 
 export function validateDraft(draft: GenerationDraft, maxRequests: number): string[] {
   const combination = combinationById(draft.combinationId);
@@ -33,6 +34,8 @@ export function validateDraft(draft: GenerationDraft, maxRequests: number): stri
   if (draft.mask && orderedCreationDraft(draft, combination).references[0]?.id !== draft.mask.referenceId)
     errors.push(t("maskFirstReference"));
   if (draft.regions.length && !combination.regions) errors.push(t("unsupportedRegions"));
+  else if (draft.regions.length > regionLimit(combination))
+    errors.push(`${t("regions")} ≤ ${regionLimit(combination)}`);
   const ids = new Set<string>();
   for (const region of draft.regions) {
     if (!/^[A-Za-z0-9_]+$/.test(region.id) || ids.has(region.id)) errors.push(t("regionNameError"));

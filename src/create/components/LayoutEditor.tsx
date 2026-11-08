@@ -1,5 +1,5 @@
 import { Select } from "../../components/Select";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowCounterClockwiseIcon,
   ArrowClockwiseIcon,
@@ -9,6 +9,7 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   BoundingBoxIcon,
+  BroomIcon,
 } from "@phosphor-icons/react";
 import type { GalleryEntry, GenerationDraft, Rectangle, Region } from "../../domain/types";
 import { Dialog } from "../../components/Dialog";
@@ -18,8 +19,15 @@ import { AssetImage } from "../../gallery/AssetImage";
 import { useApplication } from "../../services/store";
 import { t } from "../../i18n";
 import { combinationById } from "../../models";
+import { regionLimit } from "../../models/shared";
 import { RegionCanvas } from "./RegionCanvas";
 import { operation, outputFrame, regionColors, toNormalized, toPixels } from "./regionGeometry";
+
+const LIST_HEIGHT_KEY = "lutri.layout.regionList";
+const LIST_MIN = 96,
+  LIST_MAX = 480,
+  LIST_INITIAL = 220;
+const clampListHeight = (value: number) => Math.min(LIST_MAX, Math.max(LIST_MIN, value));
 
 function CommitText({
   value,
@@ -183,14 +191,26 @@ export function LayoutEditor({
   const regions = history.value;
   const [selection, setSelection] = useState<string | undefined>(regions[0]?.id),
     [sourceEditor, setSourceEditor] = useState(false);
+  const [listHeight, setListHeight] = useState(() => {
+    const stored = Number(localStorage.getItem(LIST_HEIGHT_KEY));
+    return clampListHeight(Number.isFinite(stored) && stored > 0 ? stored : LIST_INITIAL);
+  });
+  const listDrag = useRef<{ y: number; height: number } | undefined>(undefined);
+  const resizeList = (next: number) => {
+    const value = clampListHeight(next);
+    setListHeight(value);
+    localStorage.setItem(LIST_HEIGHT_KEY, String(value));
+  };
   const sourceReference =
     draft.creationMode === "edit" ? draft.references.find((ref) => ref.id === draft.editTargetId) : draft.references[0];
   const [background, setBackground] = useState(draft.creationMode === "generate" ? "" : (sourceReference?.id ?? "")),
     [opacity, setOpacity] = useState(0.65),
     [error, setError] = useState("");
   const first = gallery.find((entry) => entry.asset.id === sourceReference?.assetId);
+  const combination = combinationById(draft.combinationId);
+  const limit = regionLimit(combination);
   const frame =
-    combinationById(draft.combinationId).regions === "seedream" && first
+    combination.regions === "seedream" && first
       ? { width: first.asset.width, height: first.asset.height }
       : outputFrame(draft, gallery);
   const selected = regions.find((region) => region.id === selection),
@@ -208,9 +228,14 @@ export function LayoutEditor({
     return `object_${number}`;
   };
   const add = (target: Rectangle = [250, 250, 750, 750]) => {
+    if (regions.length >= limit) return;
     const region: Region = { id: newId(), description: "", target, operation: "place" };
     history.change([...regions, region]);
     setSelection(region.id);
+  };
+  const clear = () => {
+    history.change([]);
+    setSelection(undefined);
   };
   const remove = () => {
     if (selected) {
@@ -290,7 +315,10 @@ export function LayoutEditor({
           <div className="region-scroll">
             <div className="region-list-toolbar">
               <strong>
-                {t("regions")} <small>{regions.length}</small>
+                {t("regions")}{" "}
+                <small>
+                  {regions.length} / {limit}
+                </small>
               </strong>
               <span className="toolbar-spacer" />
               <button disabled={!history.canUndo} onClick={history.undo} title={t("undo")}>
@@ -299,11 +327,14 @@ export function LayoutEditor({
               <button disabled={!history.canRedo} onClick={history.redo} title={t("redo")}>
                 <ArrowClockwiseIcon />
               </button>
-              <button onClick={() => add()} title={t("add")}>
+              <button disabled={regions.length >= limit} onClick={() => add()} title={t("add")}>
                 <PlusIcon />
               </button>
+              <button disabled={!regions.length} onClick={clear} title={t("clearRegions")}>
+                <BroomIcon />
+              </button>
             </div>
-            <div className="region-list">
+            <div className="region-list" style={{ height: listHeight }}>
               {regions.map((region, index) => (
                 <button
                   key={region.id}
@@ -329,10 +360,57 @@ export function LayoutEditor({
                 </button>
               ))}
             </div>
+            {!!regions.length && (
+              <div
+                className="region-list-resizer"
+                role="separator"
+                aria-label={t("resizeRegions")}
+                aria-orientation="horizontal"
+                aria-valuemin={LIST_MIN}
+                aria-valuemax={LIST_MAX}
+                aria-valuenow={Math.round(listHeight)}
+                tabIndex={0}
+                onDoubleClick={() => resizeList(LIST_INITIAL)}
+                onKeyDown={(event) => {
+                  if (event.key === "Home" || event.key === "End") {
+                    event.preventDefault();
+                    resizeList(event.key === "Home" ? LIST_MIN : LIST_MAX);
+                    return;
+                  }
+                  if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                    event.preventDefault();
+                    resizeList(listHeight + (event.key === "ArrowUp" ? -16 : 16));
+                  }
+                }}
+                onPointerDown={(event) => {
+                  if (event.button !== 0 || !event.isPrimary) return;
+                  event.currentTarget.focus();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  listDrag.current = { y: event.clientY, height: listHeight };
+                  event.preventDefault();
+                }}
+                onPointerMove={(event) => {
+                  const start = listDrag.current;
+                  if (start && event.currentTarget.hasPointerCapture(event.pointerId))
+                    resizeList(start.height + event.clientY - start.y);
+                }}
+                onPointerUp={(event) => {
+                  listDrag.current = undefined;
+                  if (event.currentTarget.hasPointerCapture(event.pointerId))
+                    event.currentTarget.releasePointerCapture(event.pointerId);
+                }}
+                onPointerCancel={(event) => {
+                  listDrag.current = undefined;
+                  if (event.currentTarget.hasPointerCapture(event.pointerId))
+                    event.currentTarget.releasePointerCapture(event.pointerId);
+                }}
+              />
+            )}
             {selected ? (
               <div className="region-properties" key={selected.id}>
                 <div className="region-object-actions">
                   <button
+                    disabled={regions.length >= limit}
                     onClick={() => {
                       const id = newId();
                       history.change([...regions, { ...structuredClone(selected), id }]);
@@ -492,9 +570,19 @@ export function LayoutEditor({
             opacity={opacity}
             boxes={regions.flatMap((region, index) => {
               const value = region.target;
-              return value ? [{ id: region.id, value, color: regionColors[index % regionColors.length] }] : [];
+              return value
+                ? [
+                    {
+                      id: region.id,
+                      label: region.description,
+                      value,
+                      color: regionColors[index % regionColors.length],
+                    },
+                  ]
+                : [];
             })}
             selected={selected?.id}
+            canCreate={regions.length < limit}
             onSelect={setSelection}
             onChange={changeRectangle}
             onCreate={add}

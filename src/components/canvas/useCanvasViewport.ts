@@ -13,8 +13,13 @@ export function useCanvasViewport(width: number, height: number, interacting?: R
   }, []);
   const fit = useCallback(() => {
     fitted.current = true;
-    publish(fitView(width, height, size.current.width, size.current.height, 32, 0.001));
+    publish(fitView(width, height, size.current.width, size.current.height, 32));
   }, [width, height, publish]);
+  // 缩放下限为适应窗口的比例（至多 100%），画布不会被缩到看不清的程度。
+  const minScale = useCallback(
+    () => Math.min(1, fitView(width, height, size.current.width, size.current.height, 32).scale),
+    [width, height],
+  );
   useLayoutEffect(() => {
     const element = viewport.current!;
     fitted.current = true;
@@ -37,10 +42,10 @@ export function useCanvasViewport(width: number, height: number, interacting?: R
     (factor: number, x = size.current.width / 2, y = size.current.height / 2) => {
       fitted.current = false;
       publish(
-        zoomCanvasAt(current.current, x, y, factor, width, height, size.current.width, size.current.height, 0.001),
+        zoomCanvasAt(current.current, x, y, factor, width, height, size.current.width, size.current.height, minScale()),
       );
     },
-    [width, height, publish],
+    [width, height, publish, minScale],
   );
   useEffect(() => {
     const element = viewport.current!;
@@ -62,7 +67,7 @@ export function useCanvasViewport(width: number, height: number, interacting?: R
         height,
         size.current.width,
         size.current.height,
-        0.001,
+        minScale(),
       ),
     );
   };

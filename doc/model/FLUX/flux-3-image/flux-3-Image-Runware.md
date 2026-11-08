@@ -12,7 +12,7 @@
 | `inputs.referenceImages` | 1–10 张参考图；支持 UUID、URL、data URI 或 Base64。 |
 | `width`、`height` | 配对指定输出像素尺寸。 |
 | `resolution` | `0.75K`、`1K`、`2K`、`4K`；用于带参考图的自动宽高比，与明确尺寸互斥。 |
-| `settings.boundingBoxes` | 区域数组；没有参考图时，官方模型页面要求至少一个区域。 |
+| `settings.boundingBoxes` | 区域数组；没有参考图时，官方模型页面要求至少一个区域。供应商未标明数量上限，Lutri 统一按 32 个限制。 |
 | `settings.grounding` | 联网参考配置，详见模型 Schema。 |
 | `numberResults`、`outputFormat`、`outputQuality` | 输出数量、格式和压缩质量；取值见模型 Schema。 |
 

@@ -17,6 +17,6 @@
 | `enable_safety_checker` | 默认 true。 |
 | `output_format` | `jpeg`、`png`、`webp`，默认 `png`。 |
 | `sync_mode` | true 时以 data URI 返回且结果不保存在请求历史。 |
-| `bounding_boxes` | 可选区域对象数组，字段因生成和编辑而不同，见各端点 Schema。 |
+| `bounding_boxes` | 可选区域对象数组，字段因生成和编辑而不同，见各端点 Schema；数组最多 32 项。 |
 
 文生图的区域使用 `label`、`description`、`box`，坐标是以左上角为原点的 0–1 小数；BFL 的坐标范围为 0–1000。成功结果的 `images[].url` 为图片地址，另有 `seed`、`timings` 等字段。
