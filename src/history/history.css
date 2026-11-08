@@ -48,9 +48,6 @@
   flex-wrap: wrap;
   gap: 10px;
 }
-.history-batch-actions {
-  margin-left: auto;
-}
 .task-usage-summary {
   font-size: calc(11px * var(--font-scale, 1));
   color: var(--muted);

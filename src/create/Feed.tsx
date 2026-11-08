@@ -65,15 +65,26 @@ export function Feed({
   }, []);
   const taskMap = useMemo(() => new Map(tasks.map((entry) => [entry.id, entry])), [tasks]);
   const assets = useMemo(() => new Map(gallery.map((entry) => [entry.asset.id, entry])), [gallery]);
+  // Column assignments persist across feed mutations; moving a card between column
+  // parents remounts it, replaying the entrance animation and image fade.
+  const layout = useRef({ count: 0, assigned: new Map<string, number>() });
   const columns = useMemo(() => {
-    const groups: FeedSlot[][] = Array.from({ length: columnCount }, () => []),
-      heights = Array<number>(columnCount).fill(0);
+    if (layout.current.count !== columnCount) layout.current = { count: columnCount, assigned: new Map() };
+    const { assigned } = layout.current,
+      groups: FeedSlot[][] = Array.from({ length: columnCount }, () => []),
+      heights = Array<number>(columnCount).fill(0),
+      live = new Set(feed.map((slot) => slot.id));
+    for (const key of assigned.keys()) if (!live.has(key)) assigned.delete(key);
     for (const slot of feed) {
       const task = taskMap.get(slot.taskId),
         id = task?.results[slot.resultIndex]?.assetId,
         asset = id ? assets.get(id)?.asset : undefined;
       if (!task) continue;
-      const column = heights.indexOf(Math.min(...heights));
+      let column = assigned.get(slot.id);
+      if (column === undefined) {
+        column = heights.indexOf(Math.min(...heights));
+        assigned.set(slot.id, column);
+      }
       groups[column].push(slot);
       heights[column] += (asset ? (254 * asset.height) / asset.width : 220) + 100;
     }

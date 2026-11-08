@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { confirm } from "@tauri-apps/plugin-dialog";
 import {
   ArrowCounterClockwiseIcon,
-  CaretDownIcon,
-  CaretRightIcon,
   InfoIcon,
   ListChecksIcon,
   MagnifyingGlassIcon,
@@ -22,16 +19,7 @@ import { providerNames } from "../models/shared";
 import { useApplication } from "../services/store";
 import { native } from "../services/native";
 import { b } from "./messages";
-import {
-  canDeleteCloudBatch,
-  cancelCloudBatch,
-  cloudSummary,
-  deleteCloudBatch,
-  failedDrafts,
-  isCloudBusy,
-  resumeCloudBatch,
-  retryCloudSubmission,
-} from "./service";
+import { cloudSummary, failedDrafts } from "./service";
 
 export function BatchHistory({
   initialSearch,
@@ -54,7 +42,6 @@ export function BatchHistory({
   const [since, setSince] = useState("");
   const [until, setUntil] = useState("");
   const [page, setPage] = useState(1);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [detail, setDetail] = useState<string>();
   const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
   const [entries, setEntries] = useState<GalleryEntry[]>([]);
@@ -135,16 +122,14 @@ export function BatchHistory({
   const shown = filtered.slice((currentPage - 1) * 20, currentPage * 20);
   const ids = [
     ...new Set(
-      shown
-        .filter(({ batch }) => expanded.has(batch.id))
-        .flatMap(({ batch, requests }) =>
-          batch.cloud!.items.flatMap((item) =>
-            requests
-              .filter((task) => task.draftItemId === item.id)
-              .slice(0, visibleCounts[item.id] ?? 20)
-              .flatMap((task) => task.results.flatMap((result) => (result.assetId ? [result.assetId] : []))),
-          ),
+      shown.flatMap(({ batch, requests }) =>
+        batch.cloud!.items.flatMap((item) =>
+          requests
+            .filter((task) => task.draftItemId === item.id)
+            .slice(0, visibleCounts[item.id] ?? 20)
+            .flatMap((task) => task.results.flatMap((result) => (result.assetId ? [result.assetId] : []))),
         ),
+      ),
     ),
   ];
   const assetKey = JSON.stringify(ids);
@@ -252,8 +237,6 @@ export function BatchHistory({
           </div>
         )}
         {shown.map(({ batch, requests, summary }) => {
-          const open = expanded.has(batch.id),
-            busy = isCloudBusy(batch.id);
           const groups = batch.cloud!.groups;
           const failed = failedDrafts(batch, requests);
           const saved = requests.reduce((sum, task) => sum + task.results.filter((result) => result.assetId).length, 0);
@@ -266,19 +249,7 @@ export function BatchHistory({
           return (
             <section className="history-batch cloud-batch" key={batch.id}>
               <header>
-                <button
-                  className="history-batch-toggle"
-                  aria-expanded={open}
-                  onClick={() =>
-                    setExpanded((current) => {
-                      const next = new Set(current);
-                      if (next.has(batch.id)) next.delete(batch.id);
-                      else next.add(batch.id);
-                      return next;
-                    })
-                  }
-                >
-                  {open ? <CaretDownIcon /> : <CaretRightIcon />}
+                <div className="history-batch-heading">
                   <span>
                     <strong>{new Date(batch.createdAt).toLocaleString()}</strong>
                     <small>
@@ -286,163 +257,113 @@ export function BatchHistory({
                       {t("saved")}
                     </small>
                   </span>
-                </button>
+                </div>
                 <span className={`status-badge status-${summary}`}>{b(summary)}</span>
                 {processed !== undefined && (
                   <span className="cloud-batch-summary">
                     {b("processed")} {processed}/{requests.length}
                   </span>
                 )}
-                <div className="history-batch-actions">
-                  {groups.some((group) => group.status === "submission-failed" || group.status === "prepared") && (
-                    <button disabled={busy} onClick={() => void retryCloudSubmission(batch.id).catch(onError)}>
-                      {b("retrySubmission")}
-                    </button>
-                  )}
-                  {groups.some((group) => ["submission-unknown", "retrieval-failed"].includes(group.status)) ||
-                  requests.some((task) => task.status === "download-failed") ? (
-                    <button disabled={busy} onClick={() => void resumeCloudBatch(batch.id).catch(onError)}>
-                      {b("resume")}
-                    </button>
-                  ) : null}
-                  {groups.some((group) => ["prepared", "uploading", "queued", "running"].includes(group.status)) && (
-                    <button
-                      disabled={busy}
-                      onClick={() =>
-                        void (async () => {
-                          if (await confirm(b("cancelConfirm"), { title: "Lutri", kind: "warning" }))
-                            await cancelCloudBatch(batch.id);
-                        })().catch(onError)
-                      }
-                    >
-                      {t("cancel")}
-                    </button>
-                  )}
-                  <button
-                    disabled={!canDeleteCloudBatch(batch)}
-                    className="task-delete"
-                    onClick={() =>
-                      void (async () => {
-                        if (await confirm(b("deleteConfirm"), { title: "Lutri", kind: "warning" }))
-                          await deleteCloudBatch(batch.id);
-                      })().catch(onError)
-                    }
-                  >
-                    {t("delete")}
-                  </button>
-                </div>
               </header>
-              {open && (
-                <>
-                  {batch.cloud!.items.map((item, index) => {
-                    const combination = combinationById(item.draft.combinationId);
-                    const children = requests.filter((task) => task.draftItemId === item.id);
-                    const count = visibleCounts[item.id] ?? 20;
-                    return (
-                      <div className="cloud-item" key={item.id}>
-                        <div className="cloud-item-heading">
-                          <span className="muted">{index + 1}</span>
-                          <ModelIcon family={combination.family} size={18} />
-                          <strong>{combination.label}</strong>
-                          <span className="muted">{providerNames[combination.provider]}</span>
-                          <span>
-                            {children.length} {b("requests")}
-                          </span>
-                          <button
-                            title={b("requeue")}
-                            aria-label={b("requeue")}
-                            onClick={() => onRequeue([item.draft])}
-                          >
-                            <PlusIcon size={16} />
-                          </button>
-                        </div>
-                        <p className="batch-item-prompt cloud-item-prompt">{displayPrompt(item.draft)}</p>
-                        {children.slice(0, count).map((task, taskIndex) => (
-                          <div className="history-task" key={task.id}>
-                            <div className="history-info">
-                              <div className="history-task-heading">
-                                <span className="muted">
-                                  {t("request")} {taskIndex + 1}
-                                </span>
-                                <span className={`status-badge status-${task.status}`}>{t(task.status)}</span>
-                              </div>
-                              <div className="history-meta">
-                                <span>
-                                  {task.results.filter((result) => result.assetId).length} {t("saved")}
-                                </span>
-                                <div className="history-task-actions">
-                                  <button
-                                    title={t("details")}
-                                    aria-label={t("details")}
-                                    onClick={() => setDetail(task.id)}
-                                  >
-                                    <InfoIcon size={16} />
-                                  </button>
-                                  <button
-                                    title={t("restore")}
-                                    aria-label={t("restore")}
-                                    onClick={() => onRestore({ ...task.draft, requestCount: 1 })}
-                                  >
-                                    <ArrowCounterClockwiseIcon size={16} />
-                                  </button>
-                                </div>
-                              </div>
-                              {task.error && <p className="error-text">{task.error}</p>}
-                            </div>
-                            {!!task.results.length && (
-                              <div className="history-images">
-                                {task.results.map((result) => {
-                                  const entry = result.assetId ? assets.get(result.assetId) : undefined;
-                                  return (
-                                    <button
-                                      key={result.id}
-                                      disabled={!entry}
-                                      title={result.error ?? t("results")}
-                                      onClick={() => entry && onView(entry.asset.id, images)}
-                                    >
-                                      {entry ? (
-                                        <AssetImage entry={entry} thumbnail />
-                                      ) : (
-                                        <span className="missing-image">{t("missing")}</span>
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {children.length > count && (
-                          <button onClick={() => setVisibleCounts((value) => ({ ...value, [item.id]: count + 20 }))}>
-                            + {Math.min(20, children.length - count)} {b("requests")}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {failed.length > 0 && (
-                    <div className="cloud-batch-details">
-                      <button onClick={() => onRequeue(failed.map((item) => item.draft))}>
-                        {b("failedOnly")} · {failed.reduce((sum, item) => sum + item.draft.requestCount, 0)}
+              {batch.cloud!.items.map((item, index) => {
+                const combination = combinationById(item.draft.combinationId);
+                const children = requests.filter((task) => task.draftItemId === item.id);
+                const count = visibleCounts[item.id] ?? 20;
+                return (
+                  <div className="cloud-item" key={item.id}>
+                    <div className="cloud-item-heading">
+                      <span className="muted">{index + 1}</span>
+                      <ModelIcon family={combination.family} size={18} />
+                      <strong>{combination.label}</strong>
+                      <span className="muted">{providerNames[combination.provider]}</span>
+                      <span>
+                        {children.length} {b("requests")}
+                      </span>
+                      <button title={b("requeue")} aria-label={b("requeue")} onClick={() => onRequeue([item.draft])}>
+                        <PlusIcon size={16} />
                       </button>
                     </div>
-                  )}
-                  <details className="cloud-batch-details">
-                    <summary>
-                      {b("remoteGroups")} · {groups.length}
-                    </summary>
-                    {groups.map((group) => (
-                      <div className="cloud-group" key={group.id}>
-                        <span>
-                          {providerNames[group.provider]} · {group.model} · {b(group.status)}
-                        </span>
-                        <code>{group.remoteId ?? group.id}</code>
-                        {group.error && <p className="error-text">{group.error}</p>}
+                    <p className="batch-item-prompt cloud-item-prompt">{displayPrompt(item.draft)}</p>
+                    {children.slice(0, count).map((task, taskIndex) => (
+                      <div className="history-task" key={task.id}>
+                        <div className="history-info">
+                          <div className="history-task-heading">
+                            <span className="muted">
+                              {t("request")} {taskIndex + 1}
+                            </span>
+                            <span className={`status-badge status-${task.status}`}>{t(task.status)}</span>
+                          </div>
+                          <div className="history-meta">
+                            <span>
+                              {task.results.filter((result) => result.assetId).length} {t("saved")}
+                            </span>
+                            <div className="history-task-actions">
+                              <button title={t("details")} aria-label={t("details")} onClick={() => setDetail(task.id)}>
+                                <InfoIcon size={16} />
+                              </button>
+                              <button
+                                title={t("restore")}
+                                aria-label={t("restore")}
+                                onClick={() => onRestore({ ...task.draft, requestCount: 1 })}
+                              >
+                                <ArrowCounterClockwiseIcon size={16} />
+                              </button>
+                            </div>
+                          </div>
+                          {task.error && <p className="error-text">{task.error}</p>}
+                        </div>
+                        {!!task.results.length && (
+                          <div className="history-images">
+                            {task.results.map((result) => {
+                              const entry = result.assetId ? assets.get(result.assetId) : undefined;
+                              return (
+                                <button
+                                  key={result.id}
+                                  disabled={!entry}
+                                  title={result.error ?? t("results")}
+                                  onClick={() => entry && onView(entry.asset.id, images)}
+                                >
+                                  {entry ? (
+                                    <AssetImage entry={entry} thumbnail />
+                                  ) : (
+                                    <span className="missing-image">{t("missing")}</span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     ))}
-                  </details>
-                </>
+                    {children.length > count && (
+                      <button onClick={() => setVisibleCounts((value) => ({ ...value, [item.id]: count + 20 }))}>
+                        + {Math.min(20, children.length - count)} {b("requests")}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              {failed.length > 0 && (
+                <div className="cloud-batch-details">
+                  <button onClick={() => onRequeue(failed.map((item) => item.draft))}>
+                    {b("failedOnly")} · {failed.reduce((sum, item) => sum + item.draft.requestCount, 0)}
+                  </button>
+                </div>
               )}
+              <details className="cloud-batch-details">
+                <summary>
+                  {b("remoteGroups")} · {groups.length}
+                </summary>
+                {groups.map((group) => (
+                  <div className="cloud-group" key={group.id}>
+                    <span>
+                      {providerNames[group.provider]} · {group.model} · {b(group.status)}
+                    </span>
+                    <code>{group.remoteId ?? group.id}</code>
+                    {group.error && <p className="error-text">{group.error}</p>}
+                  </div>
+                ))}
+              </details>
             </section>
           );
         })}

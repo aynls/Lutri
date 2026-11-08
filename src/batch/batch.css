@@ -186,17 +186,14 @@
 .tasks-host[hidden] {
   display: none;
 }
-.history-batch-toggle {
-  justify-content: flex-start;
+.history-batch-heading {
   min-width: 0;
-  text-align: left;
 }
-.history-batch-toggle > span {
-  display: grid;
-  gap: 5px;
-}
-.history-batch-toggle > svg {
-  flex-shrink: 0;
+.history-batch-heading > span {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px 10px;
 }
 .cloud-batch-summary {
   font-size: calc(12px * var(--font-scale, 1));
