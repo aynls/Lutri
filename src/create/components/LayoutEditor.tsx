@@ -570,16 +570,7 @@ export function LayoutEditor({
             opacity={opacity}
             boxes={regions.flatMap((region, index) => {
               const value = region.target;
-              return value
-                ? [
-                    {
-                      id: region.id,
-                      label: region.description,
-                      value,
-                      color: regionColors[index % regionColors.length],
-                    },
-                  ]
-                : [];
+              return value ? [{ id: region.id, value, color: regionColors[index % regionColors.length] }] : [];
             })}
             selected={selected?.id}
             canCreate={regions.length < limit}
