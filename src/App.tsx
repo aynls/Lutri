@@ -95,7 +95,7 @@ export default function App() {
   const [page, setPage] = useState<Page>("creation"),
     [error, setError] = useState(""),
     [picker, setPicker] = useState(false),
-    [search, setSearch] = useState({ regular: "", batch: "" }),
+    [search, setSearch] = useState({ regular: "", batch: "", request: 0 }),
     [writers, setWriters] = useState(false),
     [maskEditor, setMaskEditor] = useState(false);
   const [writerImages, setWriterImages] = useState<{ entries: GalleryEntry[]; nonce: string }>();
@@ -129,7 +129,7 @@ export default function App() {
     const task = getState().tasks.find((task) => task.results.some((result) => result.assetId === id));
     const tab = task?.cloudGroupId ? "batch" : "regular";
     setTaskTab(tab);
-    setSearch((current) => ({ ...current, [tab]: id }));
+    setSearch((current) => ({ regular: id, batch: id, request: current.request + 1 }));
     setPage("history");
   };
   useEffect(() => {
@@ -815,6 +815,7 @@ export default function App() {
           <div className="task-view" hidden={taskTab !== "regular"}>
             <History
               initialSearch={search.regular}
+              searchRequest={search.request}
               onError={onError}
               onRestore={(draft) => void restore(draft).catch(onError)}
               onView={view}
@@ -823,6 +824,7 @@ export default function App() {
           <div className="task-view" hidden={taskTab !== "batch"}>
             <BatchHistory
               initialSearch={search.batch}
+              searchRequest={search.request}
               onError={onError}
               onView={view}
               onRestore={(draft) => void restore(draft, "batch").catch(onError)}

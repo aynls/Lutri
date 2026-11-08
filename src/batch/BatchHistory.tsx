@@ -23,12 +23,14 @@ import { cloudSummary, failedDrafts } from "./service";
 
 export function BatchHistory({
   initialSearch,
+  searchRequest,
   onError,
   onView,
   onRestore,
   onRequeue,
 }: {
   initialSearch: string;
+  searchRequest: number;
   onError: (error: unknown) => void;
   onView: (id: string, ids?: string[]) => void;
   onRestore: (draft: GenerationDraft) => void;
@@ -50,7 +52,7 @@ export function BatchHistory({
   useEffect(() => {
     setQuery(initialSearch);
     setPage(1);
-  }, [initialSearch]);
+  }, [initialSearch, searchRequest]);
   const taskMap = useMemo(
     () => new Map(tasks.filter((task) => !task.historyDeletedAt).map((task) => [task.id, task])),
     [tasks],

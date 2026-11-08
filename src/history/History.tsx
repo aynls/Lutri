@@ -31,11 +31,13 @@ import { b } from "../batch/messages";
 const active = new Set(["queued", "submitting", "generating", "downloading"]);
 export function History({
   initialSearch,
+  searchRequest,
   onRestore,
   onView,
   onError,
 }: {
   initialSearch: string;
+  searchRequest: number;
   onRestore: (draft: GenerationDraft) => void;
   onView: (id: string) => void;
   onError: (error: unknown) => void;
@@ -52,7 +54,7 @@ export function History({
   useEffect(() => {
     setSearch(initialSearch);
     setPage(1);
-  }, [initialSearch]);
+  }, [initialSearch, searchRequest]);
   const [expanded, setExpanded] = useState<string>(),
     [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]),
