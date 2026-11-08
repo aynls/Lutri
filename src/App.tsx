@@ -84,6 +84,26 @@ const navigation = [
 ] as const;
 let started = false;
 
+function hasDraftEdits(draft: GenerationDraft) {
+  const defaults = initialDraft(combinationById(draft.combinationId));
+  return Boolean(
+    draft.prompt.trim() ||
+    draft.references.length ||
+    draft.regions.length ||
+    draft.mask ||
+    draft.requestCount !== defaults.requestCount ||
+    draft.creationMode !== defaults.creationMode ||
+    draft.editTargetId ||
+    draft.inputPreparation?.maxEdge !== undefined ||
+    draft.layerOutputDirectory ||
+    draft.outputDirectory ||
+    draft.saveToGallery !== undefined ||
+    Object.keys({ ...defaults.parameters, ...draft.parameters }).some(
+      (key) => JSON.stringify(draft.parameters[key]) !== JSON.stringify(defaults.parameters[key]),
+    ),
+  );
+}
+
 export default function App() {
   useLocale();
   const state = useApplication();
@@ -374,11 +394,17 @@ export default function App() {
     } else applyEdit(entry, false);
   };
   const restore = async (draft: GenerationDraft, mode: CreationMode = "regular") => {
-    if (getState().creation.editing) {
+    const { draft: current, creation } = getState();
+    if (creation.editing) {
       onError(b("pendingEdit"));
       return;
     }
-    if (getState().draft.prompt.trim() && !(await confirm(b("replaceEditor"), { title: "Lutri", kind: "warning" })))
+    const replaced = creation.mode === mode ? current : creation[mode];
+    if (
+      replaced &&
+      hasDraftEdits(replaced) &&
+      !(await confirm(b("replaceEditor"), { title: "Lutri", kind: "warning" }))
+    )
       return;
     await switchCreationMode(mode);
     const availability = await Promise.all(
