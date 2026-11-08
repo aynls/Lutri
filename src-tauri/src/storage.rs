@@ -60,6 +60,7 @@ impl Store {
             std::fs::create_dir_all(library.join("thumbnails"))?;
         }
         db.execute_batch("CREATE INDEX IF NOT EXISTS gallery_added ON records(collection,json_extract(body,'$.addedAt')); PRAGMA user_version=2;")?;
+        crate::batch::purge_orphan_files(&root, &db)?;
         Ok(Self {
             root,
             db: Mutex::new(db),

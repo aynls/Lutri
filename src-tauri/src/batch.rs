@@ -5,6 +5,63 @@ use serde_json::{json, Value};
 use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 
+/// Run before the WebView can prepare inputs or resume downloads.
+pub fn purge_orphan_files(root: &std::path::Path, db: &rusqlite::Connection) -> Result<(), String> {
+    let directory = root.join("batch-files");
+    if !directory.is_dir() {
+        return Ok(());
+    }
+    let mut keep = std::collections::HashSet::new();
+    let mut statement = db
+        .prepare("SELECT body FROM records WHERE collection IN ('batches','tasks')")
+        .map_err(|e| e.to_string())?;
+    let rows = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|e| e.to_string())?;
+    for row in rows {
+        let record: Value = serde_json::from_str(&row.map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        if let Some(id) = record["cloudGroupId"].as_str() {
+            keep.insert(id.to_owned());
+        }
+        if let Some(groups) = record["cloud"]["groups"].as_array() {
+            for group in groups {
+                if let Some(id) = group["id"].as_str() {
+                    keep.insert(id.to_owned());
+                    if let Some(outputs) = group["outputFileIds"].as_array() {
+                        for index in 0..outputs.len() {
+                            keep.insert(format!("{id}-output-{index}"));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for entry in std::fs::read_dir(directory).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if !entry.file_type().map_err(|e| e.to_string())?.is_file() {
+            continue;
+        }
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else { continue };
+        let Some(id) = name.strip_suffix(".jsonl").or_else(|| name.strip_suffix(".part")) else {
+            continue;
+        };
+        let group = if let Some((group, index)) = id.split_once("-output-") {
+            if index.parse::<usize>().is_err() {
+                continue;
+            }
+            group
+        } else {
+            id
+        };
+        let owned = uuid::Uuid::parse_str(group).is_ok_and(|value| value.to_string() == group);
+        if owned && !keep.contains(id) {
+            std::fs::remove_file(entry.path()).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
 fn path(store: &Store, id: &str) -> Result<PathBuf, String> {
     if id.is_empty() || id.len() > 100 || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
         return Err("Invalid batch file ID".into());
