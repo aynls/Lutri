@@ -61,6 +61,7 @@ impl Store {
         }
         db.execute_batch("CREATE INDEX IF NOT EXISTS gallery_added ON records(collection,json_extract(body,'$.addedAt')); PRAGMA user_version=2;")?;
         crate::batch::purge_orphan_files(&root, &db)?;
+        crate::upscale::prepare_session(&root)?;
         Ok(Self {
             root,
             db: Mutex::new(db),

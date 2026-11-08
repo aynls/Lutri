@@ -45,8 +45,18 @@ interface Job {
 let workspace: { single?: Job; jobs: Job[]; batch: boolean; busy: boolean } = { jobs: [], batch: false, busy: false };
 const listeners = new Set<() => void>();
 const publish = (next: Partial<typeof workspace>) => {
+  const previous = [...workspace.jobs, ...(workspace.single ? [workspace.single] : [])];
   workspace = { ...workspace, ...next };
+  const retained = new Set([...workspace.jobs, ...(workspace.single ? [workspace.single] : [])].map((job) => job.id));
   listeners.forEach((listener) => listener());
+  for (const job of previous) {
+    if (!job.path || retained.has(job.id)) continue;
+    // Finish any in-flight library copy before releasing the card's source file.
+    void (savingJobs.get(job.id) ?? Promise.resolve())
+      .catch(() => {})
+      .then(() => native("upscale_discard", { ids: [job.id] }))
+      .catch(console.error);
+  }
 };
 const subscribe = (listener: () => void) => {
   listeners.add(listener);

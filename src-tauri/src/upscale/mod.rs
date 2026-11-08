@@ -14,6 +14,58 @@ use std::{
 };
 use tauri::{ipc::Channel, Manager};
 
+/// Upscale cards live only for this application session.
+pub fn prepare_session(root: &std::path::Path) -> Result<(), String> {
+    let directory = root.join("upscale-session");
+    std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
+    for entry in std::fs::read_dir(&directory).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if !entry.file_type().map_err(|e| e.to_string())?.is_file() {
+            continue;
+        }
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else { continue };
+        let Some(id) = name
+            .strip_suffix(".thumb.png")
+            .or_else(|| name.strip_suffix(".png"))
+            .or_else(|| name.strip_suffix(".json"))
+        else {
+            continue;
+        };
+        if uuid::Uuid::parse_str(id).is_ok_and(|value| value.to_string() == id) {
+            std::fs::remove_file(entry.path()).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn upscale_discard(
+    store: tauri::State<Store>,
+    scheduler: tauri::State<Scheduler>,
+    ids: Vec<String>,
+) -> Result<(), String> {
+    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
+    let active = scheduler.snapshot()?;
+    for id in ids {
+        let id = uuid::Uuid::parse_str(&id)
+            .map_err(|_| "Invalid upscale job ID")?
+            .to_string();
+        if active.iter().any(|job| job.id == id) {
+            continue;
+        }
+        for suffix in [".png", ".thumb.png"] {
+            let path = store.root.join("upscale-session").join(format!("{id}{suffix}"));
+            match std::fs::remove_file(path) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error.to_string()),
+            }
+        }
+    }
+    Ok(())
+}
+
 struct StagingCleanup {
     control: std::sync::Arc<std::sync::Mutex<scheduler::Job>>,
     output: PathBuf,
@@ -154,7 +206,7 @@ pub async fn upscale_run(
         let store = app.state::<Store>();
         let entry = assets::entry(&store, &asset_id)?;
         let root = resources(&app)?;
-        let output = store.root.join("staging").join(format!("{id}.png"));
+        let output = store.root.join("upscale-session").join(format!("{id}.png"));
         let runtime = runtime_path(&root)?;
         worker::check_runtime(&runtime)?;
         let input = PathBuf::from(entry["path"].as_str().ok_or("Missing source image")?);
@@ -178,7 +230,7 @@ pub async fn upscale_run(
                 Architecture::Esrgan
             },
         };
-        let job_path = store.root.join("staging").join(format!("{id}.json"));
+        let job_path = store.root.join("upscale-session").join(format!("{id}.json"));
         let mut cleanup = StagingCleanup {
             control: control.clone(),
             output: output.clone(),
@@ -288,7 +340,11 @@ pub async fn upscale_run(
 #[tauri::command]
 pub fn upscale_save(store: tauri::State<Store>, path: String, model_id: Option<String>) -> Result<Value, String> {
     let source = PathBuf::from(path).canonicalize().map_err(|e| e.to_string())?;
-    let staging = store.root.join("staging").canonicalize().map_err(|e| e.to_string())?;
+    let staging = store
+        .root
+        .join("upscale-session")
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
     if !source.starts_with(staging) || source.extension().and_then(|v| v.to_str()) != Some("png") {
         return Err("Unknown upscale output".into());
     }
@@ -427,7 +483,12 @@ pub fn upscale_export(
 ) -> Result<String, String> {
     uuid::Uuid::parse_str(&job_id).map_err(|_| "Invalid upscale job ID")?;
     let source = PathBuf::from(path).canonicalize().map_err(|e| e.to_string())?;
-    let staging = store.root.join("staging").canonicalize().map_err(|e| e.to_string())?;
+    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
+    let staging = store
+        .root
+        .join("upscale-session")
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
     if !source.starts_with(staging)
         || source.file_name().and_then(|v| v.to_str()) != Some(format!("{job_id}.png").as_str())
     {
