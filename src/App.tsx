@@ -976,16 +976,6 @@ export default function App() {
             changeDraft({ ...getState().draft, prompt: draft.prompt });
             setWriters(false);
           }}
-          onSyncReferences={(draft) => {
-            const current = getState().draft;
-            const sameCombination = draft.combinationId === current.combinationId;
-            changeDraft({
-              ...current,
-              references: draft.references,
-              regions: sameCombination ? draft.regions : [],
-              mask: sameCombination ? draft.mask : undefined,
-            });
-          }}
           onClose={() => setWriters(false)}
           active={writers}
           onSettings={() => {

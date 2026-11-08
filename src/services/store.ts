@@ -104,6 +104,15 @@ export function refreshUpscaleDevices(): Promise<void> {
 let loading: Promise<void> | undefined;
 /** Asset IDs referenced by the last committed draft; staged assets lose library files once unreferenced. */
 let committedRelated = new Set<string>();
+const retainedAssets = new Map<symbol, string[]>();
+/** Keep session inputs readable without writing them into the creation draft. */
+export function retainAssets(ids: string[]) {
+  const owner = Symbol();
+  retainedAssets.set(owner, ids);
+  return () => {
+    retainedAssets.delete(owner);
+  };
+}
 export function loadApplication(): Promise<void> {
   return (loading ??= (async () => {
     const [gallery, masks, boards, tasks, batches, feed, drafts, preferences, workspaces] = await Promise.all([
@@ -249,13 +258,18 @@ export function saveCreation(draft: GenerationDraft, creation: CreationWorkspace
         (entry) => entry.staged,
       );
       const removed = new Set<string>();
-      for (const entry of orphans)
+      for (const entry of orphans) {
+        if (relatedAssetIds(state.tasks, state.draft).includes(entry.asset.id)) {
+          committedRelated.add(entry.asset.id);
+          continue;
+        }
         try {
           await native("asset_delete", { id: entry.asset.id });
           removed.add(entry.asset.id);
         } catch {
           committedRelated.add(entry.asset.id);
         }
+      }
       if (removed.size) updateState({ gallery: state.gallery.filter((entry) => !removed.has(entry.asset.id)) });
     });
   return draftWrites;
@@ -346,6 +360,7 @@ function relatedAssetIds(
   ];
   return [
     ...new Set([
+      ...[...retainedAssets.values()].flat(),
       ...drafts.flatMap((entry) => [
         ...entry.references.map((reference) => reference.assetId),
         ...(entry.mask ? [entry.mask.assetId] : []),

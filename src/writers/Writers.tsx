@@ -17,7 +17,7 @@ import { ResizablePanel } from "../components/ResizablePanel";
 import { CopyButton } from "../components/CopyButton";
 
 import type { Writer } from "./types";
-import { refreshGallery, useApplication } from "../services/store";
+import { refreshGallery, retainAssets, useApplication } from "../services/store";
 import { PromptField } from "../create/components/PromptField";
 import { References, type ReferenceSource } from "../create/components/References";
 import { AssetPicker } from "../gallery/AssetPicker";
@@ -45,7 +45,6 @@ export function Writers({
   incomingImages,
   onClose,
   onSettings,
-  onSyncReferences,
   active,
   onError,
 }: {
@@ -55,7 +54,6 @@ export function Writers({
   incomingImages?: { entries: GalleryEntry[]; nonce: string };
   onClose: () => void;
   onSettings: () => void;
-  onSyncReferences: (draft: GenerationDraft) => void;
   active: boolean;
   onError: (error: unknown) => void;
 }) {
@@ -67,6 +65,14 @@ export function Writers({
     [selected, setSelected] = useState(""),
     [efforts, setEfforts] = useState<Record<string, string>>({}),
     [outputs, setOutputs] = useState<Output[]>([]);
+  useEffect(
+    () =>
+      retainAssets([
+        ...(active ? writerDraft.references.map((reference) => reference.assetId) : []),
+        ...outputs.flatMap((output) => output.draft.references.map((reference) => reference.assetId)),
+      ]),
+    [active, writerDraft, outputs],
+  );
   const resultsArea = useRef<HTMLDivElement>(null);
   const [columnCount, setColumnCount] = useState(1);
   useEffect(() => {
@@ -101,17 +107,13 @@ export function Writers({
     combinationById(writerDraft.combinationId).maxReferences || 10,
     writerDraft.references.length,
   );
-  const syncReferences = (next: GenerationDraft) => {
-    setWriterDraft(next);
-    onSyncReferences(next);
-  };
   const addReferences = (entries: GalleryEntry[]) => {
     if (!entries.length) return;
     if (writerDraft.references.length + entries.length > referenceLimit) {
       onError(c("tooMany"));
       return;
     }
-    syncReferences({
+    setWriterDraft({
       ...writerDraft,
       references: [
         ...writerDraft.references,
@@ -220,6 +222,7 @@ export function Writers({
   }, [queue, selected, efforts, loaded, onError]);
   const run = async (writer: Writer, effort: string, id: string = crypto.randomUUID()) => {
     const snapshot = structuredClone(writerDraft);
+    const release = retainAssets(snapshot.references.map((reference) => reference.assetId));
     setOutputs((current) => [
       ...current.filter((output) => output.id !== id),
       { id, writer, draft: snapshot, text: "", reasoning: "", effort, busy: true },
@@ -243,6 +246,8 @@ export function Writers({
       update({ busy: false });
     } catch (error) {
       update({ busy: false, error: String(error) });
+    } finally {
+      release();
     }
   };
   return (
@@ -264,7 +269,7 @@ export function Writers({
             <References
               draft={writerDraft}
               gallery={gallery}
-              onChange={syncReferences}
+              onChange={setWriterDraft}
               onAdd={(source) => void addSource(source).catch(onError)}
               onView={onView}
               limit={referenceLimit}
