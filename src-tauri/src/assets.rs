@@ -4,6 +4,72 @@ use image::{GenericImageView, ImageFormat};
 use serde_json::{json, Value};
 use std::path::Path;
 
+/// Called before session editors or pending writes can hold additional mask references.
+pub fn purge_orphan_masks(library: &Path, db: &rusqlite::Connection) -> Result<(), String> {
+    if !library.is_dir() {
+        return Ok(());
+    }
+    fn collect(value: &Value, keep: &mut std::collections::HashSet<String>) {
+        match value {
+            Value::Array(values) => {
+                for value in values {
+                    collect(value, keep);
+                }
+            }
+            Value::Object(values) => {
+                for (key, value) in values {
+                    if key == "assetId" || key == "$asset" {
+                        if let Some(id) = value.as_str() {
+                            keep.insert(id.to_owned());
+                        }
+                    }
+                    collect(value, keep);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut keep = std::collections::HashSet::new();
+    let mut statement = db
+        .prepare("SELECT body FROM records WHERE collection IN ('draft','creation','tasks','batches')")
+        .map_err(|e| e.to_string())?;
+    let references = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|e| e.to_string())?;
+    for record in references {
+        let value: Value = serde_json::from_str(&record.map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        collect(&value, &mut keep);
+    }
+    let mut statement = db
+        .prepare("SELECT id,body FROM records WHERE collection='masks'")
+        .map_err(|e| e.to_string())?;
+    let masks = statement
+        .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    for (id, body) in masks {
+        if keep.contains(&id) {
+            continue;
+        }
+        let value: Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+        for (key, folder) in [("path", "assets"), ("thumbnailPath", "thumbnails")] {
+            let path = Path::new(value[key].as_str().ok_or("Missing mask path")?);
+            if path.parent() != Some(library.join(folder).as_path()) {
+                return Err("Mask path is outside the library".into());
+            }
+            match std::fs::remove_file(path) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error.to_string()),
+            }
+        }
+        db.execute("DELETE FROM records WHERE collection='masks' AND id=?1", [&id])
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 pub fn decode_data_url(data: &str) -> Result<Vec<u8>, String> {
     let (header, encoded) = data.split_once(',').ok_or("Invalid image data URL")?;
     if !header.starts_with("data:") || !header.ends_with(";base64") {
