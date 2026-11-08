@@ -14,4 +14,6 @@
 | `seed` | 支持种子。 |
 | `provider.options` | 按 `black-forest-labs` 上游标识透传 `safety_tolerance`、`steps`。 |
 
+端点记录未单独列出 `safety_tolerance` 的取值范围或默认值。Lutri 按用户实测结果提供“默认”和 0–4 整数下拉选项，并校验该范围；选择“默认”时省略该字段，由上游使用默认值 2。0 最严格，实际可用等级受 BFL 账户和路由限制，未获批准的等级会返回 422；另见 [BFL 文档](flux-3-Image-Klein-BFL.md)。
+
 非流式返回图片位于 `data[].b64_json`。提示词中的图片顺序与 `input_references` 数组顺序对应。

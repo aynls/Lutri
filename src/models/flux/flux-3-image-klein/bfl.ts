@@ -9,7 +9,7 @@ const fields: FieldDefinition[] = [
   resolution(nativeResolutions),
   width(64, 6256),
   height(64, 6256),
-  safety(7),
+  safety(4),
   seed(4294967295),
   format("output_format", ["jpeg", "png"]),
   number("steps", ["Steps", "步数", "ステップ"], 1, 16),

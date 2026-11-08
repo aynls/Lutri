@@ -59,6 +59,8 @@ Content-Type: application/json
 
 这些字段的 BFL 原生语义和限制见 [BFL 接口文档](flux-3-Image-BFL.md)。OpenRouter 的端点记录确认了可透传的字段名称，但没有单独列出其取值范围或默认值。供应商路由也可通过 `provider` 设置，详见 OpenRouter 路由文档。
 
+Lutri 按用户实测结果，为 `safety_tolerance` 提供“默认”和 0–4 整数下拉选项，并校验该范围；选择“默认”时省略该字段，由上游使用默认值 2。0 最严格，实际可用等级受 BFL 账户和路由限制，未获批准的等级会返回 422。
+
 与 BFL 原生接口相比，OpenRouter 当前端点未列出 `width`、`height` 和 `match_input` 分辨率，也未将 `user` 列为可透传参数；不要假定它们可通过此端点使用。BFL 文档中的包围盒写在提示词中，并非独立 API 字段；OpenRouter 对这些提示词示例的效果未单独说明。
 
 ## 示例

@@ -1,8 +1,22 @@
-import { adv, number, text, toggle } from "../fields";
-import type { CompileContext } from "../types";
+import { label } from "../../i18n";
+import { adv, select, text, toggle } from "../fields";
+import type { CompileContext, FieldDefinition } from "../types";
 
-export const safety = (max: number) =>
-  number("safety_tolerance", ["Safety tolerance", "审核容忍度", "安全許容度"], 0, max);
+export const safety = (max: number): FieldDefinition => ({
+  ...select(
+    "safety_tolerance",
+    ["Safety tolerance", "审核容忍度", "安全許容度"],
+    Array.from({ length: max + 1 }, (_, value) => String(value)),
+  ),
+  integer: true,
+  min: 0,
+  max,
+  optionLabels: {
+    0: label("0 (Strictest)", "0（最严格）", "0（最も厳格）"),
+    2: label("2 (Default)", "2（默认）", "2（既定）"),
+    [max]: label(`${max} (Most permissive)`, `${max}（最宽松）`, `${max}（最も寛容）`),
+  },
+});
 
 export const grounding = () => toggle("grounding", ["Web search", "联网搜索", "ウェブ検索"]);
 

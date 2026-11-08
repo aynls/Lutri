@@ -31,6 +31,7 @@ export interface FieldDefinition {
   min?: number;
   max?: number;
   step?: number;
+  /** Selects with integer values store their options as numbers when true. */
   integer?: boolean;
   maxLength?: number;
   default?: Json;

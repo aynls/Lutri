@@ -20,10 +20,12 @@ Content-Type: application/json
 | `resolution` | string | 否 | `1k` | 输出分辨率档位，可选值见下文。 |
 | `width` | integer 或 null | 否 | — | 输出宽度，256–6256 像素；须与 `height` 一起设置。 |
 | `height` | integer 或 null | 否 | — | 输出高度，256–6256 像素；须与 `width` 一起设置。 |
-| `safety_tolerance` | integer | 否 | `2` | 内容审核容忍度，范围 0–7，0 最严格。路由和组织决定获准的最高等级及各类别上限；未获批准的等级返回 422 和获准等级。 |
+| `safety_tolerance` | integer | 否 | `2` | 内容审核容忍度，Lutri 按用户实测限制为 0–4，0 最严格。未获批准的等级返回 422。 |
 | `grounding` | boolean | 否 | `true` | 为 `true` 时，提示词可能使用外部网络和图片搜索；为 `false` 时两种搜索均关闭。 |
 | `version` | string | 否 | `latest` | 接口版本。目前列出的值为 `latest`，指向当前发布版本；日期版本会在发布时添加。 |
 | `user` | string 或 null | 否 | — | 调用平台提供的终端用户不透明标识符，长度 1–256，不得包含空字符。 |
+
+官方 Schema 声明的范围为 0–7，但用户实测仅支持 0–4。Lutri 据此提供“默认”和 0–4 整数下拉选项，并校验该范围；选择“默认”时省略该字段，由 BFL 使用默认值 2。
 
 ### 宽高比与分辨率
 
@@ -120,6 +122,7 @@ In <ref_image_0>, move the knight <knight_1> upwards and to the left. Keep the n
 ## 参考来源
 
 - 用户提供的 FLUX 3 Image 接口文档及其 OpenAPI 定义。
+- [BFL FLUX 3 Image API 参考](https://docs.bfl.ai/api-reference/utility/generate-an-image-with-flux-3)。
 - [BFL FLUX 3 Image 概览](https://docs.bfl.ai/flux_3/flux3_image_overview)。
 - [BFL 结果查询 API](https://docs.bfl.ml/api-reference)
 - [BFL 异步请求与结果示例](https://docs.bfl.ml/flux_outpainting)

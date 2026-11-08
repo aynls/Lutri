@@ -9,7 +9,7 @@ const fields: FieldDefinition[] = [
   resolution([...nativeResolutions, "match_input"]),
   width(256, 6256),
   height(256, 6256),
-  safety(7),
+  safety(4),
   grounding(),
   version(),
   user(),

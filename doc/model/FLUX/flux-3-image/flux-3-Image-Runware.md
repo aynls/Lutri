@@ -14,6 +14,7 @@
 | `resolution` | `0.75K`、`1K`、`2K`、`4K`；提供时必须有 `inputs.referenceImages`，用于按输入自动匹配宽高比，与明确尺寸互斥。 |
 | `settings.boundingBoxes` | 区域数组；没有参考图时，官方模型页面要求至少一个区域。供应商未标明数量上限，Lutri 统一按 32 个限制。 |
 | `settings.grounding` | 联网参考配置，详见模型 Schema。 |
+| `settings.safetyTolerance` | integer，0–4，默认 2；数值越小审核越严格。Lutri 提供“默认”和 0–4 整数下拉选项，选择“默认”时省略该字段。 |
 | `numberResults`、`outputFormat`、`outputQuality` | 输出数量、格式和压缩质量；取值见模型 Schema。 |
 
 区域包含 `id`、`description`、`referenceIndex`、`sourceBox`、`targetBox`；`description` 至少一个字符。坐标为 `[top,left,bottom,right]`，每项为 0–1000。`referenceIndex` 指向参考图数组；新元素不指定来源，删除元素时目标框为空且必须有参考图。区域 ID 在提示词中以 `<id>` 引用。

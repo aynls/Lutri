@@ -8,7 +8,7 @@ import type { FieldDefinition, ModelCombination } from "../../types";
 const fields: FieldDefinition[] = [
   aspect(fluxRatios),
   resolution(["768", "1K", "1.5K", "2K", "4K"]),
-  safety(7),
+  safety(4),
   grounding(),
   version(),
 ];

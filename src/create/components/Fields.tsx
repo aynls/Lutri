@@ -69,6 +69,7 @@ export function ParameterField({
     else parameters[field.key] = next;
     onChange({ ...draft, parameters });
   };
+  const updateOption = (option: string) => update(option === "" ? undefined : field.integer ? Number(option) : option);
   return (
     <div
       className={`field field-${fieldKind}${errors.length ? " has-error" : ""}`}
@@ -83,7 +84,11 @@ export function ParameterField({
       {field.kind === "select" && field.options?.length === 1 ? (
         <span className="fixed-field-value">
           {String(value ?? field.options[0])}
-          <button type="button" onClick={() => update(field.options![0])} disabled={value === field.options[0]}>
+          <button
+            type="button"
+            onClick={() => updateOption(field.options![0])}
+            disabled={String(value) === field.options[0]}
+          >
             {t("reset")}
           </button>
         </span>
@@ -91,7 +96,7 @@ export function ParameterField({
         <Select
           id={id}
           value={String(value ?? (field.options?.includes("auto") ? "auto" : ""))}
-          onValueChange={(nextValue) => update(nextValue || undefined)}
+          onValueChange={updateOption}
         >
           {field.allowDefault !== false && !field.options?.includes("auto") && (
             <option value="">{t("automatic")}</option>
