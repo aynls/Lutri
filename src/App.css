@@ -359,18 +359,18 @@ small {
 .feed {
   flex: 1;
   overflow: auto;
+  scrollbar-gutter: stable;
   padding: 24px;
   min-width: 0;
 }
 .result-card {
   width: 256px;
-  max-width: 320px;
-  break-inside: avoid;
-  margin: 0 auto 18px;
+  max-width: 100%;
+  margin: 0;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--surface);
-  position: relative;
+  position: absolute;
   overflow: hidden;
   animation: card-in 240ms ease-out;
   transition:
@@ -1134,18 +1134,8 @@ img.asset-image.loaded {
 }
 
 /* Creation controls. */
-.feed-columns {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 18px;
-}
-.feed-column {
-  width: 256px;
-  flex-shrink: 0;
-}
-.result-card {
-  margin-inline: 0;
+.feed-masonry {
+  position: relative;
 }
 .result-image {
   position: relative;

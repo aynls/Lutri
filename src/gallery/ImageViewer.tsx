@@ -10,6 +10,7 @@ import {
   FolderOpenIcon,
   HeartIcon,
   InfoIcon,
+  TrashIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import { useApplication } from "../services/store";
@@ -40,6 +41,7 @@ export function ImageViewer({
   onClose,
   onReference,
   onUpscale,
+  onDelete,
   onNavigate,
 }: {
   initialId: string;
@@ -47,6 +49,7 @@ export function ImageViewer({
   onClose: () => void;
   onReference: (entry: GalleryEntry) => Promise<void>;
   onUpscale?: (entry: GalleryEntry) => void;
+  onDelete?: (entry: GalleryEntry) => Promise<void>;
   onNavigate?: (id: string) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -234,6 +237,17 @@ export function ImageViewer({
                 >
                   <DownloadSimpleIcon />
                 </button>
+                {onDelete && !entry.unlisted && !entry.staged && (
+                  <button
+                    className="danger-button"
+                    disabled={acting}
+                    title={t("delete")}
+                    aria-label={t("delete")}
+                    onClick={() => withEntry(onDelete)}
+                  >
+                    <TrashIcon />
+                  </button>
+                )}
               </>
             )}
             {path && (

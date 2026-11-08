@@ -42,7 +42,7 @@ import { References, type ReferenceSource } from "./create/components/References
 import { c } from "./create/messages";
 import { InputPreparation } from "./create/components/InputPreparation";
 import { Dialog } from "./components/Dialog";
-import { chooseImages } from "./gallery/actions";
+import { chooseImages, deleteImage } from "./gallery/actions";
 import { RequestPreview } from "./create/components/RequestPreview";
 import { BatchDraft } from "./batch/BatchDraft";
 import { BatchHistory } from "./batch/BatchHistory";
@@ -87,7 +87,7 @@ let started = false;
 function hasDraftEdits(draft: GenerationDraft) {
   const defaults = initialDraft(combinationById(draft.combinationId));
   return Boolean(
-    draft.prompt.trim() ||
+    draft.prompt ||
     draft.references.length ||
     draft.regions.length ||
     draft.mask ||
@@ -141,6 +141,27 @@ export default function App() {
     setModeBusy(true);
     try {
       await switchCreationMode(mode);
+    } finally {
+      setModeBusy(false);
+    }
+  };
+  const clearDraft = async () => {
+    if (!state.ready || modeBusy || batchBusy || submitting) return;
+    setModeBusy(true);
+    try {
+      if (
+        !(await confirm(c("clearDraftConfirm"), {
+          title: c("clearDraft"),
+          kind: "warning",
+          okLabel: c("clearDraft"),
+          cancelLabel: t("cancel"),
+        }))
+      )
+        return;
+      await saveDraft(initialDraft(combinationById(getState().draft.combinationId)));
+      drafts.current.clear();
+      setParameterReset((value) => value + 1);
+      setSent(false);
     } finally {
       setModeBusy(false);
     }
@@ -539,29 +560,39 @@ export default function App() {
       <main className="workspace">
         <header className="workspace-header">
           <h1>{t(page)}</h1>
-          {page === "creation" && !isBatch ? (
+          {page === "creation" ? (
             <div className="button-row">
-              {!!queuedBatches.length && (
-                <button
-                  onClick={() =>
-                    void Promise.all(queuedBatches.map((batch) => cancelBatchQueued(batch.id))).catch(onError)
-                  }
-                >
-                  {c("stopQueued")} ·{" "}
-                  {state.tasks.filter((task) => !task.cloudGroupId && task.status === "queued").length}
-                </button>
-              )}
               <button
-                disabled={!state.feed.length}
-                onClick={() =>
-                  void (async () => {
-                    if (await confirm(c("clearConfirm"), { title: "Lutri", kind: "warning" }))
-                      await removeFeed(state.feed.map((slot) => slot.id));
-                  })().catch(onError)
-                }
+                disabled={!state.ready || modeBusy || batchBusy || submitting || !hasDraftEdits(state.draft)}
+                onClick={() => void clearDraft().catch(onError)}
               >
-                {t("clear")}
+                {c("clearDraft")}
               </button>
+              {!isBatch && (
+                <>
+                  {!!queuedBatches.length && (
+                    <button
+                      onClick={() =>
+                        void Promise.all(queuedBatches.map((batch) => cancelBatchQueued(batch.id))).catch(onError)
+                      }
+                    >
+                      {c("stopQueued")} ·{" "}
+                      {state.tasks.filter((task) => !task.cloudGroupId && task.status === "queued").length}
+                    </button>
+                  )}
+                  <button
+                    disabled={!state.feed.length}
+                    onClick={() =>
+                      void (async () => {
+                        if (await confirm(c("clearConfirm"), { title: "Lutri", kind: "warning" }))
+                          await removeFeed(state.feed.map((slot) => slot.id));
+                      })().catch(onError)
+                    }
+                  >
+                    {t("clear")}
+                  </button>
+                </>
+              )}
             </div>
           ) : null}
         </header>
@@ -941,7 +972,7 @@ export default function App() {
             </>
           }
         >
-          <label className="check">
+          <label className="spec-option">
             <input
               type="checkbox"
               checked={keepReferences}
@@ -996,6 +1027,13 @@ export default function App() {
           }))}
           onClose={() => setViewer(undefined)}
           onReference={useImageAsReference}
+          onDelete={
+            page === "gallery"
+              ? async (entry) => {
+                  if (await deleteImage(entry)) setViewer(undefined);
+                }
+              : undefined
+          }
           onUpscale={(entry) => {
             setWriters(false);
             setUpscaleInput({ entries: [entry], nonce: crypto.randomUUID() });

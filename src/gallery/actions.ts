@@ -1,5 +1,6 @@
-import { open, save } from "@tauri-apps/plugin-dialog";
+import { confirm, open, save } from "@tauri-apps/plugin-dialog";
 import type { GalleryEntry } from "../domain/types";
+import { t } from "../i18n";
 import { native } from "../services/native";
 import { getState, refreshGallery, savePreferences } from "../services/store";
 import { imageExtensions, importPaths } from "./imports";
@@ -14,6 +15,13 @@ export async function chooseImages(staged = false): Promise<GalleryEntry[]> {
 export async function favorite(entry: GalleryEntry) {
   await native("gallery_mutate", { ids: [entry.asset.id], action: "favorite", value: "toggle" });
   await refreshGallery();
+}
+
+export async function deleteImage(entry: GalleryEntry): Promise<boolean> {
+  if (!(await confirm(t("confirmDeleteImage"), { title: "Lutri", kind: "warning" }))) return false;
+  await native("asset_delete", { id: entry.asset.id });
+  await refreshGallery();
+  return true;
 }
 
 export async function exportImages(entries: GalleryEntry[]): Promise<number> {

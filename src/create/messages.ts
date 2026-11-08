@@ -102,6 +102,12 @@ const messages = {
   queued: label("queued", "个排队请求", "件の待機リクエスト"),
   stopQueued: label("Stop queued requests", "停止排队请求", "待機中のリクエストを停止"),
   sent: label("Submitted", "已提交", "送信済み"),
+  clearDraft: label("Clear draft", "清空草稿", "下書きをクリア"),
+  clearDraftConfirm: label(
+    "Clear the current draft and reset its parameters? This cannot be undone.",
+    "清空当前草稿并重置参数？此操作无法撤销。",
+    "現在の下書きを消去し、パラメーターをリセットしますか？この操作は元に戻せません。",
+  ),
   clearConfirm: label("Clear the entire feed?", "清空瀑布流？", "一覧をすべて消去しますか？"),
   prepare: label("Input images", "输入图片", "入力画像"),
   maxEdge: label("Maximum edge", "长边上限", "長辺の上限"),

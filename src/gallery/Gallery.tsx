@@ -20,7 +20,7 @@ import { getState, refreshGallery, updateState, useApplication } from "../servic
 import { Dialog } from "../components/Dialog";
 import { CopyButton } from "../components/CopyButton";
 import { ResizablePanel } from "../components/ResizablePanel";
-import { chooseImages, copyAssetImage, exportImages, favorite } from "./actions";
+import { chooseImages, copyAssetImage, deleteImage, exportImages, favorite } from "./actions";
 import { lt } from "../i18n/library";
 export { chooseImages, favorite } from "./actions";
 
@@ -267,10 +267,7 @@ export function Gallery({
     await refreshGallery();
   };
   const deleteEntry = async (entry: GalleryEntry) => {
-    if (!(await confirm(t("confirmDeleteImage"), { title: "Lutri", kind: "warning" }))) return;
-    await native("asset_delete", { id: entry.asset.id });
-    setSelected((previous) => previous.filter((id) => id !== entry.asset.id));
-    await refreshGallery();
+    if (await deleteImage(entry)) setSelected((previous) => previous.filter((id) => id !== entry.asset.id));
   };
   const deleteSelected = async () => {
     if (!(await confirm(t("confirmDelete"), { title: "Lutri", kind: "warning" }))) return;
