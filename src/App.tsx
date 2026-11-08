@@ -613,6 +613,7 @@ export default function App() {
                   onChange={changeDraft}
                   onWriters={() => setWriters(true)}
                   limit={combination.promptLimit}
+                  regions={!!combination.regions}
                 />
                 {!!combination.maxReferences && (
                   <References
@@ -676,6 +677,7 @@ export default function App() {
                     </button>
                   )
                 ) : null}
+                {combination.regions ? <Regions draft={state.draft} onChange={changeDraft} /> : null}
                 <section className="creation-parameters">
                   <div className="section-heading">
                     <span>{t("parameters")}</span>
@@ -700,7 +702,6 @@ export default function App() {
                     styleControl={<SavedStyles combination={combination} draft={state.draft} onChange={changeDraft} />}
                   />
                   {!!combination.maxReferences && <InputPreparation draft={state.draft} onChange={changeDraft} />}
-                  {combination.regions ? <Regions draft={state.draft} onChange={changeDraft} /> : null}
                   <RequestPreview
                     combination={combination}
                     batch={isBatch}

@@ -49,9 +49,6 @@
   flex-direction: column;
   gap: 0;
 }
-.creation-parameters > .layout-section {
-  margin-block: 23px;
-}
 .creation-section {
   border-top: 1px solid var(--line);
   min-width: 0;

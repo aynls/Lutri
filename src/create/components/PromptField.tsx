@@ -1,6 +1,6 @@
 import { SparkleIcon } from "@phosphor-icons/react";
 import { useId, useLayoutEffect, useRef } from "react";
-import type { GenerationDraft, ImageReference } from "../../domain/types";
+import type { GenerationDraft } from "../../domain/types";
 import { insertReference } from "../../domain/references";
 import { t } from "../../i18n";
 import { c } from "../messages";
@@ -24,11 +24,13 @@ export function PromptField({
   onChange,
   onWriters,
   limit,
+  regions,
 }: {
   draft: GenerationDraft;
   onChange: (draft: GenerationDraft) => void;
   onWriters?: () => void;
   limit?: { min?: number; max: number };
+  regions?: boolean;
 }) {
   const labelId = useId();
   const limitId = useId();
@@ -63,7 +65,7 @@ export function PromptField({
       node.classList.toggle("missing-reference", !reference);
     }
   }, [draft.prompt, draft.references]);
-  const insert = (reference: ImageReference) => {
+  const insert = (token: Node) => {
     const editor = input.current;
     if (!editor) return;
     editor.focus();
@@ -75,7 +77,6 @@ export function PromptField({
       range.collapse(false);
     }
     range.deleteContents();
-    const token = pill(reference.id, reference.name);
     range.insertNode(token);
     range.setStartAfter(token);
     range.collapse(true);
@@ -144,12 +145,26 @@ export function PromptField({
             key={reference.id}
             title={insertReference(reference)}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => insert(reference)}
+            onClick={() => insert(pill(reference.id, reference.name))}
           >
             {reference.name}
           </button>
         ))}
       </div>
+      {regions && !!draft.regions.length && (
+        <div className="reference-tokens">
+          {draft.regions.map((region) => (
+            <button
+              key={region.id}
+              title={`<${region.id}>`}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => insert(document.createTextNode(`<${region.id}>`))}
+            >
+              {region.id}
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
