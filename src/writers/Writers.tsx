@@ -487,13 +487,13 @@ export function Writers({
               <button onClick={() => setOutputs([])}>{localize(label("Clear all", "全部清空", "すべて消去"))}</button>
             </div>
           ) : null}
-          <div className="writer-results" ref={resultsArea}>
-            {!outputs.length && (
-              <div className="empty-state">
-                <NotePencilIcon size={36} weight="thin" />
-                <p>{localize(label("No results yet", "暂无结果", "結果はまだありません"))}</p>
-              </div>
-            )}
+          {!outputs.length && (
+            <div className="empty-state">
+              <NotePencilIcon size={36} weight="thin" />
+              <p>{localize(label("No results yet", "暂无结果", "結果はまだありません"))}</p>
+            </div>
+          )}
+          <div className="writer-results" ref={resultsArea} hidden={!outputs.length}>
             {resultColumns.map((column, index) => (
               <div className="writer-results-column" key={index}>
                 {column.map((output) => (
