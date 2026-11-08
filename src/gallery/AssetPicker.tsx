@@ -8,16 +8,19 @@ export function AssetPicker({
   onClose,
   onError,
   limit,
+  stagedImports,
 }: {
   onSelect: (entries: GalleryEntry[]) => void;
   onClose: () => void;
   onError: (error: unknown) => void;
   limit?: number;
+  stagedImports: boolean;
 }) {
   return (
     <Dialog title={t("chooseImages")} onClose={onClose} className="asset-picker">
       <Gallery
         picker
+        stagedImports={stagedImports}
         limit={limit}
         onPick={onSelect}
         onReference={(entry) => onSelect([entry])}

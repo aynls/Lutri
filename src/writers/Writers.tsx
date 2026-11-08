@@ -554,6 +554,7 @@ export function Writers({
       </div>
       {picker && (
         <AssetPicker
+          stagedImports
           onSelect={addReferences}
           onClose={() => setPicker(false)}
           onError={onError}

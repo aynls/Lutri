@@ -32,6 +32,7 @@ export function Gallery({
   onUpscale,
   onError,
   picker = false,
+  stagedImports = false,
   onPick,
   limit = Infinity,
 }: {
@@ -42,6 +43,7 @@ export function Gallery({
   onUpscale?: (entry: GalleryEntry) => void;
   onError: (error: unknown) => void;
   picker?: boolean;
+  stagedImports?: boolean;
   onPick?: (entries: GalleryEntry[]) => void;
   limit?: number;
 }) {
@@ -288,7 +290,7 @@ export function Gallery({
     if (failed.length) throw new Error(failed.join("\n"));
   };
   const importImages = async () => {
-    const imported = await chooseImages(picker);
+    const imported = await chooseImages(stagedImports);
     if (picker && imported.length) onPick ? onPick(imported.slice(0, limit)) : onReference(imported[0]);
     else if (imported.length) setNotice(`${t("importedCount")} · ${imported.length}`);
   };
@@ -756,7 +758,7 @@ export function Gallery({
                     if (editor.kind === "url") {
                       const url = new URL(editor.value.trim());
                       if (!["https:", "http:"].includes(url.protocol)) throw new Error(lt("invalidUrl"));
-                      const entry = await importAsset({ url: url.href }, picker);
+                      const entry = await importAsset({ url: url.href }, stagedImports);
                       if (picker) onPick?.([entry]);
                     } else {
                       const ids =

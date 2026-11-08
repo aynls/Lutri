@@ -495,6 +495,7 @@ export function Upscale({
       </div>
       {picker && (
         <AssetPicker
+          stagedImports={false}
           onSelect={(entries) => {
             if (add(entries)) setPicker(false);
           }}

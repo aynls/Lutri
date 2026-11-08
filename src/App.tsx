@@ -880,6 +880,7 @@ export default function App() {
         : null}
       {picker && (
         <AssetPicker
+          stagedImports
           onSelect={addReferences}
           onClose={() => setPicker(false)}
           onError={onError}
