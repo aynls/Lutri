@@ -40,7 +40,7 @@ export function validateBatchDraft(draft: GenerationDraft, requirePrompt = true)
   return errors;
 }
 
-/** Copy fields only when their schemas agree, then check the complete target configuration. */
+/** Copy fields when their schemas agree; keep combination conflicts visible for correction. */
 export function transferDraft(current: GenerationDraft, next: ModelCombination, remembered?: GenerationDraft) {
   const previous = combinationById(current.combinationId);
   const base = remembered ?? initialDraft(next);
@@ -64,7 +64,6 @@ export function transferDraft(current: GenerationDraft, next: ModelCombination, 
     mask: current.mask,
     regions: current.regions,
   };
-  if (next.validate(draft).length) draft.parameters = { ...base.parameters };
   return draft;
 }
 
