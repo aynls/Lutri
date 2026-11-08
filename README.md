@@ -81,7 +81,7 @@ A useful workbench also takes care of what happens after each experiment.
 
 **Build a collection of your own.** Manage generated images and reference materials in the gallery. Organize them with favorites and custom boards, then reuse them for creation or upscaling.
 
-**Bring your AI assistant into the workflow.** A built-in local MCP server lets agents discover models, submit generation requests, retrieve task results, find gallery assets, and run local upscaling.
+**Bring your AI assistant into the workflow.** A built-in local MCP server lets agents discover models, submit regular creation or cloud batches, find gallery assets by asset ID, and retrieve previous task results.
 
 **Feel at home on your desktop.** Chinese, English, and Japanese interfaces, with light, dark, and system themes.
 
@@ -116,7 +116,7 @@ npm run format:check
 
 Save your provider keys in Settings, then select a model and provider in the creation workspace. Each combination has its own fields, constraints, and request compiler. Writer uses a separate OpenAI-compatible model configuration. Enter the base endpoint, including a path such as `/v1` where needed, without `/chat/completions`.
 
-Start MCP in Settings. The server listens only on a local address. Copy its configuration into a client that supports Streamable HTTP. It supports querying model combinations, submitting batches, resuming existing tasks, searching and reading gallery images, and running local upscaling.
+Start MCP in Settings, then copy its configuration into a client that supports Streamable HTTP. The server listens only on a local address and requires its bearer token. Agents can create independently of your drafts, search the complete gallery, and retrieve saved task results, including results outside the gallery. See the [MCP tool reference](doc/mcp.md) for parameters, request IDs, and workflows. Existing clients must refresh their tool list and update calls to the rewritten interface.
 
 ### Local upscaling and platform builds
 

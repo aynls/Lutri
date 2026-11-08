@@ -91,6 +91,7 @@ pub fn run() {
             desktop::desktop_zoom,
             desktop::desktop_shutdown,
             mcp::mcp_start,
+            mcp::mcp_status,
             mcp::mcp_stop,
             mcp::mcp_reply,
             mcp::mcp_get_token,

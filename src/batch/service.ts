@@ -22,7 +22,7 @@ import {
   updateState,
 } from "../services/store";
 import { receive, downloadResults } from "../services/generation";
-import { resolveOutputs } from "../services/outputs";
+import { resolveOutputs, type OutputOptions } from "../services/outputs";
 import { imageResults, responseMetadata } from "../providers/results";
 import { HttpError, array, object, send, string } from "../providers/transport";
 import { sanitizeDiagnostic } from "../providers/diagnostics";
@@ -122,18 +122,22 @@ async function groupTasks(group: CloudBatchGroup, status: GenerationTask["status
 }
 
 /** Validate and prepare every item before uploading anything or emptying the draft. */
-export async function submitCloudBatch(): Promise<GenerationBatch> {
+export async function submitCloudBatch(options?: {
+  items: BatchDraftItem[];
+  output: OutputOptions;
+  mcpRequest: NonNullable<GenerationBatch["mcpRequest"]>;
+}): Promise<GenerationBatch> {
   if (submitting) throw new Error(b("submitting"));
   submitting = true;
   const fileIds: string[] = [];
   let persisted = false;
   try {
-    await flushWrites();
+    if (!options) await flushWrites();
     const workspace = getState().creation;
-    if (workspace.editing) throw new Error(b("pendingEdit"));
-    const items = structuredClone(workspace.items);
+    if (!options && workspace.editing) throw new Error(b("pendingEdit"));
+    const items = structuredClone(options?.items ?? workspace.items);
     if (!items.length) throw new Error(b("empty"));
-    const output = resolveOutputs("batch");
+    const output = resolveOutputs("batch", options?.output);
     if (output.directory && !(await native<boolean>("layer_directory_available", { directory: output.directory })))
       throw new Error(output.directory);
     const credentials = new Map(
@@ -160,7 +164,8 @@ export async function submitCloudBatch(): Promise<GenerationBatch> {
     const batch: GenerationBatch = {
       id: crypto.randomUUID(),
       createdAt: now,
-      origin: "manual",
+      origin: options ? "mcp" : "manual",
+      mcpRequest: options?.mcpRequest,
       taskIds: [],
       cloud: { items, groups: [] },
     };
@@ -248,14 +253,17 @@ export async function submitCloudBatch(): Promise<GenerationBatch> {
     batch.taskIds = tasks.map((task) => task.id);
     const current = getState();
     const submitted = new Set(items.map((item) => item.id));
-    await saveCreation(
-      current.draft,
-      { ...current.creation, items: current.creation.items.filter((item) => !submitted.has(item.id)) },
-      [
-        { collection: "batches", id: batch.id, value: batch },
-        ...tasks.map((task) => ({ collection: "tasks", id: task.id, value: task })),
-      ],
-    );
+    const changes = [
+      { collection: "batches", id: batch.id, value: batch },
+      ...tasks.map((task) => ({ collection: "tasks", id: task.id, value: task })),
+    ];
+    if (options) await commit(changes);
+    else
+      await saveCreation(
+        current.draft,
+        { ...current.creation, items: current.creation.items.filter((item) => !submitted.has(item.id)) },
+        changes,
+      );
     persisted = true;
     updateState({ batches: [batch, ...getState().batches], tasks: [...tasks, ...getState().tasks] });
     void refreshGallery().catch(() => {});

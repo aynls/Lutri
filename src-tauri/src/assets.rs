@@ -222,12 +222,19 @@ pub fn result_stage(store: tauri::State<Store>, data_url: String) -> Result<Stri
 }
 
 #[tauri::command]
-pub fn asset_data(store: tauri::State<Store>, id: String) -> Result<String, String> {
+pub fn asset_data(store: tauri::State<Store>, id: String, preview: Option<bool>) -> Result<String, String> {
     let _guard = store.library.read().map_err(|e| e.to_string())?;
     let value = image_entry(&store, &id)?;
-    let path = value["path"].as_str().ok_or("Missing asset path")?;
+    let preview = preview.unwrap_or(false);
+    let path = value[if preview { "thumbnailPath" } else { "path" }]
+        .as_str()
+        .ok_or("Missing asset path")?;
     let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
-    let media = value["asset"]["mediaType"].as_str().ok_or("Missing media type")?;
+    let media = if preview {
+        "image/png"
+    } else {
+        value["asset"]["mediaType"].as_str().ok_or("Missing media type")?
+    };
     Ok(format!("data:{media};base64,{}", STANDARD.encode(bytes)))
 }
 

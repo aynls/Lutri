@@ -1,23 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import { CopyButton } from "../components/CopyButton";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { t } from "../i18n";
-import { connection, setConnectionToken, startMcp, stopMcp } from "../services/mcp";
+import {
+  getMcpConnection,
+  subscribeMcp,
+  refreshMcpConnection,
+  setConnectionToken,
+  startMcp,
+  stopMcp,
+} from "../services/mcp";
 import { getState, savePreferences, useApplication } from "../services/store";
 import { native } from "../services/native";
 import { settingsText as text } from "./messages";
 
 export function McpSettings({ onError }: { onError: (error: unknown) => void }) {
   const { preferences } = useApplication();
+  const current = useSyncExternalStore(subscribeMcp, getMcpConnection);
   const [port, setPort] = useState(preferences.mcp?.port ?? 39632),
-    [current, setCurrent] = useState(connection),
-    [token, setToken] = useState(connection?.token),
+    [storedToken, setToken] = useState(current?.token),
     [showToken, setShowToken] = useState(false),
     [busy, setBusy] = useState(false);
   useEffect(() => {
-    if (connection) return;
     let active = true;
+    void refreshMcpConnection().catch(onError);
     void native<string>("mcp_get_token")
       .then((value) => {
         if (active) setToken(value);
@@ -27,6 +34,7 @@ export function McpSettings({ onError }: { onError: (error: unknown) => void }) 
       active = false;
     };
   }, []);
+  const token = current?.token ?? storedToken;
   const endpoint =
     current?.url ??
     `http://127.0.0.1:${Number.isInteger(port) && port >= 1024 && port <= 65535 ? port : (preferences.mcp?.port ?? 39632)}/mcp`;
@@ -107,11 +115,9 @@ export function McpSettings({ onError }: { onError: (error: unknown) => void }) 
             attempt(async () => {
               if (current) {
                 await stopMcp();
-                setCurrent(undefined);
               } else {
                 await save({ port });
                 const started = await startMcp(port);
-                setCurrent(started);
                 setToken(started.token);
               }
             })
@@ -127,7 +133,6 @@ export function McpSettings({ onError }: { onError: (error: unknown) => void }) 
               const token = await native<string>("mcp_rotate_token");
               setConnectionToken(token);
               setToken(token);
-              if (current) setCurrent({ ...current, token });
             })
           }
         >

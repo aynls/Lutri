@@ -65,6 +65,7 @@ export function submitBatch(
   draft: GenerationDraft,
   origin: "manual" | "mcp" = "manual",
   options: OutputOptions = {},
+  mcpRequest?: GenerationBatch["mcpRequest"],
 ): Promise<GenerationBatch> {
   const snapshot = structuredClone(draft);
   try {
@@ -74,12 +75,16 @@ export function submitBatch(
   } catch (error) {
     return Promise.reject(error);
   }
-  const result = submissions.catch(() => {}).then(() => createBatch(snapshot, origin));
+  const result = submissions.catch(() => {}).then(() => createBatch(snapshot, origin, mcpRequest));
   submissions = result;
   return result;
 }
 
-async function createBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "manual") {
+async function createBatch(
+  draft: GenerationDraft,
+  origin: "manual" | "mcp" = "manual",
+  mcpRequest?: GenerationBatch["mcpRequest"],
+) {
   const combination = combinationById(draft.combinationId);
   const errors = validateDraft(draft, maxRequestCount(getState().preferences));
   if (!draft.prompt.trim() && !draft.parameters.layer_decomposition && !draft.parameters.structured_prompt)
@@ -93,7 +98,7 @@ async function createBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "m
     ids: [...draft.references.map((reference) => reference.assetId), ...parameterAssetIds(draft.parameters)],
   });
   const now = Date.now();
-  const batch: GenerationBatch = { id: crypto.randomUUID(), createdAt: now, origin, taskIds: [] };
+  const batch: GenerationBatch = { id: crypto.randomUUID(), createdAt: now, origin, taskIds: [], mcpRequest };
   const tasks: GenerationTask[] = Array.from({ length: draft.requestCount }, () => ({
     id: crypto.randomUUID(),
     batchId: batch.id,
@@ -120,7 +125,7 @@ async function createBatch(draft: GenerationDraft, origin: "manual" | "mcp" = "m
     ],
   );
   updateState({ batches: [batch, ...getState().batches], tasks: [...tasks, ...getState().tasks] });
-  await refreshGallery();
+  void refreshGallery().catch(() => {});
   for (const task of tasks) void execute(task.id, true).catch(() => {});
   return batch;
 }

@@ -148,6 +148,7 @@ export interface GenerationBatch {
   createdAt: number;
   origin: "manual" | "mcp";
   taskIds: string[];
+  mcpRequest?: { id: string; fingerprint: string };
   cloud?: { items: BatchDraftItem[]; groups: CloudBatchGroup[] };
 }
 
