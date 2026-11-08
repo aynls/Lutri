@@ -1,6 +1,13 @@
 import { Select } from "../components/Select";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownIcon, ArrowUpIcon, DotsSixVerticalIcon, XIcon, GearSixIcon } from "@phosphor-icons/react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  DotsSixVerticalIcon,
+  XIcon,
+  GearSixIcon,
+  NotePencilIcon,
+} from "@phosphor-icons/react";
 import type { GenerationDraft, GalleryEntry } from "../domain/types";
 import { label, localize, t } from "../i18n";
 import { importAsset, native, commit, readRecords } from "../services/native";
@@ -476,6 +483,12 @@ export function Writers({
             </div>
           ) : null}
           <div className="writer-results" ref={resultsArea}>
+            {!outputs.length && (
+              <div className="empty-state">
+                <NotePencilIcon size={36} weight="thin" />
+                <p>{localize(label("No results yet", "暂无结果", "結果はまだありません"))}</p>
+              </div>
+            )}
             {resultColumns.map((column, index) => (
               <div className="writer-results-column" key={index}>
                 {column.map((output) => (

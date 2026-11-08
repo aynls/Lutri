@@ -866,6 +866,11 @@ img.asset-image.loaded {
   justify-content: center;
   align-items: flex-start;
   gap: 20px;
+  min-height: 100%;
+}
+.writer-results > .empty-state {
+  flex: 1;
+  align-self: stretch;
 }
 .writer-results-column {
   flex: 0 1 435px;
