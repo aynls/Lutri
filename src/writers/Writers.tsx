@@ -523,16 +523,17 @@ export function Writers({
                     {output.error ? <p className="error-text">{output.error}</p> : null}
                     <footer>
                       <button
-                        disabled={output.busy}
+                        disabled={output.busy || !writers.some((writer) => writer.id === output.writer.id)}
                         onClick={() => {
                           const current = writers.find((writer) => writer.id === output.writer.id);
+                          if (!current) return;
                           const effort =
-                            current?.endpoint === output.writer.endpoint &&
+                            current.endpoint === output.writer.endpoint &&
                             current.model === output.writer.model &&
                             current.efforts?.includes(output.effort)
                               ? output.effort
                               : "";
-                          void run(output.writer, effort, output.id);
+                          void run(current, effort, output.id);
                         }}
                       >
                         {localize(label("Rewrite", "重写", "書き直す"))}
