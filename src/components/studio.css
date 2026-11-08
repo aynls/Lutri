@@ -334,6 +334,40 @@ button[aria-pressed="true"] {
   display: grid;
   place-items: center;
 }
+.image-compare-labels {
+  position: absolute;
+  inset: 12px 12px auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+.image-compare-labels > span {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.image-compare-labels > span:last-child {
+  margin-left: auto;
+}
+.image-compare-modes {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 4;
+  max-width: calc(100% - 24px);
+  transform: translateX(-50%);
+  box-shadow: var(--shadow-sm);
+}
+.image-compare-modes button {
+  min-height: 30px;
+  padding: 6px 12px;
+  white-space: nowrap;
+  font-size: calc(12px * var(--font-scale, 1));
+}
 .preview-unavailable {
   position: absolute;
   inset: 0;

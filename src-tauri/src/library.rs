@@ -517,34 +517,6 @@ fn library_maintain_inner(store: &Store, action: String, ids: Option<Vec<String>
     Ok(json!({"missing":missing,"repaired":repaired}))
 }
 
-pub fn auto_export(store: &Store, entry: &Value, kind: &str) -> Result<(), String> {
-    let prefs = store
-        .db
-        .lock()
-        .map_err(|e| e.to_string())?
-        .query_row(
-            "SELECT body FROM records WHERE collection='preferences' AND id='preferences'",
-            [],
-            |row| row.get::<_, String>(0),
-        )
-        .ok()
-        .and_then(|s| serde_json::from_str::<Value>(&s).ok())
-        .unwrap_or_default();
-    let enabled = if kind == "upscale" {
-        "upscaleAuto"
-    } else {
-        "generationAuto"
-    };
-    if prefs["outputs"][enabled] != true {
-        return Ok(());
-    }
-    let directory = prefs["outputs"]["directory"]
-        .as_str()
-        .filter(|v| !v.is_empty())
-        .ok_or("Output folder is not configured")?;
-    export_to_directory(entry, directory)
-}
-
 fn export_to_directory(entry: &Value, directory: &str) -> Result<(), String> {
     let source = Path::new(entry["path"].as_str().ok_or("Invalid asset")?);
     let target = Path::new(directory).join(source.file_name().ok_or("Invalid filename")?);

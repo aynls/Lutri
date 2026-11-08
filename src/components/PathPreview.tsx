@@ -3,15 +3,15 @@ import { imageUrl } from "../services/native";
 import { t } from "../i18n";
 import { ImageStage, type PreviewImage } from "./ImageStage";
 
-export function PathPreview({
-  before,
-  after,
-  toolbarTarget,
-}: {
+export interface PathPreviewProps {
   before: string;
   after?: string;
+  beforeLabel?: string;
+  afterLabel?: string;
   toolbarTarget?: HTMLElement | null;
-}) {
+}
+
+export function PathPreview({ before, after, beforeLabel, afterLabel, toolbarTarget }: PathPreviewProps) {
   const [images, setImages] = useState<PreviewImage[]>(),
     [error, setError] = useState(false);
   useEffect(() => {
@@ -37,7 +37,13 @@ export function PathPreview({
     };
   }, [before, after]);
   return images ? (
-    <ImageStage before={images[0]} after={images[1]} toolbarTarget={toolbarTarget} />
+    <ImageStage
+      before={images[0]}
+      after={images[1]}
+      beforeLabel={beforeLabel}
+      afterLabel={afterLabel}
+      toolbarTarget={toolbarTarget}
+    />
   ) : (
     <div className="empty-state">{error ? t("missing") : <span className="spinner" />}</div>
   );

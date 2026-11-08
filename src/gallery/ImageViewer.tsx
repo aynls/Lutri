@@ -17,7 +17,7 @@ import { useApplication } from "../services/store";
 import { native, imageUrl } from "../services/native";
 import { t } from "../i18n";
 import { ImageStage } from "../components/ImageStage";
-import { PathPreview } from "../components/PathPreview";
+import { PathPreview, type PathPreviewProps } from "../components/PathPreview";
 import { CopyButton } from "../components/CopyButton";
 import { ResizablePanel } from "../components/ResizablePanel";
 import { RequestDetails } from "../history/RequestDetails";
@@ -30,8 +30,9 @@ import { isSvgAsset } from "../domain/media";
 export interface ImageViewerItem {
   id: string;
   assetId?: string;
-  preview?: { before: string; after?: string };
+  preview?: Omit<PathPreviewProps, "toolbarTarget">;
   resolveEntry?: () => Promise<GalleryEntry>;
+  onExport?: () => Promise<unknown>;
   details?: ReactNode;
 }
 
@@ -114,22 +115,26 @@ export function ImageViewer({
   const task = tasks.find((task) => task.results.some((result) => result.assetId === assetId));
   const onError = (value: unknown) => setError(String(value));
   const attempt = (action: () => Promise<unknown>) => void action().catch(onError);
-  const withEntry = (action: (entry: GalleryEntry) => unknown | Promise<unknown>) => {
+  const withAction = (action: () => unknown | Promise<unknown>) => {
     if (actionLock.current) return;
     actionLock.current = true;
     setActing(true);
     setError("");
     attempt(async () => {
       try {
-        const resolved = source?.resolveEntry ? await source.resolveEntry() : entry;
-        if (!resolved) throw new Error(t("missing"));
-        await action(resolved);
+        await action();
       } finally {
         actionLock.current = false;
         setActing(false);
       }
     });
   };
+  const withEntry = (action: (entry: GalleryEntry) => unknown | Promise<unknown>) =>
+    withAction(async () => {
+      const resolved = source?.resolveEntry ? await source.resolveEntry() : entry;
+      if (!resolved) throw new Error(t("missing"));
+      await action(resolved);
+    });
   const related = (id: string) => {
     if (!ids.includes(id)) setRelatedItems((previous) => [...previous, { id, assetId: id }]);
     setCurrent(id);
@@ -138,7 +143,7 @@ export function ImageViewer({
     <dialog
       ref={dialog}
       className="image-viewer viewer-workspace viewer-dialog"
-      aria-label={t("details")}
+      aria-label={source?.preview?.after ? t("compare") : t("details")}
       tabIndex={-1}
       onCancel={(event) => {
         event.preventDefault();
@@ -229,26 +234,30 @@ export function ImageViewer({
                 >
                   <CopyIcon />
                 </button>
-                <button
-                  disabled={acting}
-                  title={t("saveAs")}
-                  aria-label={t("saveAs")}
-                  onClick={() => withEntry((resolved) => exportImages([resolved]))}
-                >
-                  <DownloadSimpleIcon />
-                </button>
-                {onDelete && !entry.unlisted && !entry.staged && (
-                  <button
-                    className="danger-button"
-                    disabled={acting}
-                    title={t("delete")}
-                    aria-label={t("delete")}
-                    onClick={() => withEntry(onDelete)}
-                  >
-                    <TrashIcon />
-                  </button>
-                )}
               </>
+            )}
+            {(entry || source?.onExport) && (
+              <button
+                disabled={acting}
+                title={t("saveAs")}
+                aria-label={t("saveAs")}
+                onClick={() =>
+                  source?.onExport ? withAction(source.onExport) : withEntry((resolved) => exportImages([resolved]))
+                }
+              >
+                <DownloadSimpleIcon />
+              </button>
+            )}
+            {entry && onDelete && !entry.unlisted && !entry.staged && (
+              <button
+                className="danger-button"
+                disabled={acting}
+                title={t("delete")}
+                aria-label={t("delete")}
+                onClick={() => withEntry(onDelete)}
+              >
+                <TrashIcon />
+              </button>
             )}
             {path && (
               <button

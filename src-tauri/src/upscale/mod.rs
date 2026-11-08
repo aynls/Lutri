@@ -353,11 +353,7 @@ pub fn upscale_save(store: tauri::State<Store>, path: String, model_id: Option<S
         .and_then(|v| v.to_str())
         .ok_or("Invalid upscale output")?;
     uuid::Uuid::parse_str(id).map_err(|_| "Invalid upscale output ID")?;
-    let mut entry = save_output_asset(&store, &source, id, model_id.as_deref().unwrap_or("unknown"))?;
-    if let Err(error) = crate::library::auto_export(&store, &entry, "upscale") {
-        entry["exportError"] = json!(error);
-    }
-    Ok(entry)
+    save_output_asset(&store, &source, id, model_id.as_deref().unwrap_or("unknown"))
 }
 
 fn save_output_asset(store: &Store, source: &std::path::Path, id: &str, model_id: &str) -> Result<Value, String> {
@@ -478,7 +474,7 @@ fn probe_devices(app: &tauri::AppHandle) -> Result<Vec<Value>, String> {
 pub fn upscale_export(
     store: tauri::State<Store>,
     path: String,
-    directory: String,
+    destination: String,
     job_id: String,
 ) -> Result<String, String> {
     uuid::Uuid::parse_str(&job_id).map_err(|_| "Invalid upscale job ID")?;
@@ -494,7 +490,7 @@ pub fn upscale_export(
     {
         return Err("Unknown upscale output".into());
     }
-    let destination = PathBuf::from(directory).join(format!("{job_id}.png"));
+    let destination = PathBuf::from(destination);
     copy_output(&source, &destination)?;
     Ok(destination.to_string_lossy().into_owned())
 }

@@ -33,6 +33,8 @@ export function ImageStage({
   const [unavailable, setUnavailable] = useState(false);
   useEffect(() => setUnavailable(false), [before.dataUrl, after?.dataUrl]);
   const [split, setSplit] = useState(50);
+  const [mode, setMode] = useState<"before" | "compare" | "after">("compare");
+  const splitPosition = mode === "before" ? 100 : mode === "after" ? 0 : split;
   const [scaleLabel, setScaleLabel] = useState(100);
   const reference = after ?? before;
   const minimumScale = () => {
@@ -213,7 +215,7 @@ export function ImageStage({
         </div>
         {after && (
           <>
-            <div className="image-compare-before" style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}>
+            <div className="image-compare-before" style={{ clipPath: `inset(0 ${100 - splitPosition}% 0 0)` }}>
               <div
                 className="image-compare-layer"
                 ref={(element) => {
@@ -225,6 +227,7 @@ export function ImageStage({
             </div>
             <div
               className="image-compare-divider"
+              hidden={mode !== "compare"}
               style={{ left: `${split}%` }}
               role="slider"
               tabIndex={0}
@@ -268,6 +271,27 @@ export function ImageStage({
               <span>
                 <ArrowsHorizontal size={18} />
               </span>
+            </div>
+            <div className="image-compare-labels" aria-hidden="true">
+              <span hidden={mode === "after"}>{beforeLabel}</span>
+              <span hidden={mode === "before"}>{afterLabel}</span>
+            </div>
+            <div
+              className="segmented-control image-compare-modes"
+              role="group"
+              aria-label={t("comparisonView")}
+              onPointerDown={(event) => event.stopPropagation()}
+              onDoubleClick={(event) => event.stopPropagation()}
+            >
+              <button aria-pressed={mode === "before"} onClick={() => setMode("before")}>
+                {beforeLabel}
+              </button>
+              <button aria-pressed={mode === "compare"} onClick={() => setMode("compare")}>
+                {t("compare")}
+              </button>
+              <button aria-pressed={mode === "after"} onClick={() => setMode("after")}>
+                {afterLabel}
+              </button>
             </div>
           </>
         )}
