@@ -9,6 +9,6 @@
 | `width`、`height` | 需配对，每边 128–4096，步长 16；提供参考图时可按 Schema 的依赖规则省略。 |
 | `seed` | 可选整数，未指定则随机。 |
 | `steps` | 1–50，默认 16。 |
-| `settings.boundingBoxes` | 区域数组，坐标为 `[top,left,bottom,right]`、0–1000；没有参考图时必填。供应商未标明数量上限，Lutri 统一按 32 个限制。 |
+| `settings.boundingBoxes` | 区域数组，字段与语义同 FLUX 3 Image，`description` 至少一个字符；没有参考图时必填。供应商未标明数量上限，Lutri 统一按 32 个限制。 |
 
 结果从 `data` 数组读取。

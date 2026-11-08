@@ -42,8 +42,6 @@ export const combination: ModelCombination = {
   validate: (draft) => {
     const errors = validateFields(fields, draft);
     errors.push(...dimensionErrors(draft.parameters, 0, 16822272));
-    if (draft.parameters.resolution === "match_input" && !draft.references.length)
-      errors.push("match_input: references ≥ 1");
     return errors;
   },
   compile: (context) => {

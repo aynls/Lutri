@@ -43,9 +43,11 @@ export const combination: ModelCombination = {
   validate: (draft) => {
     const errors = validateFields(fields, draft);
     errors.push(...dimensionErrors(draft.parameters, 0, 16822272));
-    if (draft.parameters.resolution === "match_input" && !draft.references.length)
-      errors.push("match_input: references ≥ 1");
+    if (draft.parameters.resolution && !draft.references.length)
+      errors.push("resolution: references ≥ 1");
     if (!draft.references.length && !draft.regions.length) errors.push("boundingBoxes ≥ 1");
+    for (const region of draft.regions)
+      if (!region.description.trim()) errors.push(`boundingBoxes.description: ${region.id}`);
     if (draft.parameters.resolution && (draft.parameters.width || draft.parameters.height))
       errors.push("resolution / width + height");
     return errors;

@@ -1,13 +1,12 @@
 import { ParameterFields } from "../../../create/components/Fields";
 import type { Json } from "../../../domain/types";
-import { adv, count, format, height, number, resolution, seed, width } from "../../fields";
+import { adv, count, format, height, number, seed, width } from "../../fields";
 import { dimensionErrors, request, validateFields, values } from "../../shared";
 import type { FieldDefinition, ModelCombination } from "../../types";
 
 const fields: FieldDefinition[] = [
   width(128, 4096, 16),
   height(128, 4096, 16),
-  resolution(["0.75K", "1K", "2K", "4K"]),
   count("numberResults", 20),
   format("outputFormat", ["JPG", "PNG", "WEBP"]),
   adv(number("outputQuality", ["Compression quality", "压缩质量", "圧縮品質"], 20, 99)),
@@ -42,11 +41,11 @@ export const combination: ModelCombination = {
   validate: (draft) => {
     const errors = validateFields(fields, draft);
     errors.push(...dimensionErrors(draft.parameters, 0, 16822272));
-    if (draft.parameters.resolution === "match_input" && !draft.references.length)
-      errors.push("match_input: references ≥ 1");
+    if (!draft.references.length && !(draft.parameters.width && draft.parameters.height))
+      errors.push("references / width + height");
     if (!draft.references.length && !draft.regions.length) errors.push("boundingBoxes ≥ 1");
-    if (draft.parameters.resolution && (draft.parameters.width || draft.parameters.height))
-      errors.push("resolution / width + height");
+    for (const region of draft.regions)
+      if (!region.description.trim()) errors.push(`boundingBoxes.description: ${region.id}`);
     return errors;
   },
   compile: (context) => {
@@ -62,14 +61,6 @@ export const combination: ModelCombination = {
       targetBox: region.target ?? null,
     }));
     const settings: Record<string, Json> = boxes.length ? { boundingBoxes: boxes } : {};
-    if (p.safety_tolerance !== undefined) {
-      settings.safetyTolerance = p.safety_tolerance;
-      delete p.safety_tolerance;
-    }
-    if (p.grounding !== undefined) {
-      settings.grounding = p.grounding;
-      delete p.grounding;
-    }
     return request("runware", "https://api.runware.ai/v1", [
       {
         ...p,
