@@ -15,3 +15,6 @@ Lutri 是基于 Tauri、React、TypeScript 和 Rust 的桌面图像工作台。�
 项目中各个模型的API请求参数记录在：doc\model 
 
 项目使用i18n进行本地化，如果修改文案必须同步中/英/日三种语言。UI文案确保简洁，严禁多余的解释性文字。
+
+- 未入图库的生成结果保存在 `outputs`；`assetData` 同时支持 `gallery`、`outputs` 和 `masks`。
+- 需要读取像素或导出的画布使用 `assetData` 返回的数据，不直接绘入 `imageUrl` 的跨源资源。输入预处理直接解码 Base64，不使用受 CSP `connect-src` 限制的 `fetch(data URL)`。

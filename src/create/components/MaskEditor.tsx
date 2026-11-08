@@ -12,7 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import type { GalleryEntry, GenerationDraft, StoredImage } from "../../domain/types";
 import { t } from "../../i18n";
-import { imageUrl } from "../../services/native";
+import { assetData, imageUrl } from "../../services/native";
 import { saveMask } from "../../services/store";
 import { Dialog } from "../../components/Dialog";
 import { useEditHistory } from "../../components/useEditHistory";
@@ -124,7 +124,7 @@ function MaskWorkspace({
     const load = async () => {
       if (mask) {
         const image = new Image();
-        image.src = imageUrl(mask.path);
+        image.src = await assetData(mask.asset.id);
         await image.decode();
         if (disposed) return;
         context.drawImage(image, 0, 0, width, height);
@@ -444,7 +444,8 @@ function MaskWorkspace({
           disabled={!ready || saving || missing}
           onClick={() => {
             setSaving(true);
-            void onApply(raster.current.toDataURL("image/png"))
+            void Promise.resolve()
+              .then(() => onApply(raster.current.toDataURL("image/png")))
               .catch(onError)
               .finally(() => setSaving(false));
           }}

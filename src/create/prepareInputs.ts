@@ -6,16 +6,17 @@ import { c } from "./messages";
 import { orderedCreationDraft } from "../models/creation";
 
 async function bitmap(data: string) {
-  const response = await fetch(data);
-  const blob = await response.blob();
+  const type = data.slice(5, data.indexOf(";"));
   // SVG blob decoding is not available in every WebView. Decode through an
   // image element while retaining the original data URL for native SVG inputs.
-  if (blob.type === "image/svg+xml") {
+  if (type === "image/svg+xml") {
     const image = new Image();
     image.src = data;
     await image.decode();
     return createImageBitmap(image);
   }
+  const bytes = Uint8Array.from(atob(data.slice(data.indexOf(",") + 1)), (character) => character.charCodeAt(0));
+  const blob = new Blob([bytes], { type });
   return createImageBitmap(blob, { imageOrientation: "from-image" });
 }
 
