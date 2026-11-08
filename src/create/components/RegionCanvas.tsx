@@ -204,9 +204,9 @@ export function RegionCanvas({
           width={rect.w}
           height={rect.h}
           fill={box.color}
-          fillOpacity={isSelected ? 0.24 : 0.12}
+          fillOpacity={isSelected ? 0.34 : 0.2}
           stroke={box.color}
-          strokeWidth={isSelected ? 2.5 : 2}
+          strokeWidth={isSelected ? 3.5 : 2.5}
           vectorEffect="non-scaling-stroke"
         />
         {label ? (

@@ -451,7 +451,7 @@
 }
 
 .region-handle {
-  fill: var(--surface);
+  fill: #fff;
   stroke: var(--handle-color);
   stroke-width: 1;
   transform-origin: 0 0;
