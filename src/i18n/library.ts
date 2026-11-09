@@ -21,6 +21,7 @@ const messages = {
   emptyFavorites: label("No favorites", "暂无收藏", "お気に入りはありません"),
   emptyBoard: label("Board is empty", "图板为空", "ボードは空です"),
   copyImage: label("Copy image", "复制图片", "画像をコピー"),
+  previewImage: label("Preview image", "预览图片", "画像をプレビュー"),
   previousImage: label("Previous image", "上一张", "前の画像"),
   nextImage: label("Next image", "下一张", "次の画像"),
   dimensions: label("Dimensions", "尺寸", "サイズ"),

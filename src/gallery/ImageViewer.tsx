@@ -53,16 +53,18 @@ export function ImageViewer({
   onUpscale,
   onDelete,
   onNavigate,
+  readOnly = false,
 }: {
   initialId: string;
   items: ImageViewerItem[];
   onClose: () => void;
-  onReference: (entry: GalleryEntry) => Promise<void>;
+  onReference?: (entry: GalleryEntry) => Promise<void>;
   onEdit?: (entry: GalleryEntry) => void | Promise<void>;
   onRestore?: (draft: GenerationDraft) => void | Promise<void>;
   onUpscale?: (entry: GalleryEntry) => void;
   onDelete?: (entry: GalleryEntry) => Promise<void>;
   onNavigate?: (id: string) => void;
+  readOnly?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -215,13 +217,17 @@ export function ImageViewer({
         <span className="toolbar-spacer" />
         {(entry || source?.resolveEntry) && (
           <>
-            <button
-              className="viewer-reference-button"
-              disabled={disabled}
-              onClick={() => (source?.onReference ? withAction(source.onReference) : withEntry(onReference))}
-            >
-              {t("useReference")}
-            </button>
+            {(onReference || source?.onReference) && (
+              <button
+                className="viewer-reference-button"
+                disabled={disabled}
+                onClick={() =>
+                  source?.onReference ? withAction(source.onReference) : onReference && withEntry(onReference)
+                }
+              >
+                {t("useReference")}
+              </button>
+            )}
             {onEdit && (
               <button disabled={disabled} title={c("edit")} aria-label={c("edit")} onClick={() => withEntry(onEdit)}>
                 <PencilSimpleIcon />
@@ -244,16 +250,20 @@ export function ImageViewer({
             )}
             {entry && (
               <>
-                <button
-                  disabled={disabled}
-                  title={entry?.favorite ? t("removeFavorite") : t("favorites")}
-                  aria-label={entry?.favorite ? t("removeFavorite") : t("favorites")}
-                  aria-pressed={entry?.favorite ?? false}
-                  onClick={() => withEntry(favorite)}
-                >
-                  <HeartIcon weight={entry?.favorite ? "fill" : "regular"} />
-                </button>
-                <BoardAction key={entry.asset.id} entry={entry} disabled={disabled} />
+                {!readOnly && (
+                  <>
+                    <button
+                      disabled={disabled}
+                      title={entry?.favorite ? t("removeFavorite") : t("favorites")}
+                      aria-label={entry?.favorite ? t("removeFavorite") : t("favorites")}
+                      aria-pressed={entry?.favorite ?? false}
+                      onClick={() => withEntry(favorite)}
+                    >
+                      <HeartIcon weight={entry?.favorite ? "fill" : "regular"} />
+                    </button>
+                    <BoardAction key={entry.asset.id} entry={entry} disabled={disabled} />
+                  </>
+                )}
                 <button
                   title={lt("copyImage")}
                   aria-label={lt("copyImage")}

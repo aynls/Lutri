@@ -9,6 +9,7 @@ import {
   DotsThreeIcon,
   MagnifyingGlassIcon,
   CheckIcon,
+  EyeIcon,
 } from "@phosphor-icons/react";
 import type { GalleryEntry } from "../domain/types";
 import { isSvgAsset } from "../domain/media";
@@ -22,6 +23,8 @@ import { ResizablePanel } from "../components/ResizablePanel";
 import { chooseImages, copyAssetImage, deleteImage, exportImages, favorite } from "./actions";
 import { lt } from "../i18n/library";
 export { chooseImages, favorite } from "./actions";
+
+const previewMinHeight = 84;
 
 export function Gallery({
   onView,
@@ -42,7 +45,7 @@ export function Gallery({
   onReference: (entry: GalleryEntry) => void;
   onReferences?: (entries: GalleryEntry[]) => Promise<void>;
   onEdit?: (entry: GalleryEntry) => void;
-  onRelated: (id: string) => void;
+  onRelated?: (id: string) => void;
   onUpscale?: (entries: GalleryEntry[]) => void;
   onError: (error: unknown) => void;
   picker?: boolean;
@@ -106,11 +109,11 @@ export function Gallery({
       const top = heights[column];
       const ratio = entry.asset.width > 0 && entry.asset.height > 0 ? entry.asset.width / entry.asset.height : 1;
       // Card padding and the card/image borders take 12px on each axis.
-      heights[column] += Math.max(0, width - 12) / ratio + 12 + gap;
+      heights[column] += Math.max(Math.max(0, width - 12) / ratio, selecting ? previewMinHeight : 0) + 12 + gap;
       return { top, left: column * (width + gap), ratio, headingTop };
     });
     return { cards, width, height: Math.max(0, ...heights) - (entries.length ? gap : 0) };
-  }, [entries, sort, size, availableWidth]);
+  }, [entries, sort, size, availableWidth, selecting]);
   const [facets, setFacets] = useState<{
     counts: Record<string, number>;
   }>({ counts: {} });
@@ -463,7 +466,7 @@ export function Gallery({
                     <div className="gallery-image">
                       <button
                         className="image-button"
-                        style={{ aspectRatio: position.ratio }}
+                        style={{ aspectRatio: position.ratio, minHeight: selecting ? previewMinHeight : undefined }}
                         aria-label={entry.asset.id}
                         onClick={(event) => {
                           if (selecting) toggle(entry.asset.id, event.shiftKey);
@@ -480,6 +483,16 @@ export function Gallery({
                           onChange={() => toggle(entry.asset.id)}
                         />
                       )}
+                      {selecting && (
+                        <button
+                          className="gallery-preview"
+                          title={lt("previewImage")}
+                          aria-label={lt("previewImage")}
+                          onClick={() => attempt(() => view(entry.asset.id))}
+                        >
+                          <EyeIcon size={18} aria-hidden="true" />
+                        </button>
+                      )}
                       <button
                         className="favorite"
                         title={entry.favorite ? t("removeFavorite") : t("favorites")}
@@ -490,7 +503,9 @@ export function Gallery({
                     </div>
                     {!picker && (
                       <div className="gallery-actions">
-                        <button onClick={() => onReference(entry)}>{t("useReference")}</button>
+                        <button title={t("useReference")} onClick={() => onReference(entry)}>
+                          {t("useReference")}
+                        </button>
                         <details className="action-menu" onToggle={placeMenu}>
                           <summary aria-label={t("details")} onClick={toggleMenu}>
                             <DotsThreeIcon size={20} />
@@ -510,7 +525,7 @@ export function Gallery({
                                 {t("upscale")}
                               </button>
                             )}
-                            <button onClick={() => onRelated(entry.asset.id)}>{t("related")}</button>
+                            {onRelated && <button onClick={() => onRelated(entry.asset.id)}>{t("related")}</button>}
                             <button onClick={() => attempt(() => exportImages([entry]))}>{t("saveAs")}</button>
                             <CopyButton value={entry.asset.id} label={t("copyId")} onError={onError} />
                             <button className="danger-button" onClick={() => attempt(() => deleteEntry(entry))}>
