@@ -2,7 +2,7 @@ import { confirm, open, save } from "@tauri-apps/plugin-dialog";
 import type { GalleryEntry } from "../domain/types";
 import { t } from "../i18n";
 import { native } from "../services/native";
-import { flushWrites, getState, refreshGallery, savePreferences } from "../services/store";
+import { flushWrites, getState, refreshGallery, savePreferences, updateState } from "../services/store";
 import { imageExtensions, importPaths } from "./imports";
 
 export const copyAssetImage = (id: string) => native<void>("asset_copy", { id });
@@ -36,7 +36,8 @@ export async function deleteImage(entry: GalleryEntry): Promise<boolean> {
     if (String(error).includes("ASSET_PROTECTED_CHANGED")) throw new Error(t("assetProtectionChanged"));
     throw error;
   }
-  await refreshGallery();
+  updateState({ gallery: getState().gallery.filter((item) => item.asset.id !== entry.asset.id) });
+  await refreshGallery().catch(console.error);
   return true;
 }
 

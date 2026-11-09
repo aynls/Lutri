@@ -35,6 +35,9 @@ export interface ImageViewerItem {
   preview?: Omit<PathPreviewProps, "toolbarTarget">;
   resolveEntry?: () => Promise<GalleryEntry>;
   onExport?: () => Promise<unknown>;
+  onDelete?: () => Promise<void>;
+  onReference?: () => Promise<void>;
+  actionDisabled?: boolean;
   details?: ReactNode;
 }
 
@@ -93,6 +96,7 @@ export function ImageViewer({
   const [toolbarTarget, setToolbarTarget] = useState<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const disabled = acting || !!source?.actionDisabled;
   const actionLock = useRef(false);
   useEffect(() => {
     if (!assetId) {
@@ -205,12 +209,16 @@ export function ImageViewer({
         <span className="toolbar-spacer" />
         {(entry || source?.resolveEntry) && (
           <>
-            <button className="viewer-reference-button" disabled={acting} onClick={() => withEntry(onReference)}>
+            <button
+              className="viewer-reference-button"
+              disabled={disabled}
+              onClick={() => (source?.onReference ? withAction(source.onReference) : withEntry(onReference))}
+            >
               {t("useReference")}
             </button>
             {onUpscale && (
               <button
-                disabled={acting || (entry && isSvgAsset(entry.asset))}
+                disabled={disabled || (entry && isSvgAsset(entry.asset))}
                 title={entry && isSvgAsset(entry.asset) ? t("svgUpscaleUnsupported") : t("upscale")}
                 aria-label={t("upscale")}
                 onClick={() =>
@@ -226,7 +234,7 @@ export function ImageViewer({
             {entry && (
               <>
                 <button
-                  disabled={acting}
+                  disabled={disabled}
                   title={entry?.favorite ? t("removeFavorite") : t("favorites")}
                   aria-label={entry?.favorite ? t("removeFavorite") : t("favorites")}
                   aria-pressed={entry?.favorite ?? false}
@@ -234,11 +242,11 @@ export function ImageViewer({
                 >
                   <HeartIcon weight={entry?.favorite ? "fill" : "regular"} />
                 </button>
-                <BoardAction key={entry.asset.id} entry={entry} disabled={acting} />
+                <BoardAction key={entry.asset.id} entry={entry} disabled={disabled} />
                 <button
                   title={lt("copyImage")}
                   aria-label={lt("copyImage")}
-                  disabled={acting}
+                  disabled={disabled}
                   onClick={() => withEntry((resolved) => copyAssetImage(resolved.asset.id))}
                 >
                   <CopyIcon />
@@ -247,7 +255,7 @@ export function ImageViewer({
             )}
             {(entry || source?.onExport) && (
               <button
-                disabled={acting}
+                disabled={disabled}
                 title={t("saveAs")}
                 aria-label={t("saveAs")}
                 onClick={() =>
@@ -257,13 +265,13 @@ export function ImageViewer({
                 <DownloadSimpleIcon />
               </button>
             )}
-            {entry && onDelete && !entry.unlisted && !entry.staged && (
+            {(source?.onDelete || (entry && onDelete && !entry.unlisted && !entry.staged)) && (
               <button
                 className="danger-button"
-                disabled={acting}
-                title={t("delete")}
-                aria-label={t("delete")}
-                onClick={() => withEntry(onDelete)}
+                disabled={disabled}
+                title={source?.onDelete ? t("deleteUpscaleResult") : t("delete")}
+                aria-label={source?.onDelete ? t("deleteUpscaleResult") : t("delete")}
+                onClick={() => (source?.onDelete ? withAction(source.onDelete) : onDelete && withEntry(onDelete))}
               >
                 <TrashIcon />
               </button>
