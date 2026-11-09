@@ -10,6 +10,7 @@ import {
   FolderOpenIcon,
   HeartIcon,
   InfoIcon,
+  PencilSimpleIcon,
   TrashIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -24,9 +25,10 @@ import { RequestDetails } from "../history/RequestDetails";
 import { copyAssetImage, exportImages, favorite } from "./actions";
 
 import { lt } from "../i18n/library";
-import type { GalleryEntry } from "../domain/types";
+import type { GalleryEntry, GenerationDraft } from "../domain/types";
 import { isSvgAsset } from "../domain/media";
 import { BoardAction } from "./BoardAction";
+import { c } from "../create/messages";
 
 export interface ImageViewerItem {
   id: string;
@@ -46,6 +48,8 @@ export function ImageViewer({
   items,
   onClose,
   onReference,
+  onEdit,
+  onRestore,
   onUpscale,
   onDelete,
   onNavigate,
@@ -54,6 +58,8 @@ export function ImageViewer({
   items: ImageViewerItem[];
   onClose: () => void;
   onReference: (entry: GalleryEntry) => Promise<void>;
+  onEdit?: (entry: GalleryEntry) => void | Promise<void>;
+  onRestore?: (draft: GenerationDraft) => void | Promise<void>;
   onUpscale?: (entry: GalleryEntry) => void;
   onDelete?: (entry: GalleryEntry) => Promise<void>;
   onNavigate?: (id: string) => void;
@@ -123,7 +129,7 @@ export function ImageViewer({
   const index = ids.indexOf(current),
     entry = gallery.find((entry) => entry.asset.id === assetId) ?? loaded.find((entry) => entry.asset.id === assetId);
   const path = entry?.path ?? source?.preview?.after ?? source?.preview?.before;
-  const task = tasks.find((task) => task.results.some((result) => result.assetId === assetId));
+  const task = assetId ? tasks.find((task) => task.results.some((result) => result.assetId === assetId)) : undefined;
   const onError = (value: unknown) => setError(String(value));
   const attempt = (action: () => Promise<unknown>) => void action().catch(onError);
   const withAction = (action: () => unknown | Promise<unknown>) => {
@@ -216,6 +222,11 @@ export function ImageViewer({
             >
               {t("useReference")}
             </button>
+            {onEdit && (
+              <button disabled={disabled} title={c("edit")} aria-label={c("edit")} onClick={() => withEntry(onEdit)}>
+                <PencilSimpleIcon />
+              </button>
+            )}
             {onUpscale && (
               <button
                 disabled={disabled || (entry && isSvgAsset(entry.asset))}
@@ -346,7 +357,15 @@ export function ImageViewer({
                   </dl>
                 </section>
               )}
-              {task && <RequestDetails task={task} onView={related} onError={onError} />}
+              {task && (
+                <RequestDetails
+                  task={task}
+                  onView={related}
+                  onError={onError}
+                  onRestore={onRestore ? () => withAction(() => onRestore(task.draft)) : undefined}
+                  restoreDisabled={disabled}
+                />
+              )}
             </div>
           </ResizablePanel>
         )}

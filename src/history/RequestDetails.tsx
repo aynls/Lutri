@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ImageIcon } from "@phosphor-icons/react";
+import { ArrowCounterClockwiseIcon, ImageIcon } from "@phosphor-icons/react";
 import type { GalleryEntry, GenerationTask } from "../domain/types";
 import { displayPrompt } from "../domain/references";
 import { combinationById } from "../models";
@@ -19,16 +19,26 @@ export function RequestDetails({
   task,
   onView,
   onError,
+  onRestore,
+  restoreDisabled,
+  groupResults = false,
 }: {
   task: GenerationTask;
-  onView: (id: string) => void;
+  onView: (id: string, ids?: string[]) => void;
   onError: (error: unknown) => void;
+  onRestore?: () => void;
+  restoreDisabled?: boolean;
+  groupResults?: boolean;
 }) {
   const { gallery: cached } = useApplication();
   const errorHandler = useRef(onError);
   errorHandler.current = onError;
   const [entries, setEntries] = useState<GalleryEntry[]>([]);
   const gallery = [...new Map([...cached, ...entries].map((entry) => [entry.asset.id, entry])).values()];
+  const resultIds = task.results.flatMap((result) => {
+    const entry = gallery.find((value) => value.asset.id === result.assetId);
+    return entry && entry.availability !== "missing" ? [entry.asset.id] : [];
+  });
   const assetKey = JSON.stringify([
     ...new Set([
       ...task.draft.references.map((reference) => reference.assetId),
@@ -119,7 +129,16 @@ export function RequestDetails({
       <section>
         <div className="section-heading">
           <span>{t("prompt")}</span>
-          <CopyButton value={displayPrompt(task.draft)} title={t("copyPrompt")} onError={onError} />
+          {onRestore ? (
+            <span className="button-row">
+              <button disabled={restoreDisabled} title={t("restore")} aria-label={t("restore")} onClick={onRestore}>
+                <ArrowCounterClockwiseIcon size={15} />
+              </button>
+              <CopyButton value={displayPrompt(task.draft)} title={t("copyPrompt")} onError={onError} />
+            </span>
+          ) : (
+            <CopyButton value={displayPrompt(task.draft)} title={t("copyPrompt")} onError={onError} />
+          )}
         </div>
         <p className="full-prompt">{displayPrompt(task.draft)}</p>
       </section>
@@ -169,7 +188,11 @@ export function RequestDetails({
               const entry = gallery.find((value) => value.asset.id === result.assetId);
               return (
                 <div key={result.id}>
-                  <button className="image-button" disabled={!entry} onClick={() => entry && onView(entry.asset.id)}>
+                  <button
+                    className="image-button"
+                    disabled={!entry || (groupResults && entry.availability === "missing")}
+                    onClick={() => entry && onView(entry.asset.id, groupResults ? resultIds : undefined)}
+                  >
                     {entry ? (
                       <AssetImage entry={entry} thumbnail />
                     ) : (

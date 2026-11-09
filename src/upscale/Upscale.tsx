@@ -17,7 +17,7 @@ import {
   CheckIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import type { GalleryEntry } from "../domain/types";
+import type { GalleryEntry, GenerationDraft } from "../domain/types";
 import { isSvgAsset } from "../domain/media";
 import { localize, t } from "../i18n";
 import { chooseImages, deleteImage } from "../gallery/actions";
@@ -86,10 +86,14 @@ export function Upscale({
   onError,
   incoming,
   onReference,
+  onEdit,
+  onRestore,
 }: {
   onError: (error: unknown) => void;
   incoming?: { entries: GalleryEntry[]; nonce: string };
   onReference: (entry: GalleryEntry) => Promise<void>;
+  onEdit: (entry: GalleryEntry) => boolean;
+  onRestore: (draft: GenerationDraft) => Promise<boolean>;
 }) {
   const [models, setModels] = useState<UpscaleModel[]>([]),
     [model, setModel] = useState("");
@@ -840,6 +844,12 @@ export function Upscale({
           onReference={async (entry) => {
             await onReference(entry);
             setView(undefined);
+          }}
+          onEdit={(entry) => {
+            if (onEdit(entry)) setView(undefined);
+          }}
+          onRestore={async (draft) => {
+            if (await onRestore(draft)) setView(undefined);
           }}
           onUpscale={
             busy

@@ -399,7 +399,7 @@ export default function App() {
       target = combinationById(current.combinationId);
     if (!target.maxReferences) {
       onError(c("unsupportedImages"));
-      return;
+      return false;
     }
     const reference = current.references.find((ref) => ref.assetId === entry.asset.id) ?? {
       id: crypto.randomUUID(),
@@ -410,7 +410,7 @@ export default function App() {
     const references = [reference, ...(keep ? current.references.filter((ref) => ref.id !== reference.id) : [])];
     if (references.length > target.maxReferences) {
       onError(c("tooMany"));
-      return;
+      return false;
     }
     const retained = new Set(references.map((ref) => ref.id));
     const mask = current.mask?.referenceId === reference.id ? current.mask : undefined;
@@ -424,22 +424,37 @@ export default function App() {
     if (current.mask && !mask) void message(c("maskRemoved"), { title: "Lutri", kind: "warning" });
     setEditing(undefined);
     setPage("creation");
+    return true;
   };
-  const editImage = (entry: GalleryEntry) => {
+  const editImage = (entry: GalleryEntry, reportError = onError): boolean => {
     if (!combinationById(getState().draft.combinationId).maxReferences) {
-      onError(c("unsupportedImages"));
-      return;
+      reportError(c("unsupportedImages"));
+      return false;
     }
     if (getState().draft.references.length) {
       setKeepReferences(false);
       setEditing(entry);
-    } else applyEdit(entry, false);
+      return true;
+    }
+    return applyEdit(entry, false);
   };
-  const restore = async (draft: GenerationDraft, mode: CreationMode = "regular") => {
+  const editFromViewer = (entry: GalleryEntry): boolean => {
+    let error: unknown;
+    const accepted = editImage(entry, (value) => {
+      error = value;
+    });
+    if (error !== undefined) throw error;
+    return accepted;
+  };
+  const restore = async (
+    draft: GenerationDraft,
+    mode: CreationMode = "regular",
+    reportError = onError,
+  ): Promise<boolean> => {
     const { draft: current, creation } = getState();
     if (creation.editing) {
-      onError(b("pendingEdit"));
-      return;
+      reportError(b("pendingEdit"));
+      return false;
     }
     const replaced = creation.mode === mode ? current : creation[mode];
     if (
@@ -447,20 +462,29 @@ export default function App() {
       hasDraftEdits(replaced) &&
       !(await confirm(b("replaceEditor"), { title: "Lutri", kind: "warning" }))
     )
-      return;
+      return false;
     await switchCreationMode(mode);
     const availability = await Promise.all(
       draft.references.map(async (ref) => ({ id: ref.id, exists: await assetExists(ref.assetId) })),
     );
     const missing = new Set(availability.filter((entry) => !entry.exists).map((entry) => entry.id));
     const maskMissing = draft.mask && !(await assetExists(draft.mask.assetId));
-    changeDraft({
+    await saveDraft({
       ...structuredClone(draft),
       regions: draft.regions.filter((region) => !region.referenceId || !missing.has(region.referenceId)),
       mask: draft.mask && (missing.has(draft.mask.referenceId) || maskMissing) ? undefined : draft.mask,
     });
     setPage("creation");
     if (missing.size || maskMissing) await message(t("missing"), { title: "Lutri", kind: "warning" });
+    return true;
+  };
+  const restoreFromViewer = async (draft: GenerationDraft): Promise<boolean> => {
+    let error: unknown;
+    const accepted = await restore(draft, "regular", (value) => {
+      error = value;
+    });
+    if (error !== undefined) throw error;
+    return accepted;
   };
   const submit = async () => {
     if (submittingRef.current || !canSubmit) return;
@@ -924,7 +948,13 @@ export default function App() {
         </div>
         {page === "settings" ? <Settings onError={onError} onView={view} /> : null}
         <div className="upscale-host" hidden={page !== "upscale"}>
-          <Upscale onError={onError} incoming={upscaleInput} onReference={useImageAsReference} />
+          <Upscale
+            onError={onError}
+            incoming={upscaleInput}
+            onReference={useImageAsReference}
+            onEdit={editFromViewer}
+            onRestore={restoreFromViewer}
+          />
         </div>
       </main>
       {error
@@ -1054,6 +1084,12 @@ export default function App() {
           }))}
           onClose={() => setViewer(undefined)}
           onReference={useImageAsReference}
+          onEdit={(entry) => {
+            if (editFromViewer(entry)) setViewer(undefined);
+          }}
+          onRestore={async (draft) => {
+            if (await restoreFromViewer(draft)) setViewer(undefined);
+          }}
           onDelete={
             page === "gallery"
               ? async (entry) => {

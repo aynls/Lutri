@@ -39,7 +39,7 @@ export function History({
   initialSearch: string;
   searchRequest: number;
   onRestore: (draft: GenerationDraft) => void;
-  onView: (id: string) => void;
+  onView: (id: string, ids?: string[]) => void;
   onError: (error: unknown) => void;
 }) {
   const { batches, tasks, gallery } = useApplication();
@@ -297,6 +297,10 @@ export function History({
             {requests.map((task) => {
               const combination = combinationById(task.draft.combinationId);
               const busy = active.has(task.status);
+              const resultIds = task.results.flatMap((result) => {
+                const entry = result.assetId ? assets.get(result.assetId) : undefined;
+                return entry && entry.availability !== "missing" ? [entry.asset.id] : [];
+              });
               return (
                 <div
                   className="history-task"
@@ -374,8 +378,8 @@ export function History({
                         return (
                           <button
                             key={result.id}
-                            disabled={!entry}
-                            onClick={() => entry && onView(entry.asset.id)}
+                            disabled={!entry || entry.availability === "missing"}
+                            onClick={() => entry && onView(entry.asset.id, resultIds)}
                             title={result.error}
                           >
                             {entry ? (
@@ -440,7 +444,7 @@ export function History({
             </>
           }
         >
-          <RequestDetails task={detail} onView={onView} onError={onError} />
+          <RequestDetails task={detail} onView={onView} onError={onError} groupResults />
         </Dialog>
       )}
     </div>
