@@ -29,8 +29,7 @@ pub fn validate_policy(policy: &CleanupPolicy) -> Result<(), String> {
 }
 
 pub fn is_protected(entry: &Value) -> bool {
-    entry["favorite"] == true
-        || entry["boardIds"].as_array().is_some_and(|boards| !boards.is_empty())
+    entry["favorite"] == true || entry["boardIds"].as_array().is_some_and(|boards| !boards.is_empty())
 }
 
 pub fn manual_candidate(entry: &Value, in_use: &HashSet<String>) -> bool {
@@ -40,17 +39,10 @@ pub fn manual_candidate(entry: &Value, in_use: &HashSet<String>) -> bool {
             .is_none_or(|value| value.is_null() || value == false)
         && entry["favorite"].as_bool() == Some(false)
         && entry["boardIds"].as_array().is_some_and(Vec::is_empty)
-        && entry["asset"]["id"]
-            .as_str()
-            .is_some_and(|id| !in_use.contains(id))
+        && entry["asset"]["id"].as_str().is_some_and(|id| !in_use.contains(id))
 }
 
-pub fn automatic_candidate(
-    entry: &Value,
-    policy: &CleanupPolicy,
-    now_ms: u64,
-    in_use: &HashSet<String>,
-) -> bool {
+pub fn automatic_candidate(entry: &Value, policy: &CleanupPolicy, now_ms: u64, in_use: &HashSet<String>) -> bool {
     if !policy.enabled
         || validate_policy(policy).is_err()
         || entry["source"] != "generated"
