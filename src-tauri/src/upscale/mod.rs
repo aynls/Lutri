@@ -39,33 +39,6 @@ pub fn prepare_session(root: &std::path::Path) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-pub fn upscale_discard(
-    store: tauri::State<Store>,
-    scheduler: tauri::State<Scheduler>,
-    ids: Vec<String>,
-) -> Result<(), String> {
-    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
-    let active = scheduler.snapshot()?;
-    for id in ids {
-        let id = uuid::Uuid::parse_str(&id)
-            .map_err(|_| "Invalid upscale job ID")?
-            .to_string();
-        if active.iter().any(|job| job.id == id) {
-            continue;
-        }
-        for suffix in [".png", ".thumb.png"] {
-            let path = store.root.join("upscale-session").join(format!("{id}{suffix}"));
-            match std::fs::remove_file(path) {
-                Ok(()) => {}
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(error) => return Err(error.to_string()),
-            }
-        }
-    }
-    Ok(())
-}
-
 struct StagingCleanup {
     control: std::sync::Arc<std::sync::Mutex<scheduler::Job>>,
     output: PathBuf,
@@ -184,6 +157,9 @@ pub async fn upscale_run(
     let control = {
         let store = app.state::<Store>();
         let _admission = store.library_mutation.lock().map_err(|e| e.to_string())?;
+        if assets::entry(&store, &id).is_ok() {
+            return Err("Upscale job ID already exists".into());
+        }
         let entry = assets::entry(&store, &asset_id)?;
         if entry["asset"]["mediaType"].as_str() == Some("image/svg+xml") {
             return Err("SVG_UPSCALE_UNSUPPORTED".into());
@@ -301,84 +277,55 @@ pub async fn upscale_run(
         if !status.success() {
             return Err(error.unwrap_or_else(|| format!("Upscale worker exited: {status}")));
         }
+        // Finish any in-flight library copy before releasing the card's source file.
+        let mut entry = assets::save_generated_with_id(
+            &store,
+            &std::fs::read(&output).map_err(|e| e.to_string())?,
+            id.clone(),
+            save_to_gallery,
+        )?;
+        entry["provenance"] = json!({
+            "kind": "upscale",
+            "model": model_id,
+            "sourceAssetId": asset_id,
+            "scale": scale,
+            "tileSize": tile_size
+        });
+        let updated = store
+            .db
+            .lock()
+            .map_err(|e| e.to_string())?
+            .execute(
+                "UPDATE records SET body=?1 WHERE collection IN ('gallery','outputs') AND id=?2",
+                rusqlite::params![entry.to_string(), id],
+            )
+            .map_err(|e| e.to_string())?;
+        if updated != 1 {
+            return Err("Missing saved asset".into());
+        }
         cleanup.complete = true;
-        let mut saved_path = output.clone();
+        let _ = std::fs::remove_file(&output);
+        let _ = std::fs::remove_file(output.with_extension("thumb.png"));
+        let mut exported_path = None;
         let mut export_error: Option<String> = None;
         if let Some(directory) = destination {
             let target = PathBuf::from(directory).join(format!("{id}.png"));
-            match copy_output(&output, &target) {
-                Ok(()) => saved_path = target,
-                Err(error) => export_error = Some(error.to_string()),
+            match export_output(&store, &id, &target) {
+                Ok(()) => exported_path = Some(target),
+                Err(error) => export_error = Some(error),
             }
         }
-        let mut gallery_error = None;
-        let mut gallery = if save_to_gallery {
-            match save_output_asset(
-                &store, &output, &id,
-                &model_id,
-            ) {
-                Ok(entry) => Some(entry),
-                Err(error) => { gallery_error = Some(error); None }
-            }
-        } else {
-            None
-        };
-        if let Some(entry) = gallery.as_mut() {
-            entry["provenance"] = json!({"kind":"upscale","model":model_id});
-            let asset_id = entry["asset"]["id"].as_str().ok_or("Missing saved asset")?;
-            store.db.lock().map_err(|e| e.to_string())?.execute(
-                "UPDATE records SET body=?1 WHERE collection='gallery' AND id=?2",
-                rusqlite::params![entry.to_string(),asset_id],
-            ).map_err(|e|e.to_string())?;
+        let mut result = json!({"jobId": id, "entry": entry});
+        if let Some(path) = exported_path {
+            result["exportedPath"] = json!(path);
         }
-        Ok(json!({"jobId":id,"path":output,"exportedPath":saved_path,"gallery":gallery,"exportError":export_error,"galleryError":gallery_error}))
+        if let Some(error) = export_error {
+            result["exportError"] = json!(error);
+        }
+        Ok(result)
     })
     .await
     .map_err(|e| e.to_string())?
-}
-
-#[tauri::command]
-pub fn upscale_save(store: tauri::State<Store>, path: String, model_id: Option<String>) -> Result<Value, String> {
-    let source = PathBuf::from(path).canonicalize().map_err(|e| e.to_string())?;
-    let staging = store
-        .root
-        .join("upscale-session")
-        .canonicalize()
-        .map_err(|e| e.to_string())?;
-    if !source.starts_with(staging) || source.extension().and_then(|v| v.to_str()) != Some("png") {
-        return Err("Unknown upscale output".into());
-    }
-    let id = source
-        .file_stem()
-        .and_then(|v| v.to_str())
-        .ok_or("Invalid upscale output")?;
-    uuid::Uuid::parse_str(id).map_err(|_| "Invalid upscale output ID")?;
-    save_output_asset(&store, &source, id, model_id.as_deref().unwrap_or("unknown"))
-}
-
-fn save_output_asset(store: &Store, source: &std::path::Path, id: &str, model_id: &str) -> Result<Value, String> {
-    static SAVING: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    let _saving = SAVING.lock().map_err(|e| e.to_string())?;
-    if let Ok(entry) = assets::entry(store, id) {
-        return Ok(entry);
-    }
-    let mut entry = assets::save_asset_with_id(
-        store,
-        &std::fs::read(source).map_err(|e| e.to_string())?,
-        "generated",
-        id.into(),
-    )?;
-    entry["provenance"] = json!({"kind":"upscale","model":model_id});
-    store
-        .db
-        .lock()
-        .map_err(|e| e.to_string())?
-        .execute(
-            "UPDATE records SET body=?1 WHERE collection='gallery' AND id=?2",
-            rusqlite::params![entry.to_string(), id],
-        )
-        .map_err(|e| e.to_string())?;
-    Ok(entry)
 }
 
 #[tauri::command]
@@ -471,28 +418,18 @@ fn probe_devices(app: &tauri::AppHandle) -> Result<Vec<Value>, String> {
 }
 
 #[tauri::command]
-pub fn upscale_export(
-    store: tauri::State<Store>,
-    path: String,
-    destination: String,
-    job_id: String,
-) -> Result<String, String> {
-    uuid::Uuid::parse_str(&job_id).map_err(|_| "Invalid upscale job ID")?;
-    let source = PathBuf::from(path).canonicalize().map_err(|e| e.to_string())?;
-    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
-    let staging = store
-        .root
-        .join("upscale-session")
-        .canonicalize()
-        .map_err(|e| e.to_string())?;
-    if !source.starts_with(staging)
-        || source.file_name().and_then(|v| v.to_str()) != Some(format!("{job_id}.png").as_str())
-    {
-        return Err("Unknown upscale output".into());
-    }
+pub fn upscale_export(store: tauri::State<Store>, asset_id: String, destination: String) -> Result<String, String> {
     let destination = PathBuf::from(destination);
-    copy_output(&source, &destination)?;
+    export_output(&store, &asset_id, &destination)?;
     Ok(destination.to_string_lossy().into_owned())
+}
+
+fn export_output(store: &Store, asset_id: &str, destination: &std::path::Path) -> Result<(), String> {
+    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
+    let _library = store.library.read().map_err(|e| e.to_string())?;
+    let entry = assets::entry(store, asset_id)?;
+    let source = std::path::Path::new(entry["path"].as_str().ok_or("Missing asset path")?);
+    copy_output(source, destination)
 }
 
 fn copy_output(source: &std::path::Path, target: &std::path::Path) -> Result<(), String> {

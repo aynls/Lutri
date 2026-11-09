@@ -81,8 +81,6 @@ pub fn run() {
             batch::batch_files_remove,
             upscale::upscale_models,
             upscale::upscale_run,
-            upscale::upscale_save,
-            upscale::upscale_discard,
             upscale::upscale_export,
             upscale::upscale_configure,
             upscale::upscale_devices,

@@ -16,7 +16,6 @@ const mutations = new Set([
   "library_migrate",
   "library_maintain",
   "upscale_run",
-  "upscale_save",
 ]);
 export async function native<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   const result = await invoke<T>(command, args);

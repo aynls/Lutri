@@ -27,7 +27,15 @@ export interface GalleryEntry extends StoredImage {
   bytes?: number;
   tags?: string[];
   availability?: "available" | "missing" | "unknown";
-  provenance?: { kind: "generation" | "import" | "upscale"; model?: string; provider?: string; taskId?: string };
+  provenance?: {
+    kind: "generation" | "import" | "upscale";
+    model?: string;
+    provider?: string;
+    taskId?: string;
+    sourceAssetId?: string;
+    scale?: number;
+    tileSize?: number;
+  };
 }
 
 export interface Board {

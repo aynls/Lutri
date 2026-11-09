@@ -20,11 +20,9 @@ export interface UpscaleProgress {
 }
 export interface UpscaleResult {
   jobId: string;
-  path: string;
-  exportedPath: string;
-  gallery?: GalleryEntry;
+  entry: GalleryEntry;
+  exportedPath?: string;
   exportError?: string;
-  galleryError?: string;
 }
 
 export async function runUpscale(options: UpscaleOptions, onProgress?: (value: UpscaleProgress) => void) {
@@ -45,9 +43,9 @@ export async function runUpscale(options: UpscaleOptions, onProgress?: (value: U
     throw error;
   });
   try {
-    await refreshGallery();
+    await refreshGallery([result.entry.asset.id]);
   } catch (error) {
-    result.galleryError ??= String(error);
+    console.error(error);
   }
   return result;
 }

@@ -89,10 +89,6 @@ pub fn save_asset(store: &Store, bytes: &[u8], source: &str, staged: bool) -> Re
     )
 }
 
-pub(crate) fn save_asset_with_id(store: &Store, bytes: &[u8], source: &str, id: String) -> Result<Value, String> {
-    save_image_with_id(store, bytes, source, id, "gallery", false)
-}
-
 pub(crate) fn save_generated_with_id(
     store: &Store,
     bytes: &[u8],
