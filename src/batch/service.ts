@@ -234,7 +234,6 @@ export async function submitCloudBatch(options?: {
               draft: {
                 ...structuredClone(item.draft),
                 outputDirectory: output.directory,
-                saveToGallery: output.saveToGallery,
               },
               compiledPrompt: compiled.prompt,
               status: "queued",

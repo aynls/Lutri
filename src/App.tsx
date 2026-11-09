@@ -97,7 +97,6 @@ function hasDraftEdits(draft: GenerationDraft) {
     draft.inputPreparation?.maxEdge !== undefined ||
     draft.layerOutputDirectory ||
     draft.outputDirectory ||
-    draft.saveToGallery !== undefined ||
     Object.keys({ ...defaults.parameters, ...draft.parameters }).some(
       (key) => JSON.stringify(draft.parameters[key]) !== JSON.stringify(defaults.parameters[key]),
     ),
@@ -119,6 +118,7 @@ export default function App() {
     [writers, setWriters] = useState(false),
     [maskEditor, setMaskEditor] = useState(false);
   const [upscaleInput, setUpscaleInput] = useState<{ entries: GalleryEntry[]; nonce: string }>();
+  const [galleryInputs, setGalleryInputs] = useState<{ entries: GalleryEntry[]; nonce: string }[]>([]);
   const [credential, setCredential] = useState<boolean | undefined>(),
     [sent, setSent] = useState(false);
   const [urlImport, setUrlImport] = useState(false),
@@ -236,6 +236,7 @@ export default function App() {
       if (!entries.length) return;
       if (writers || page === "creation") await appendReferences(entries);
       else if (page === "upscale") setUpscaleInput({ entries, nonce: crypto.randomUUID() });
+      else if (page === "gallery") setGalleryInputs((current) => [...current, { entries, nonce: crypto.randomUUID() }]);
     },
     [page, writers, appendReferences],
   );
@@ -559,7 +560,12 @@ export default function App() {
         </div>
         <div className="navigation-pages">
           {navigation.map(({ id, icon: Icon }) => (
-            <button title={t(id)} key={id} className={page === id ? "active" : ""} onClick={() => setPage(id)}>
+            <button
+              title={id === "gallery" ? t("resources") : t(id)}
+              key={id}
+              className={page === id ? "active" : ""}
+              onClick={() => setPage(id)}
+            >
               <Icon size={20} />
             </button>
           ))}
@@ -574,7 +580,7 @@ export default function App() {
       </nav>
       <main className="workspace">
         <header className="workspace-header">
-          <h1>{t(page)}</h1>
+          <h1>{page === "gallery" ? t("resources") : t(page)}</h1>
           {page === "creation" ? (
             <div className="button-row">
               <button
@@ -861,19 +867,22 @@ export default function App() {
             )}
           </div>
         </div>
-        {page === "gallery" ? (
+        <div className="gallery-host" hidden={page !== "gallery"}>
           <Gallery
             onView={view}
-            onUpscale={(entry) => {
-              setUpscaleInput({ entries: [entry], nonce: crypto.randomUUID() });
+            onUpscale={(entries) => {
+              setUpscaleInput({ entries, nonce: crypto.randomUUID() });
               setPage("upscale");
             }}
             onReference={addReference}
+            onReferences={addReferences}
             onEdit={editImage}
             onRelated={relatedHistory}
             onError={onError}
+            incoming={galleryInputs[0]}
+            onIncomingHandled={(nonce) => setGalleryInputs((current) => current.filter((item) => item.nonce !== nonce))}
           />
-        ) : null}
+        </div>
         <div className="tasks-host" hidden={page !== "history"}>
           <div className="task-tabs">
             <div className="segmented-control" aria-label={t("history")}>

@@ -46,6 +46,7 @@ pub fn run() {
             library::gallery_facets,
             library::gallery_backfill_provenance,
             library::gallery_mutate,
+            library::gallery_delete_board,
             library::gallery_cleanup,
             library::asset_provenance,
             library::asset_copy,

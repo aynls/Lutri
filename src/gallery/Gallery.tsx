@@ -6,7 +6,6 @@ import {
   PlusIcon,
   MinusIcon,
   UploadSimpleIcon,
-  FunnelSimpleIcon,
   DotsThreeIcon,
   MagnifyingGlassIcon,
   CheckIcon,
@@ -27,38 +26,40 @@ export { chooseImages, favorite } from "./actions";
 export function Gallery({
   onView,
   onReference,
+  onReferences,
   onEdit,
   onRelated,
   onUpscale,
   onError,
   picker = false,
   stagedImports = false,
+  incoming,
+  onIncomingHandled,
   onPick,
   limit = Infinity,
 }: {
   onView: (id: string, ids?: string[]) => void;
   onReference: (entry: GalleryEntry) => void;
+  onReferences?: (entries: GalleryEntry[]) => Promise<void>;
   onEdit?: (entry: GalleryEntry) => void;
   onRelated: (id: string) => void;
-  onUpscale?: (entry: GalleryEntry) => void;
+  onUpscale?: (entries: GalleryEntry[]) => void;
   onError: (error: unknown) => void;
   picker?: boolean;
   stagedImports?: boolean;
+  incoming?: { entries: GalleryEntry[]; nonce: string };
+  onIncomingHandled?: (nonce: string) => void;
   onPick?: (entries: GalleryEntry[]) => void;
   limit?: number;
 }) {
   const { gallery, boards } = useApplication();
-  const [filter, setFilter] = useState("all"),
+  const [filter, setFilter] = useState("favorites"),
     [search, setSearch] = useState("");
   const [batchSelection, setBatchSelection] = useState(false);
   const selecting = picker || batchSelection;
   const [selected, setSelected] = useState<string[]>([]),
     [sort, setSort] = useState("newest");
-  const [filters, setFilters] = useState(false),
-    [from, setFrom] = useState(""),
-    [until, setUntil] = useState("");
-  const [orientation, setOrientation] = useState("all"),
-    [size, setSize] = useState(190);
+  const [size, setSize] = useState(190);
   const masonry = useRef<HTMLDivElement>(null);
   const [availableWidth, setAvailableWidth] = useState(0);
   const [boardEditor, setBoardEditor] = useState<{ id?: string; name: string }>();
@@ -94,7 +95,7 @@ export function Gallery({
     const heights = Array<number>(columnCount).fill(0);
     let previousDay: string | null = null;
     const cards = entries.map((entry) => {
-      const day = sort === "size" ? null : new Date(entry.addedAt).toDateString();
+      const day = new Date(entry.addedAt).toDateString();
       let headingTop: number | undefined;
       if (day !== null && day !== previousDay) {
         headingTop = Math.max(...heights);
@@ -110,47 +111,44 @@ export function Gallery({
     });
     return { cards, width, height: Math.max(0, ...heights) - (entries.length ? gap : 0) };
   }, [entries, sort, size, availableWidth]);
-  const [kind, setKind] = useState("all"),
-    [model, setModel] = useState("all"),
-    [provider, setProvider] = useState("all"),
-    [tag, setTag] = useState(""),
-    [availability, setAvailability] = useState("all");
   const [facets, setFacets] = useState<{
-    model: string[];
-    provider: string[];
-    tags: string[];
     counts: Record<string, number>;
-  }>({ model: [], provider: [], tags: [], counts: {} });
-  const [editor, setEditor] = useState<{ kind: "url" | "tag" | "rename-tag"; value: string }>();
+  }>({ counts: {} });
+  const [editor, setEditor] = useState<{ value: string }>();
   const cache = useRef(new Map<string, GalleryEntry>()),
-    version = useRef(0);
-  const query = useMemo(
-    () => ({
-      collection: filter,
-      search,
-      sort,
-      from: from ? new Date(`${from}T00:00:00`).getTime() : undefined,
-      until: until ? new Date(`${until}T00:00:00`).getTime() + 86400000 : undefined,
-      orientation,
-      kind,
-      model,
-      provider,
-      tag,
-      availability,
-    }),
-    [filter, search, sort, from, until, orientation, kind, model, provider, tag, availability],
-  );
+    version = useRef(0),
+    requestedCount = useRef(80),
+    received = useRef<string>(undefined);
+  const query = useMemo(() => ({ collection: filter, search, sort }), [filter, search, sort]);
   const queryKey = JSON.stringify(query);
   useEffect(() => {
+    requestedCount.current = 80;
     setSelected([]);
     setEntries([]);
     anchor.current = undefined;
   }, [queryKey]);
   useEffect(() => {
     const current = ++version.current;
+    const requestedSelection = new Set(selected);
+    const desired = requestedCount.current;
     setLoading(true);
     void Promise.all([
-      native<{ entries: GalleryEntry[]; total: number }>("gallery_query", { query, limit: 80, offset: 0 }),
+      (async () => {
+        const entries: GalleryEntry[] = [];
+        let total = 0;
+        while (entries.length < desired) {
+          const page = await native<{ entries: GalleryEntry[]; total: number }>("gallery_query", {
+            query,
+            limit: Math.min(200, desired - entries.length),
+            offset: entries.length,
+          });
+          if (current !== version.current) break;
+          entries.push(...page.entries);
+          total = page.total;
+          if (!page.entries.length || entries.length >= total) break;
+        }
+        return { entries, total };
+      })(),
       native<typeof facets>("gallery_facets"),
       selected.length ? native<string[]>("gallery_ids", { query: { ...query, ids: selected } }) : Promise.resolve([]),
     ])
@@ -160,7 +158,7 @@ export function Gallery({
         setEntries(page.entries);
         setTotal(page.total);
         setFacets(options);
-        setSelected((previous) => previous.filter((id) => matching.includes(id)));
+        setSelected((previous) => previous.filter((id) => !requestedSelection.has(id) || matching.includes(id)));
       })
       .catch(onError)
       .finally(() => {
@@ -181,10 +179,15 @@ export function Gallery({
       });
       if (current !== version.current) return;
       for (const entry of page.entries) cache.current.set(entry.asset.id, entry);
-      setEntries((previous) => [
-        ...previous,
-        ...page.entries.filter((entry) => !previous.some((old) => old.asset.id === entry.asset.id)),
-      ]);
+      setEntries((previous) => {
+        if (current !== version.current) return previous;
+        const next = [
+          ...previous,
+          ...page.entries.filter((entry) => !previous.some((old) => old.asset.id === entry.asset.id)),
+        ];
+        requestedCount.current = Math.max(requestedCount.current, next.length);
+        return next;
+      });
       setTotal(page.total);
     } finally {
       if (current === version.current) setLoading(false);
@@ -289,8 +292,29 @@ export function Gallery({
   const importImages = async () => {
     const imported = await chooseImages(stagedImports);
     if (picker && imported.length) onPick ? onPick(imported.slice(0, limit)) : onReference(imported[0]);
-    else if (imported.length) setNotice(`${t("importedCount")} · ${imported.length}`);
+    else if (imported.length) await keepImported(imported);
   };
+  const keepImported = async (imported: GalleryEntry[]) => {
+    if (!imported.length) return;
+    await native("gallery_mutate", {
+      ids: imported.map((entry) => entry.asset.id),
+      action: filter === "favorites" ? "favorite" : "board",
+      value: filter === "favorites" ? "true" : filter,
+    });
+    await refreshGallery(imported.map((entry) => entry.asset.id));
+    setNotice(`${t("importedCount")} · ${imported.length}`);
+  };
+  useEffect(() => {
+    if (!incoming || incoming.nonce === received.current) return;
+    received.current = incoming.nonce;
+    attempt(async () => {
+      try {
+        await keepImported(incoming.entries);
+      } finally {
+        onIncomingHandled?.(incoming.nonce);
+      }
+    });
+  }, [incoming]);
   const saveBoard = async () => {
     if (!boardEditor?.name.trim() || duplicateBoardName) return;
     const value = { id: boardEditor.id ?? crypto.randomUUID(), name: boardEditor.name.trim() };
@@ -305,11 +329,9 @@ export function Gallery({
   };
   const deleteBoard = async () => {
     if (!board || !(await confirm(t("deleteBoardNotice"), { title: t("deleteBoard"), kind: "warning" }))) return;
-    const ids = await native<string[]>("gallery_ids", { query: { collection: board.id } });
-    await native("gallery_mutate", { ids, action: "unboard", value: board.id });
-    await commit([{ collection: "boards", id: board.id }]);
+    await native("gallery_delete_board", { id: board.id });
     updateState({ boards: getState().boards.filter((entry) => entry.id !== board.id) });
-    setFilter("all");
+    setFilter("favorites");
     setSelected([]);
     await refreshGallery();
   };
@@ -317,19 +339,16 @@ export function Gallery({
     <div className="gallery-workspace">
       <ResizablePanel className="library-sidebar" storageKey="lutri.gallery.sidebar" initialWidth={280}>
         <div className="library-nav">
-          {(["all", "generated", "imported", "favorites"] as const).map((id) => (
-            <button
-              className={filter === id ? "selected" : ""}
-              key={id}
-              onClick={() => {
-                setFilter(id);
-                setSelected([]);
-              }}
-            >
-              {t(id)}
-              <span>{facets.counts?.[id] ?? 0}</span>
-            </button>
-          ))}
+          <button
+            className={filter === "favorites" ? "selected" : ""}
+            onClick={() => {
+              setFilter("favorites");
+              setSelected([]);
+            }}
+          >
+            {t("favorites")}
+            <span>{facets.counts?.favorites ?? 0}</span>
+          </button>
           <div className="section-heading">
             <span>{t("boards")}</span>
             <button title={t("newBoard")} onClick={() => setBoardEditor({ name: "" })}>
@@ -365,16 +384,12 @@ export function Gallery({
           <Select aria-label={t("filters")} value={sort} onValueChange={(nextValue) => setSort(nextValue)}>
             <option value="newest">{t("newest")}</option>
             <option value="oldest">{t("oldest")}</option>
-            <option value="size">{lt("size")}</option>
           </Select>
-          <button aria-pressed={filters} onClick={() => setFilters(!filters)} title={t("filters")}>
-            <FunnelSimpleIcon />
-          </button>
           <button disabled={busy || limit === 0} onClick={() => attempt(importImages)}>
             <UploadSimpleIcon />
             {t("import")}
           </button>
-          <button disabled={busy} onClick={() => setEditor({ kind: "url", value: "" })}>
+          <button disabled={busy || limit === 0} onClick={() => setEditor({ value: "" })}>
             {lt("url")}
           </button>
           {board && (
@@ -389,103 +404,6 @@ export function Gallery({
             </details>
           )}
         </div>
-        {filters && (
-          <div className="filter-bar">
-            <label>
-              {t("fromDate")}
-              <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-            </label>
-            <label>
-              {t("toDate")}
-              <input type="date" min={from} value={until} onChange={(event) => setUntil(event.target.value)} />
-            </label>
-            <label>
-              {t("orientation")}
-              <Select value={orientation} onValueChange={(nextValue) => setOrientation(nextValue)}>
-                {(["all", "landscape", "portrait", "square"] as const).map((value) => (
-                  <option key={value} value={value}>
-                    {t(value)}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            {(["kind", "model", "provider", "availability"] as const).map((field) => (
-              <label key={field}>
-                {field === "model" || field === "provider" ? t(field) : lt(field)}
-                <Select
-                  value={{ kind, model, provider, availability }[field]}
-                  onValueChange={(nextValue) =>
-                    ({ kind: setKind, model: setModel, provider: setProvider, availability: setAvailability })[field](
-                      nextValue,
-                    )
-                  }
-                >
-                  <option value="all">{t("all")}</option>
-                  {(field === "kind"
-                    ? ["generation", "import", "upscale"]
-                    : field === "availability"
-                      ? ["available", "missing", "unknown"]
-                      : facets[field]
-                  ).map((value) => (
-                    <option key={value} value={value}>
-                      {field === "kind"
-                        ? value === "upscale"
-                          ? t("upscale")
-                          : lt(value as "generation" | "import")
-                        : field === "availability"
-                          ? value === "missing"
-                            ? t("missing")
-                            : lt(value as "available" | "unknown")
-                          : value}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-            ))}
-            <label>
-              {lt("tags")}
-              <Select value={tag} onValueChange={(nextValue) => setTag(nextValue)}>
-                <option value="">{t("all")}</option>
-                {facets.tags.map((value) => (
-                  <option key={value}>{value}</option>
-                ))}
-              </Select>
-            </label>
-            {tag && (
-              <>
-                <button onClick={() => setEditor({ kind: "rename-tag", value: tag })}>{lt("renameTag")}</button>
-                <button
-                  onClick={() =>
-                    attempt(async () => {
-                      if (!(await confirm(t("confirmDelete")))) return;
-                      const ids = await native<string[]>("gallery_ids", { query: { tag } });
-                      await native("gallery_mutate", { ids, action: "untag", value: tag });
-                      setTag("");
-                      await refreshGallery();
-                    })
-                  }
-                >
-                  {lt("deleteTag")}
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => {
-                setKind("all");
-                setModel("all");
-                setProvider("all");
-                setAvailability("all");
-                setTag("");
-                setFrom("");
-                setUntil("");
-                setOrientation("all");
-                setSearch("");
-              }}
-            >
-              {t("reset")}
-            </button>
-          </div>
-        )}
         <div className="selection-toolbar">
           <button
             disabled={busy}
@@ -604,7 +522,7 @@ export function Gallery({
                               <button
                                 disabled={isSvgAsset(entry.asset)}
                                 title={isSvgAsset(entry.asset) ? t("svgUpscaleUnsupported") : undefined}
-                                onClick={() => onUpscale(entry)}
+                                onClick={() => onUpscale([entry])}
                               >
                                 {t("upscale")}
                               </button>
@@ -631,8 +549,8 @@ export function Gallery({
           )}
           {!entries.length && !loading && (
             <div className="empty-state">
-              <p>{gallery.some((entry) => !entry.staged && !entry.unlisted) ? t("noMatches") : t("empty")}</p>
-              <button onClick={() => attempt(importImages)}>
+              <p>{search.trim() ? t("noMatches") : filter === "favorites" ? lt("emptyFavorites") : lt("emptyBoard")}</p>
+              <button disabled={busy || limit === 0} onClick={() => attempt(importImages)}>
                 <PlusIcon />
                 {t("import")}
               </button>
@@ -652,6 +570,22 @@ export function Gallery({
         ) : (
           !!selection.length && (
             <div className="gallery-selection-footer">
+              {onReferences && (
+                <button disabled={busy} onClick={() => attempt(() => onReferences(selectedEntries))}>
+                  {lt("useReferences")}
+                </button>
+              )}
+              {onUpscale && (
+                <button
+                  disabled={busy || selectedEntries.some((entry) => isSvgAsset(entry.asset))}
+                  title={
+                    selectedEntries.some((entry) => isSvgAsset(entry.asset)) ? t("svgUpscaleUnsupported") : undefined
+                  }
+                  onClick={() => onUpscale(selectedEntries)}
+                >
+                  {t("upscale")}
+                </button>
+              )}
               <button
                 disabled={busy}
                 onClick={() =>
@@ -692,22 +626,6 @@ export function Gallery({
                   {t("removeFromBoard")}
                 </button>
               )}
-              <button disabled={busy} onClick={() => setEditor({ kind: "tag", value: "" })}>
-                {lt("addTag")}
-              </button>
-              {tag && (
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    attempt(async () => {
-                      await native("gallery_mutate", { ids: selection, action: "untag", value: tag });
-                      await refreshGallery();
-                    })
-                  }
-                >
-                  {lt("untag")}
-                </button>
-              )}
               {board && (
                 <Select
                   value=""
@@ -742,7 +660,7 @@ export function Gallery({
       </div>
       {editor && (
         <Dialog
-          title={editor.kind === "url" ? lt("url") : editor.kind === "rename-tag" ? lt("renameTag") : lt("addTag")}
+          title={lt("url")}
           className="compact-dialog"
           onClose={() => setEditor(undefined)}
           footer={
@@ -752,24 +670,11 @@ export function Gallery({
                 disabled={busy || !editor.value.trim()}
                 onClick={() =>
                   attempt(async () => {
-                    if (editor.kind === "url") {
-                      const url = new URL(editor.value.trim());
-                      if (!["https:", "http:"].includes(url.protocol)) throw new Error(lt("invalidUrl"));
-                      const entry = await importAsset({ url: url.href }, stagedImports);
-                      if (picker) onPick?.([entry]);
-                    } else {
-                      const ids =
-                        editor.kind === "rename-tag"
-                          ? await native<string[]>("gallery_ids", { query: { tag } })
-                          : selection;
-                      await native("gallery_mutate", {
-                        ids,
-                        action: editor.kind === "rename-tag" ? "rename-tag" : "tag",
-                        value: editor.value.trim(),
-                        from: editor.kind === "rename-tag" ? tag : undefined,
-                      });
-                      if (editor.kind === "rename-tag") setTag(editor.value.trim());
-                    }
+                    const url = new URL(editor.value.trim());
+                    if (!["https:", "http:"].includes(url.protocol)) throw new Error(lt("invalidUrl"));
+                    const entry = await importAsset({ url: url.href }, stagedImports);
+                    if (picker) onPick ? onPick([entry]) : onReference(entry);
+                    else await keepImported([entry]);
                     setEditor(undefined);
                     await refreshGallery();
                   })
@@ -782,7 +687,7 @@ export function Gallery({
         >
           <input
             autoFocus
-            aria-label={editor.kind === "url" ? "URL" : lt("tagName")}
+            aria-label="URL"
             value={editor.value}
             onChange={(event) => setEditor({ ...editor, value: event.target.value })}
           />

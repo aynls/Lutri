@@ -148,7 +148,6 @@ pub async fn upscale_run(
     scale: u32,
     tile_size: u32,
     destination: Option<String>,
-    save_to_gallery: bool,
     channel: Channel<Value>,
 ) -> Result<Value, String> {
     let id = job_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
@@ -278,12 +277,8 @@ pub async fn upscale_run(
             return Err(error.unwrap_or_else(|| format!("Upscale worker exited: {status}")));
         }
         // Finish any in-flight library copy before releasing the card's source file.
-        let mut entry = assets::save_generated_with_id(
-            &store,
-            &std::fs::read(&output).map_err(|e| e.to_string())?,
-            id.clone(),
-            save_to_gallery,
-        )?;
+        let mut entry =
+            assets::save_generated_with_id(&store, &std::fs::read(&output).map_err(|e| e.to_string())?, id.clone())?;
         entry["provenance"] = json!({
             "kind": "upscale",
             "model": model_id,

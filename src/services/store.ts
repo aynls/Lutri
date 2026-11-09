@@ -15,7 +15,6 @@ import type {
 import { combinationById, combinations } from "../models";
 import { initialDraft } from "../models/shared";
 import { commit, readRecords, native, type RecordChange } from "./native";
-import { cleanGallery } from "./cleanup";
 import { storeParameterAssets, parameterAssetIds } from "./parameterAssets";
 import type { Parameters } from "../domain/types";
 import type { Accent, Palette } from "../appearance";
@@ -36,10 +35,7 @@ export interface Preferences {
     directory?: string;
     generationAuto?: boolean;
     upscaleAuto?: boolean;
-    generationGallery?: boolean;
-    upscaleGallery?: boolean;
     batchAuto?: boolean;
-    batchGallery?: boolean;
   };
 }
 export interface ApplicationState {
@@ -255,7 +251,7 @@ export function saveCreation(draft: GenerationDraft, creation: CreationWorkspace
       committedRelated = keep;
       if (!stale.length) return;
       const orphans = (await native<GalleryEntry[]>("gallery_entries", { ids: stale }).catch(() => [])).filter(
-        (entry) => entry.staged,
+        (entry) => entry.staged && !entry.favorite && !entry.boardIds.length,
       );
       const removed = new Set<string>();
       for (const entry of orphans) {
@@ -264,8 +260,11 @@ export function saveCreation(draft: GenerationDraft, creation: CreationWorkspace
           continue;
         }
         try {
-          await native("asset_delete", { id: entry.asset.id });
-          removed.add(entry.asset.id);
+          const purged = await native<string[]>("staging_purge", {
+            keep: relatedAssetIds(state.tasks, state.draft),
+            ids: [entry.asset.id],
+          });
+          if (purged.includes(entry.asset.id)) removed.add(entry.asset.id);
         } catch {
           committedRelated.add(entry.asset.id);
         }
@@ -278,7 +277,6 @@ export async function savePreferences(preferences: Preferences) {
   await commit([{ collection: "preferences", id: "preferences", value: preferences }]);
   updateState({ preferences });
   void emit("preferences-changed", { source: getCurrentWindow().label }).catch(() => {});
-  await cleanGallery();
 }
 let taskWrites: Promise<unknown> = Promise.resolve();
 /** Serialize task transitions so cancellation and submission cannot cross. */
@@ -320,7 +318,6 @@ export function saveTask(task: GenerationTask) {
   }));
 }
 export async function refreshGallery(extraIds: string[] = []) {
-  await cleanGallery();
   const ids = [
     ...new Set([
       ...extraIds,

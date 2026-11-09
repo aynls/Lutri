@@ -5,6 +5,8 @@ use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
+const CURATED: &str = "collection IN ('gallery','outputs') AND COALESCE(json_extract(body,'$.staged'),0)<>1 AND (json_extract(body,'$.favorite')=1 OR COALESCE(json_array_length(body,'$.boardIds'),0)>0)";
+
 #[derive(Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GalleryQuery {
@@ -24,10 +26,7 @@ pub struct GalleryQuery {
 }
 
 fn query_sql(query: &GalleryQuery) -> (String, Vec<SqlValue>) {
-    let mut clauses = vec![
-        "collection='gallery'".to_string(),
-        "json_extract(body,'$.staged') IS NULL".to_string(),
-    ];
+    let mut clauses = vec![CURATED.to_string()];
     let mut values = vec![];
     let mut add = |sql: &str, value: SqlValue| {
         clauses.push(sql.into());
@@ -177,14 +176,18 @@ pub fn gallery_facets(store: tauri::State<Store>) -> Result<Value, String> {
     ] {
         result["counts"][name] = json!(db
             .query_row(
-                &format!("SELECT count(*) FROM records WHERE collection='gallery' AND json_extract(body,'$.staged') IS NULL AND {condition}"),
+                &format!("SELECT count(*) FROM records WHERE {CURATED} AND {condition}"),
                 [],
                 |row| row.get::<_, i64>(0)
             )
             .map_err(|e| e.to_string())?);
     }
     {
-        let mut stmt=db.prepare("SELECT value,count(*) FROM records,json_each(body,'$.boardIds') WHERE collection='gallery' AND json_extract(body,'$.staged') IS NULL GROUP BY value").map_err(|e|e.to_string())?;
+        let mut stmt = db
+            .prepare(&format!(
+                "SELECT value,count(*) FROM records,json_each(body,'$.boardIds') WHERE {CURATED} GROUP BY value"
+            ))
+            .map_err(|e| e.to_string())?;
         for row in stmt
             .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)))
             .map_err(|e| e.to_string())?
@@ -194,20 +197,41 @@ pub fn gallery_facets(store: tauri::State<Store>) -> Result<Value, String> {
         }
     }
     for field in ["model", "provider"] {
-        let mut stmt=db.prepare(&format!("SELECT DISTINCT json_extract(body,'$.provenance.{field}') FROM records WHERE collection='gallery' AND json_extract(body,'$.staged') IS NULL AND json_extract(body,'$.provenance.{field}') IS NOT NULL ORDER BY 1")).map_err(|e|e.to_string())?;
+        let mut stmt=db.prepare(&format!("SELECT DISTINCT json_extract(body,'$.provenance.{field}') FROM records WHERE {CURATED} AND json_extract(body,'$.provenance.{field}') IS NOT NULL ORDER BY 1")).map_err(|e|e.to_string())?;
         result[field] = json!(stmt
             .query_map([], |row| row.get::<_, String>(0))
             .map_err(|e| e.to_string())?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| e.to_string())?);
     }
-    let mut stmt=db.prepare("SELECT DISTINCT value FROM records,json_each(body,'$.tags') WHERE collection='gallery' AND json_extract(body,'$.staged') IS NULL ORDER BY value COLLATE NOCASE").map_err(|e|e.to_string())?;
+    let mut stmt = db
+        .prepare(&format!(
+            "SELECT DISTINCT value FROM records,json_each(body,'$.tags') WHERE {CURATED} ORDER BY value COLLATE NOCASE"
+        ))
+        .map_err(|e| e.to_string())?;
     result["tags"] = json!(stmt
         .query_map([], |row| row.get::<_, String>(0))
         .map_err(|e| e.to_string())?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?);
     Ok(result)
+}
+
+fn is_curated(entry: &Value) -> bool {
+    entry["favorite"] == true || entry["boardIds"].as_array().is_some_and(|boards| !boards.is_empty())
+}
+
+fn update_protection(entry: &mut Value, was_curated: bool, now: u64) -> Result<(), String> {
+    let curated = is_curated(entry);
+    let object = entry.as_object_mut().ok_or("Invalid image entry")?;
+    object.insert("unlisted".into(), json!(!curated));
+    if curated {
+        object.remove("staged");
+        object.remove("unprotectedSince");
+    } else if was_curated {
+        object.insert("unprotectedSince".into(), json!(now));
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -221,15 +245,32 @@ pub fn gallery_mutate(
     let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
     let mut db = store.db.lock().map_err(|e| e.to_string())?;
     let tx = db.transaction().map_err(|e| e.to_string())?;
-    for id in ids {
-        let body: String = tx
+    if action == "board" || action == "move" {
+        let exists: bool = tx
             .query_row(
-                "SELECT body FROM records WHERE collection='gallery' AND id=?1",
-                [&id],
+                "SELECT EXISTS(SELECT 1 FROM records WHERE collection='boards' AND id=?1)",
+                [value.trim()],
                 |row| row.get(0),
             )
             .map_err(|e| e.to_string())?;
+        if !exists {
+            return Err("Board not found".into());
+        }
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_millis() as u64;
+    for id in ids {
+        let (collection, body): (String, String) = tx
+            .query_row(
+                "SELECT collection,body FROM records WHERE collection IN ('gallery','outputs') AND id=?1",
+                [&id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|e| e.to_string())?;
         let mut entry: Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+        let was_curated = is_curated(&entry);
         match action.as_str() {
             "favorite" => {
                 entry["favorite"] = json!(if value == "toggle" {
@@ -255,11 +296,57 @@ pub fn gallery_mutate(
             }
             _ => return Err("Unknown gallery action".into()),
         }
+        update_protection(&mut entry, was_curated, now)?;
         tx.execute(
-            "UPDATE records SET body=?2 WHERE collection='gallery' AND id=?1",
-            rusqlite::params![id, entry.to_string()],
+            "UPDATE records SET body=?3 WHERE collection=?1 AND id=?2",
+            rusqlite::params![collection, id, entry.to_string()],
         )
         .map_err(|e| e.to_string())?;
+    }
+    tx.commit().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn gallery_delete_board(store: tauri::State<Store>, id: String) -> Result<(), String> {
+    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
+    let mut db = store.db.lock().map_err(|e| e.to_string())?;
+    let tx = db.transaction().map_err(|e| e.to_string())?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_millis() as u64;
+    let entries = {
+        let mut stmt = tx.prepare("SELECT collection,id,body FROM records WHERE collection IN ('gallery','outputs') AND EXISTS(SELECT 1 FROM json_each(body,'$.boardIds') WHERE value=?1)").map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([&id], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?
+    };
+    for (collection, asset_id, body) in entries {
+        let mut entry: Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+        let was_curated = is_curated(&entry);
+        let mut boards = entry["boardIds"].as_array().cloned().unwrap_or_default();
+        boards.retain(|board| board.as_str() != Some(&id));
+        entry["boardIds"] = json!(boards);
+        update_protection(&mut entry, was_curated, now)?;
+        tx.execute(
+            "UPDATE records SET body=?3 WHERE collection=?1 AND id=?2",
+            rusqlite::params![collection, asset_id, entry.to_string()],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    if tx
+        .execute("DELETE FROM records WHERE collection='boards' AND id=?1", [&id])
+        .map_err(|e| e.to_string())?
+        == 0
+    {
+        return Err("Board not found".into());
     }
     tx.commit().map_err(|e| e.to_string())
 }
@@ -281,7 +368,7 @@ pub fn gallery_backfill_provenance(store: tauri::State<Store>, entries: Vec<Valu
     let tx = db.transaction().map_err(|e| e.to_string())?;
     for entry in entries {
         let id = entry["id"].as_str().ok_or("Invalid asset ID")?;
-        tx.execute("UPDATE records SET body=json_set(body,'$.provenance',json(?2)) WHERE collection='gallery' AND id=?1 AND json_extract(body,'$.provenance.model') IS NULL",rusqlite::params![id,entry["provenance"].to_string()]).map_err(|e|e.to_string())?;
+        tx.execute("UPDATE records SET body=json_set(body,'$.provenance',json(?2)) WHERE collection IN ('gallery','outputs') AND id=?1 AND json_extract(body,'$.provenance.model') IS NULL",rusqlite::params![id,entry["provenance"].to_string()]).map_err(|e|e.to_string())?;
     }
     tx.commit().map_err(|e| e.to_string())
 }
@@ -328,24 +415,24 @@ pub fn asset_paste(
 #[tauri::command]
 pub fn assets_publish(store: tauri::State<Store>, ids: Vec<String>) -> Result<(), String> {
     let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|e| e.to_string())?
-        .as_millis() as u64;
     store
         .db
         .lock()
         .map_err(|e| e.to_string())?
         .execute(
-            "UPDATE records SET body=json_set(json_remove(body,'$.staged'),'$.addedAt',?1) WHERE collection='gallery' AND json_extract(body,'$.staged')=1 AND id IN (SELECT value FROM json_each(?2))",
-            rusqlite::params![now, serde_json::to_string(&ids).map_err(|e| e.to_string())?],
+            "UPDATE records SET body=json_set(json_remove(body,'$.staged'),'$.unlisted',json(CASE WHEN json_extract(body,'$.favorite')=1 OR COALESCE(json_array_length(body,'$.boardIds'),0)>0 THEN 'false' ELSE 'true' END)) WHERE collection IN ('gallery','outputs') AND json_extract(body,'$.staged')=1 AND id IN (SELECT value FROM json_each(?1))",
+            rusqlite::params![serde_json::to_string(&ids).map_err(|e| e.to_string())?],
         )
         .map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
-pub fn staging_purge(store: tauri::State<Store>, keep: Vec<String>) -> Result<Vec<String>, String> {
+pub fn staging_purge(
+    store: tauri::State<Store>,
+    keep: Vec<String>,
+    ids: Option<Vec<String>>,
+) -> Result<Vec<String>, String> {
     let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
     let root = store.library.read().map_err(|e| e.to_string())?;
     if !root.is_dir() {
@@ -355,13 +442,19 @@ pub fn staging_purge(store: tauri::State<Store>, keep: Vec<String>) -> Result<Ve
         let db = store.db.lock().map_err(|e| e.to_string())?;
         let mut stmt = db
             .prepare(
-                "SELECT id FROM records WHERE collection='gallery' AND json_extract(body,'$.staged')=1 AND id NOT IN (SELECT value FROM json_each(?1))",
+                "SELECT id FROM records WHERE collection IN ('gallery','outputs') AND json_extract(body,'$.staged')=1 AND COALESCE(json_extract(body,'$.favorite'),0)<>1 AND COALESCE(json_array_length(body,'$.boardIds'),0)=0 AND id NOT IN (SELECT value FROM json_each(?1)) AND (?2 IS NULL OR id IN (SELECT value FROM json_each(?2)))",
             )
             .map_err(|e| e.to_string())?;
         let rows = stmt
-            .query_map([serde_json::to_string(&keep).map_err(|e| e.to_string())?], |row| {
-                row.get::<_, String>(0)
-            })
+            .query_map(
+                rusqlite::params![
+                    serde_json::to_string(&keep).map_err(|e| e.to_string())?,
+                    ids.map(|ids| serde_json::to_string(&ids))
+                        .transpose()
+                        .map_err(|e| e.to_string())?
+                ],
+                |row| row.get::<_, String>(0),
+            )
             .map_err(|e| e.to_string())?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| e.to_string())?;

@@ -16,8 +16,6 @@ export function OutputControls({
   const [saving, setSaving] = useState(false);
   const output = preferences.outputs ?? {};
   const enabled = output[kind] ?? false;
-  const galleryKey =
-    kind === "generationAuto" ? "generationGallery" : kind === "batchAuto" ? "batchGallery" : "upscaleGallery";
   const missing = enabled && !output.directory?.trim();
   const change = async (next: typeof output) => {
     setSaving(true);
@@ -41,15 +39,6 @@ export function OutputControls({
             onChange={(event) => void change({ [kind]: event.target.checked })}
           />
           {t("autoSave")}
-        </label>
-        <label className="spec-option">
-          <input
-            type="checkbox"
-            checked={output[galleryKey] ?? true}
-            disabled={disabled || saving}
-            onChange={(event) => void change({ [galleryKey]: event.target.checked })}
-          />
-          {t("writeToGallery")}
         </label>
       </div>
       {enabled && (

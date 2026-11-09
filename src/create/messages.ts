@@ -69,7 +69,7 @@ const messages = {
   needsConfiguration: label("Provider setup required", "需要配置供应商", "プロバイダーの設定が必要です"),
   configure: label("Configure", "配置", "設定"),
   files: label("Files", "文件", "ファイル"),
-  library: label("Library", "图库", "ライブラリ"),
+  library: label("Resources", "资源", "リソース"),
   clipboard: label("Paste image", "粘贴图片", "画像を貼り付け"),
   url: label("Image URL", "图片链接", "画像 URL"),
   noClipboard: label("No image on clipboard", "剪贴板中没有图片", "クリップボードに画像がありません"),

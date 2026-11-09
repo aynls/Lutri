@@ -43,7 +43,6 @@ export async function addBatchItem() {
   const copy = structuredClone(draft);
   // Output preferences are owned by the submission, never by individual configurations.
   delete copy.outputDirectory;
-  delete copy.saveToGallery;
   if (creation.editing) {
     const id = creation.editing.id;
     await saveCreation(creation.editing.returnDraft, {

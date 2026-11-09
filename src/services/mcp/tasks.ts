@@ -84,7 +84,6 @@ export function batchSummary(batch: GenerationBatch) {
       ? {
           autoSave: !!tasks[0].draft.outputDirectory,
           destination: tasks[0].draft.outputDirectory,
-          saveToGallery: tasks[0].draft.saveToGallery !== false,
         }
       : undefined,
     groups: batch.cloud?.groups.map((group) => ({
@@ -167,7 +166,7 @@ export const taskTools = [
   ),
   tool(
     "get_task",
-    "Read one creation task, its request and saved results. Result asset IDs work with get_image and subsequent creation even when saveToGallery=false. Returned creation describes one provider request.",
+    "Read one creation task, its request and locally saved results. Result asset IDs work with get_image and subsequent creation. Returned creation describes one provider request.",
     z.strictObject({ taskId: identifier }),
     async ({ taskId }) => {
       const task = requireTask(taskId);
@@ -187,7 +186,7 @@ export const taskTools = [
             mediaType: entry?.asset.mediaType ?? result.mediaType,
             width: entry?.asset.width,
             height: entry?.asset.height,
-            inGallery: entry ? !entry.unlisted && !entry.staged : false,
+            inGallery: entry ? (entry.favorite || entry.boardIds.length > 0) && !entry.staged : false,
             error: result.error,
             exportError: result.exportError,
           };
@@ -197,7 +196,7 @@ export const taskTools = [
         ...taskSummary(task),
         creation: creationInput(task.draft),
         results,
-        outputs: { saveToGallery: task.draft.saveToGallery !== false, destination: task.draft.outputDirectory },
+        outputs: { destination: task.draft.outputDirectory },
         pollAfterMs: ["queued", "submitting", "generating", "downloading"].includes(task.status) ? 2000 : null,
       });
     },

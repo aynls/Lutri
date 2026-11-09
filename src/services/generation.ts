@@ -71,7 +71,6 @@ export function submitBatch(
   try {
     const output = resolveOutputs("generation", options);
     snapshot.outputDirectory = output.directory;
-    snapshot.saveToGallery = output.saveToGallery;
   } catch (error) {
     return Promise.reject(error);
   }
@@ -242,9 +241,8 @@ export async function downloadResults(task: GenerationTask) {
             directory: task.draft.layerOutputDirectory ?? "",
             resultId: result.id,
             sources: layerSources,
-            saveToGallery: task.draft.saveToGallery !== false,
           })
-        : await downloadAsset(result.url!, result.id, task.draft.saveToGallery !== false);
+        : await downloadAsset(result.url!, result.id);
       result.assetId = asset.asset.id;
       result.mediaType = asset.asset.mediaType;
       result.status = "saved";

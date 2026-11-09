@@ -26,6 +26,7 @@ import { copyAssetImage, exportImages, favorite } from "./actions";
 import { lt } from "../i18n/library";
 import type { GalleryEntry } from "../domain/types";
 import { isSvgAsset } from "../domain/media";
+import { BoardAction } from "./BoardAction";
 
 export interface ImageViewerItem {
   id: string;
@@ -110,7 +111,7 @@ export function ImageViewer({
     };
   }, [assetId, gallery]);
   const index = ids.indexOf(current),
-    entry = loaded.find((entry) => entry.asset.id === assetId) ?? gallery.find((entry) => entry.asset.id === assetId);
+    entry = gallery.find((entry) => entry.asset.id === assetId) ?? loaded.find((entry) => entry.asset.id === assetId);
   const path = entry?.path ?? source?.preview?.after ?? source?.preview?.before;
   const task = tasks.find((task) => task.results.some((result) => result.assetId === assetId));
   const onError = (value: unknown) => setError(String(value));
@@ -151,6 +152,7 @@ export function ImageViewer({
         onClose();
       }}
       onKeyDown={(event) => {
+        if (event.target instanceof HTMLElement && event.target.closest("dialog") !== event.currentTarget) return;
         event.stopPropagation();
         if (event.defaultPrevented) return;
         if (actionLock.current) return;
@@ -218,7 +220,7 @@ export function ImageViewer({
             {entry && (
               <>
                 <button
-                  disabled={acting || entry.unlisted}
+                  disabled={acting}
                   title={entry?.favorite ? t("removeFavorite") : t("favorites")}
                   aria-label={entry?.favorite ? t("removeFavorite") : t("favorites")}
                   aria-pressed={entry?.favorite ?? false}
@@ -226,6 +228,7 @@ export function ImageViewer({
                 >
                   <HeartIcon weight={entry?.favorite ? "fill" : "regular"} />
                 </button>
+                <BoardAction key={entry.asset.id} entry={entry} disabled={acting} />
                 <button
                   title={lt("copyImage")}
                   aria-label={lt("copyImage")}

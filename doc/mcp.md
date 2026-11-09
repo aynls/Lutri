@@ -51,8 +51,7 @@ Lutri 的本机 MCP 服务提供创作、图库资产检索和任务结果访问
     "requestCount": 1,
     "parameters": {}
   },
-  "autoSave": false,
-  "saveToGallery": true
+  "autoSave": false
 }
 ```
 
@@ -72,9 +71,9 @@ Lutri 的本机 MCP 服务提供创作、图库资产检索和任务结果访问
 
 ### 输出
 
-`autoSave`、`destination` 和 `saveToGallery` 位于提交工具的顶层。未指定时继承对应创作模式的页面设置，提交时固定。`destination` 必须是已经存在的绝对目录；提供目录会开启额外另存为，显式 `autoSave: false` 可关闭。分层输出额外需要 `creation.layerOutputDirectory`。
+`autoSave` 和 `destination` 位于提交工具的顶层，控制额外另存副本。所有结果始终保存为本地资产，可通过任务记录和 asset ID 访问。`find_assets` 只搜索已收藏或加入图板的资源；导入和生成图片不会自动进入资源库。
 
-关闭 `saveToGallery` 的结果仍保存为 `outputs` 资产，并记录在任务结果中。通过 `get_task` 获取其 asset ID 后，可调用 `get_image` 或作为后续参考图。`find_assets` 只搜索图库，不包含这些未入库结果。
+未指定时继承对应创作模式的页面设置，提交时固定。`destination` 必须是已经存在的绝对目录；提供目录会开启额外另存为，显式 `autoSave: false` 可关闭。分层输出额外需要 `creation.layerOutputDirectory`。
 
 导入本地图片时调用 `import_image`：
 

@@ -36,7 +36,6 @@ interface Configuration {
   noise?: Noise;
   tileSize: number;
   destination: string;
-  saveToGallery: boolean;
 }
 interface Job {
   id: string;
@@ -96,7 +95,6 @@ export function Upscale({
   const [scale, setScale] = useState(4),
     [tile, setTile] = useState(128);
   const { preferences } = useApplication();
-  const saveToGallery = preferences.outputs?.upscaleGallery ?? true;
   const autoSave = preferences.outputs?.upscaleAuto ?? false;
   const destination = autoSave ? (preferences.outputs?.directory ?? "") : "";
   const missingDestination = autoSave && !destination.trim();
@@ -204,7 +202,6 @@ export function Upscale({
       noise: availableNoise.length ? noise : undefined,
       tileSize: tile,
       destination,
-      saveToGallery,
     };
   };
   const execute = async (job: Job) => {
@@ -218,7 +215,6 @@ export function Upscale({
           scale: options.scale,
           tileSize: options.tileSize,
           destination: options.destination || null,
-          saveToGallery: options.saveToGallery,
         },
         (event) => {
           if (event.phase === "running") update(job.id, { status: "generating" });

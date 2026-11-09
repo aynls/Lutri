@@ -36,7 +36,6 @@ export async function runUpscale(options: UpscaleOptions, onProgress?: (value: U
     jobId: options.jobId ?? crypto.randomUUID(),
     gpuIndex: options.gpuIndex === undefined ? (preferences.upscale?.gpuIndex ?? null) : options.gpuIndex,
     destination: output.directory || null,
-    saveToGallery: output.saveToGallery,
     channel,
   }).catch((error: unknown) => {
     if (String(error) === "SVG_UPSCALE_UNSUPPORTED") throw new Error(t("svgUpscaleUnsupported"));

@@ -14,7 +14,7 @@ export async function chooseImages(staged = false): Promise<GalleryEntry[]> {
 
 export async function favorite(entry: GalleryEntry) {
   await native("gallery_mutate", { ids: [entry.asset.id], action: "favorite", value: "toggle" });
-  await refreshGallery();
+  await refreshGallery([entry.asset.id]);
 }
 
 export async function deleteImage(entry: GalleryEntry): Promise<boolean> {

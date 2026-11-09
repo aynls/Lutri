@@ -84,25 +84,13 @@ pub fn save_asset(store: &Store, bytes: &[u8], source: &str, staged: bool) -> Re
         bytes,
         source,
         uuid::Uuid::new_v4().to_string(),
-        "gallery",
+        "outputs",
         staged,
     )
 }
 
-pub(crate) fn save_generated_with_id(
-    store: &Store,
-    bytes: &[u8],
-    id: String,
-    save_to_gallery: bool,
-) -> Result<Value, String> {
-    save_image_with_id(
-        store,
-        bytes,
-        "generated",
-        id,
-        if save_to_gallery { "gallery" } else { "outputs" },
-        false,
-    )
+pub(crate) fn save_generated_with_id(store: &Store, bytes: &[u8], id: String) -> Result<Value, String> {
+    save_image_with_id(store, bytes, "generated", id, "outputs", false)
 }
 
 fn save_image_with_id(
@@ -238,12 +226,7 @@ pub async fn asset_import(
 }
 
 #[tauri::command]
-pub async fn asset_download(
-    store: tauri::State<'_, Store>,
-    url: String,
-    result_id: String,
-    save_to_gallery: bool,
-) -> Result<Value, String> {
+pub async fn asset_download(store: tauri::State<'_, Store>, url: String, result_id: String) -> Result<Value, String> {
     let result_id = uuid::Uuid::parse_str(&result_id)
         .map_err(|e| e.to_string())?
         .to_string();
@@ -268,7 +251,7 @@ pub async fn asset_download(
             .map_err(|e| e.to_string())?
             .to_vec()
     };
-    let result = save_generated_with_id(&store, &bytes, result_id, save_to_gallery)?;
+    let result = save_generated_with_id(&store, &bytes, result_id)?;
     if let Some(id) = url.strip_prefix("staged:") {
         let id = uuid::Uuid::parse_str(id).map_err(|e| e.to_string())?;
         let _ = std::fs::remove_file(store.root.join("staging").join(id.to_string()));

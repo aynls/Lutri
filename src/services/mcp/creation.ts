@@ -22,10 +22,6 @@ export const outputFields = {
     .min(1)
     .optional()
     .describe("Existing absolute folder. Enables autoSave unless autoSave is false."),
-  saveToGallery: z
-    .boolean()
-    .optional()
-    .describe("Defaults to the page setting. False still retains results by task and asset ID."),
 };
 export const creationSchema = z.strictObject({
   combinationId: identifier.describe("Model/provider combination from list_models."),
@@ -226,5 +222,5 @@ export async function checkedOutput(mode: ExecutionMode, options: z.infer<z.ZodO
   }
   if (output.directory && !(await native<boolean>("layer_directory_available", { directory: output.directory })))
     throw new McpError("OUTPUT_DIRECTORY_UNAVAILABLE", "The output directory must be an existing absolute folder.");
-  return { autoSave: !!output.directory, destination: output.directory, saveToGallery: output.saveToGallery };
+  return { autoSave: !!output.directory, destination: output.directory };
 }

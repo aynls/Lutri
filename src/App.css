@@ -940,12 +940,14 @@ img.asset-image.loaded {
   border-radius: 9px;
   border: 1px solid var(--line);
 }
-.upscale-host {
+.upscale-host,
+.gallery-host {
   flex: 1;
   min-height: 0;
   display: flex;
 }
-.upscale-host[hidden] {
+.upscale-host[hidden],
+.gallery-host[hidden] {
   display: none;
 }
 .upscale-workspace {

@@ -10,7 +10,7 @@ function assetSummary(entry: GalleryEntry) {
     mediaType: entry.asset.mediaType,
     width: entry.asset.width,
     height: entry.asset.height,
-    inGallery: !entry.unlisted && !entry.staged,
+    inGallery: (entry.favorite || entry.boardIds.length > 0) && !entry.staged,
     source: entry.source,
     addedAt: entry.addedAt,
     bytes: entry.bytes,
@@ -25,7 +25,7 @@ function assetSummary(entry: GalleryEntry) {
 export const assetTools = [
   tool(
     "find_assets",
-    "Search the complete gallery by exact assetId or an asset ID fragment in query. Results exclude staged inputs and outputs not added to the gallery; find those outputs through list_tasks/get_task. Defaults: newest first, limit 20.",
+    "Find images explicitly kept in favorites or boards by exact asset ID or ID fragment. Working files remain accessible by asset ID and through creation task records. Defaults: newest first, limit 20.",
     z.strictObject({
       assetId: identifier.optional(),
       query: z.string().optional(),
@@ -79,7 +79,7 @@ export const assetTools = [
   ),
   tool(
     "import_image",
-    "Persist an image in the reference-material gallery and return its asset ID for subsequent creation. Choose one source: an absolute local path or a Base64 data URL.",
+    "Save an independent local working copy and return its asset ID for subsequent creation. This does not add the image to favorites or boards. Choose one source: an absolute local path or a Base64 data URL.",
     z.strictObject({
       source: z.discriminatedUnion("type", [
         z.strictObject({
