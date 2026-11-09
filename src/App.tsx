@@ -118,7 +118,6 @@ export default function App() {
     [search, setSearch] = useState({ regular: "", batch: "", request: 0 }),
     [writers, setWriters] = useState(false),
     [maskEditor, setMaskEditor] = useState(false);
-  const [writerImages, setWriterImages] = useState<{ entries: GalleryEntry[]; nonce: string }>();
   const [upscaleInput, setUpscaleInput] = useState<{ entries: GalleryEntry[]; nonce: string }>();
   const [credential, setCredential] = useState<boolean | undefined>(),
     [sent, setSent] = useState(false);
@@ -213,40 +212,41 @@ export default function App() {
     const timer = window.setTimeout(() => setSent(false), 1400);
     return () => window.clearTimeout(timer);
   }, [sent]);
+  const appendReferences = useCallback(async (entries: GalleryEntry[]) => {
+    if (!entries.length) return;
+    const draft = getState().draft;
+    const limit = combinationById(draft.combinationId).maxReferences;
+    if (!limit) throw new Error(c("unsupportedImages"));
+    if (draft.references.length + entries.length > limit) throw new Error(c("tooMany"));
+    await saveDraft({
+      ...draft,
+      references: [
+        ...draft.references,
+        ...entries.map((entry) => ({
+          id: crypto.randomUUID(),
+          assetId: entry.asset.id,
+          name: t("referenceAlias"),
+          purpose: "reference" as const,
+        })),
+      ],
+    });
+  }, []);
   const receiveImages = useCallback(
     async (entries: GalleryEntry[]) => {
       if (!entries.length) return;
-      if (writers) {
-        setWriterImages({ entries, nonce: crypto.randomUUID() });
-        return;
-      }
-      if (page === "creation") {
-        const draft = getState().draft;
-        if (draft.references.length + entries.length > combinationById(draft.combinationId).maxReferences)
-          throw new Error(c("tooMany"));
-        await saveDraft({
-          ...draft,
-          references: [
-            ...draft.references,
-            ...entries.map((entry) => ({
-              id: crypto.randomUUID(),
-              assetId: entry.asset.id,
-              name: t("referenceAlias"),
-              purpose: "reference" as const,
-            })),
-          ],
-        });
-      } else if (page === "upscale") setUpscaleInput({ entries, nonce: crypto.randomUUID() });
+      if (writers || page === "creation") await appendReferences(entries);
+      else if (page === "upscale") setUpscaleInput({ entries, nonce: crypto.randomUUID() });
     },
-    [page, writers],
+    [page, writers, appendReferences],
   );
   useEffect(() => {
     const paste = (event: ClipboardEvent) => {
-      if (!["creation", "upscale", "gallery"].includes(page) || document.querySelector("dialog[open]")) return;
+      if ((!writers && !["creation", "upscale", "gallery"].includes(page)) || document.querySelector("dialog[open]"))
+        return;
       const files = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
       if (!files.length) return;
       event.preventDefault();
-      void importFiles(files, page === "creation")
+      void importFiles(files, writers || page === "creation")
         .then(receiveImages)
         .catch(onError);
     };
@@ -255,13 +255,14 @@ export default function App() {
     let unlisten: (() => void) | undefined;
     void getCurrentWebview()
       .onDragDropEvent((event) => {
-        if (!["creation", "upscale", "gallery"].includes(page) || document.querySelector("dialog[open]")) return;
+        if ((!writers && !["creation", "upscale", "gallery"].includes(page)) || document.querySelector("dialog[open]"))
+          return;
         const payload = event.payload;
         if (payload.type === "enter") setDragging(payload.paths.some(isImagePath));
         if (payload.type === "leave") setDragging(false);
         if (payload.type === "drop") {
           setDragging(false);
-          void importPaths(payload.paths, page === "creation")
+          void importPaths(payload.paths, writers || page === "creation")
             .then(receiveImages)
             .catch(onError);
         }
@@ -276,7 +277,7 @@ export default function App() {
       unlisten?.();
       document.removeEventListener("paste", paste, true);
     };
-  }, [page, receiveImages, onError]);
+  }, [page, writers, receiveImages, onError]);
   useEffect(() => {
     const refresh = () => {
       if (getState().ready) void refreshGallery().catch(onError);
@@ -287,41 +288,55 @@ export default function App() {
   const view = (assetId: string, ids: string[] = [assetId]) => {
     setViewer({ assetId, ids });
   };
-  const addReferences = (entries: GalleryEntry[]) => {
-    const draft = getState().draft;
-    if (draft.references.length + entries.length > combinationById(draft.combinationId).maxReferences) {
-      onError(c("tooMany"));
-      return;
-    }
-    changeDraft({
-      ...draft,
-      references: [
-        ...draft.references,
-        ...entries.map((entry) => ({
-          id: crypto.randomUUID(),
-          assetId: entry.asset.id,
-          name: t("referenceAlias"),
-          purpose: "reference" as const,
-        })),
-      ],
-    });
+  const addReferences = async (entries: GalleryEntry[]) => {
+    if (!entries.length) return;
+    await appendReferences(entries);
     setPicker(false);
     setPage("creation");
   };
-  const addReference = (entry: GalleryEntry) => addReferences([entry]);
+  const addReference = (entry: GalleryEntry) => void addReferences([entry]).catch(onError);
   const useImageAsReference = async (entry: GalleryEntry) => {
-    const draft = getState().draft;
-    if (draft.references.length >= combinationById(draft.combinationId).maxReferences) throw new Error(c("tooMany"));
-    await saveDraft({
-      ...draft,
-      references: [
-        ...draft.references,
-        { id: crypto.randomUUID(), assetId: entry.asset.id, name: t("referenceAlias"), purpose: "reference" },
-      ],
-    });
-    setWriters(false);
-    setPage("creation");
+    await appendReferences([entry]);
+    if (!writers) setPage("creation");
     setViewer(undefined);
+  };
+  const acceptWriterPrompt = async (snapshot: GenerationDraft) => {
+    const approved = new Map<string, string>();
+    for (;;) {
+      const current = getState().draft;
+      const references = new Map(current.references.map((reference) => [reference.id, reference]));
+      for (const reference of snapshot.references) {
+        const existing = references.get(reference.id);
+        if (existing && existing.assetId !== reference.assetId) throw new Error(c("writerReferenceConflict"));
+      }
+      const missing = snapshot.references.filter((reference) => !references.has(reference.id));
+      if (missing.some((reference) => approved.get(reference.id) !== reference.assetId)) {
+        if (
+          !(await confirm(c("restoreWriterReferencesConfirm"), {
+            title: c("restoreWriterReferences"),
+            kind: "warning",
+            okLabel: c("restoreAndUse"),
+            cancelLabel: t("cancel"),
+          }))
+        )
+          return;
+        for (const reference of missing) approved.set(reference.id, reference.assetId);
+        continue;
+      }
+      const limit = combinationById(current.combinationId).maxReferences;
+      if ((current.references.length || missing.length) && !limit) throw new Error(c("unsupportedImages"));
+      if (current.references.length + missing.length > limit) throw new Error(c("tooMany"));
+      const candidate = { ...current, prompt: snapshot.prompt, references: [...current.references, ...missing] };
+      if (missingPromptReferences(candidate).length) throw new Error(c("writerTokenMissing"));
+      if (missing.length) {
+        const exists = await Promise.all(missing.map((reference) => assetExists(reference.assetId)));
+        if (getState().draft !== current) continue;
+        if (exists.some((available) => !available)) throw new Error(c("writerReferenceMissing"));
+      }
+      await saveDraft(candidate);
+      setWriters(false);
+      return;
+    }
   };
   const switchModel = async (next: ModelCombination) => {
     const current = getState().draft;
@@ -366,12 +381,12 @@ export default function App() {
       return;
     }
     if (source === "files") {
-      addReferences(await chooseImages(true));
+      await addReferences(await chooseImages(true));
       return;
     }
     const entry = await native<GalleryEntry>("asset_paste", { staged: true });
     await refreshGallery();
-    addReferences([entry]);
+    await addReferences([entry]);
   };
   const applyEdit = (entry: GalleryEntry, keep: boolean) => {
     const current = getState().draft,
@@ -912,7 +927,7 @@ export default function App() {
       {picker && (
         <AssetPicker
           stagedImports
-          onSelect={addReferences}
+          onSelect={(entries) => void addReferences(entries).catch(onError)}
           onClose={() => setPicker(false)}
           onError={onError}
           limit={Math.max(0, combination.maxReferences - state.draft.references.length)}
@@ -936,7 +951,7 @@ export default function App() {
                   void importAsset({ url: imageUrl }, true)
                     .then(async (entry) => {
                       await refreshGallery();
-                      addReferences([entry]);
+                      await addReferences([entry]);
                       setImageUrl("");
                       setUrlImport(false);
                     })
@@ -1001,12 +1016,10 @@ export default function App() {
       <div hidden={!writers}>
         <Writers
           draft={state.draft}
+          onChange={changeDraft}
+          onAddReferences={appendReferences}
           onView={view}
-          incomingImages={writerImages}
-          onAccept={(draft) => {
-            changeDraft({ ...getState().draft, prompt: draft.prompt });
-            setWriters(false);
-          }}
+          onAccept={acceptWriterPrompt}
           onClose={() => setWriters(false)}
           active={writers}
           onSettings={() => {

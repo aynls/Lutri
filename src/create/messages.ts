@@ -79,6 +79,24 @@ const messages = {
   edit: label("Edit with this image", "用此图编辑", "この画像で編集"),
   keepReferences: label("Keep other references", "保留其他参考图", "他の参照画像を保持"),
   tooMany: label("Too many reference images", "参考图数量超过上限", "参照画像が上限を超えています"),
+  restoreWriterReferences: label("Restore references", "恢复参考图", "参照画像を復元"),
+  restoreWriterReferencesConfirm: label(
+    "Restore missing references and use this prompt?",
+    "恢复缺失的参考图并使用此提示词？",
+    "不足している参照画像を復元してこのプロンプトを使用しますか？",
+  ),
+  restoreAndUse: label("Restore and use", "恢复并使用", "復元して使用"),
+  writerReferenceConflict: label(
+    "A reference ID belongs to a different image",
+    "参考图 ID 对应了其他图片",
+    "参照画像 ID が別の画像に対応しています",
+  ),
+  writerReferenceMissing: label("A reference image is missing", "参考图文件缺失", "参照画像のファイルがありません"),
+  writerTokenMissing: label(
+    "The prompt contains an unknown reference",
+    "提示词包含未知的参考图引用",
+    "プロンプトに不明な参照画像があります",
+  ),
   unsupportedImages: label(
     "Choose a model that supports images",
     "请选择支持图片输入的模型",

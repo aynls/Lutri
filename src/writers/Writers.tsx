@@ -17,7 +17,7 @@ import { ResizablePanel } from "../components/ResizablePanel";
 import { CopyButton } from "../components/CopyButton";
 
 import type { Writer } from "./types";
-import { refreshGallery, retainAssets, useApplication } from "../services/store";
+import { getState, refreshGallery, retainAssets, useApplication } from "../services/store";
 import { PromptField } from "../create/components/PromptField";
 import { References, type ReferenceSource } from "../create/components/References";
 import { AssetPicker } from "../gallery/AssetPicker";
@@ -41,17 +41,19 @@ interface Output {
 export function Writers({
   draft,
   onAccept,
+  onChange,
+  onAddReferences,
   onView,
-  incomingImages,
   onClose,
   onSettings,
   active,
   onError,
 }: {
   draft: GenerationDraft;
-  onAccept: (draft: GenerationDraft) => void;
+  onAccept: (draft: GenerationDraft) => Promise<void>;
+  onChange: (draft: GenerationDraft) => void;
+  onAddReferences: (entries: GalleryEntry[]) => Promise<void>;
   onView: (id: string) => void;
-  incomingImages?: { entries: GalleryEntry[]; nonce: string };
   onClose: () => void;
   onSettings: () => void;
   active: boolean;
@@ -60,7 +62,6 @@ export function Writers({
   const { gallery } = useApplication();
   const [writers, setWriters] = useState<Writer[]>([]),
     [queue, setQueue] = useState<{ id: string; writerId: string }[]>([]),
-    [writerDraft, setWriterDraft] = useState(() => structuredClone(draft)),
     [specs, setSpecs] = useState<Specification[]>(builtInSpecifications),
     [selected, setSelected] = useState(""),
     [efforts, setEfforts] = useState<Record<string, string>>({}),
@@ -68,10 +69,10 @@ export function Writers({
   useEffect(
     () =>
       retainAssets([
-        ...(active ? writerDraft.references.map((reference) => reference.assetId) : []),
+        ...(active ? draft.references.map((reference) => reference.assetId) : []),
         ...outputs.flatMap((output) => output.draft.references.map((reference) => reference.assetId)),
       ]),
-    [active, writerDraft, outputs],
+    [active, draft, outputs],
   );
   const resultsArea = useRef<HTMLDivElement>(null);
   const [columnCount, setColumnCount] = useState(1);
@@ -103,28 +104,13 @@ export function Writers({
   const [imageUrl, setImageUrl] = useState("");
   const [importBusy, setImportBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const referenceLimit = Math.max(
-    combinationById(writerDraft.combinationId).maxReferences || 10,
-    writerDraft.references.length,
-  );
-  const addReferences = (entries: GalleryEntry[]) => {
+  const [accepting, setAccepting] = useState(false);
+  const acceptingRef = useRef(false);
+  const combination = combinationById(draft.combinationId);
+  const referenceLimit = combination.maxReferences;
+  const addReferences = async (entries: GalleryEntry[]) => {
     if (!entries.length) return;
-    if (writerDraft.references.length + entries.length > referenceLimit) {
-      onError(c("tooMany"));
-      return;
-    }
-    setWriterDraft({
-      ...writerDraft,
-      references: [
-        ...writerDraft.references,
-        ...entries.map((entry) => ({
-          id: crypto.randomUUID(),
-          assetId: entry.asset.id,
-          name: t("referenceAlias"),
-          purpose: "reference" as const,
-        })),
-      ],
-    });
+    await onAddReferences(entries);
     setPicker(false);
   };
   const addSource = async (source: ReferenceSource) => {
@@ -137,28 +123,21 @@ export function Writers({
       return;
     }
     if (source === "files") {
-      addReferences(await chooseImages(true));
+      await addReferences(await chooseImages(true));
       return;
     }
     const entry = await native<GalleryEntry>("asset_paste", { staged: true });
     await refreshGallery();
-    addReferences([entry]);
+    await addReferences([entry]);
   };
   const [loaded, setLoaded] = useState(false);
   const wasActive = useRef(false);
   useEffect(() => {
     if (active && !wasActive.current) {
-      setWriterDraft(structuredClone(draft));
       setNotice("");
     }
     wasActive.current = active;
-  }, [active, draft]);
-  const lastIncoming = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    if (!active || !incomingImages || incomingImages.nonce === lastIncoming.current) return;
-    lastIncoming.current = incomingImages.nonce;
-    addReferences(incomingImages.entries);
-  }, [active, incomingImages]);
+  }, [active]);
   const dragged = useRef<{ id: string; pointerId: number } | null>(null);
   const [draggingId, setDraggingId] = useState<string>();
   useEffect(() => {
@@ -221,7 +200,7 @@ export function Writers({
       ]).catch(onError);
   }, [queue, selected, efforts, loaded, onError]);
   const run = async (writer: Writer, effort: string, id: string = crypto.randomUUID()) => {
-    const snapshot = structuredClone(writerDraft);
+    const snapshot = structuredClone(getState().draft);
     const release = retainAssets(snapshot.references.map((reference) => reference.assetId));
     setOutputs((current) => [
       ...current.filter((output) => output.id !== id),
@@ -265,16 +244,17 @@ export function Writers({
           maxWidth={520}
         >
           <div className="writer-scroll">
-            <PromptField draft={writerDraft} onChange={setWriterDraft} />
+            <PromptField draft={draft} onChange={onChange} />
             <References
-              draft={writerDraft}
+              draft={draft}
               gallery={gallery}
-              onChange={setWriterDraft}
+              onChange={onChange}
               onAdd={(source) => void addSource(source).catch(onError)}
               onView={onView}
               limit={referenceLimit}
-              targetId={editTargetId(writerDraft, combinationById(writerDraft.combinationId))}
-              stableTarget={writerDraft.creationMode === "edit"}
+              primary={!combination.creationControl && combination.primaryReference}
+              targetId={editTargetId(draft, combination)}
+              stableTarget={!!combination.creationControl && draft.creationMode === "edit"}
               onNotice={setNotice}
             />
             {notice && (
@@ -469,7 +449,7 @@ export function Writers({
           <footer className="submit-panel writer-submit">
             <button
               className="primary-button"
-              disabled={!queue.length || !writerDraft.prompt.trim()}
+              disabled={!queue.length || !draft.prompt.trim()}
               onClick={() => {
                 for (const queued of queue) {
                   const writer = writers.find((entry) => entry.id === queued.writerId);
@@ -544,8 +524,18 @@ export function Writers({
                         {localize(label("Rewrite", "重写", "書き直す"))}
                       </button>
                       <button
-                        disabled={!output.text || output.busy}
-                        onClick={() => onAccept({ ...output.draft, prompt: output.text })}
+                        disabled={!output.text || output.busy || accepting}
+                        onClick={() => {
+                          if (acceptingRef.current) return;
+                          acceptingRef.current = true;
+                          setAccepting(true);
+                          void onAccept({ ...output.draft, prompt: output.text })
+                            .catch(onError)
+                            .finally(() => {
+                              acceptingRef.current = false;
+                              setAccepting(false);
+                            });
+                        }}
                       >
                         {localize(label("Use prompt", "使用提示词", "使用する"))}
                       </button>
@@ -560,10 +550,10 @@ export function Writers({
       {picker && (
         <AssetPicker
           stagedImports
-          onSelect={addReferences}
+          onSelect={(entries) => void addReferences(entries).catch(onError)}
           onClose={() => setPicker(false)}
           onError={onError}
-          limit={Math.max(0, referenceLimit - writerDraft.references.length)}
+          limit={Math.max(0, referenceLimit - draft.references.length)}
         />
       )}
       {urlImport && (
@@ -581,7 +571,7 @@ export function Writers({
                   void importAsset({ url: imageUrl }, true)
                     .then(async (entry) => {
                       await refreshGallery();
-                      addReferences([entry]);
+                      await addReferences([entry]);
                       setUrlImport(false);
                       setImageUrl("");
                     })
