@@ -60,6 +60,8 @@ import { SavedStyles } from "./create/components/SavedStyles";
 import { Regions } from "./create/components/Regions";
 import { Gallery } from "./gallery/Gallery";
 import { History } from "./history/History";
+import { taskUsesAsset, type RelatedHistoryScope } from "./history/related";
+import { taskText } from "./i18n/tasks";
 import { Settings } from "./settings/Settings";
 import { Writers } from "./writers/Writers";
 import { Upscale } from "./upscale/Upscale";
@@ -115,9 +117,13 @@ export default function App() {
   const [page, setPage] = useState<Page>("creation"),
     [error, setError] = useState(""),
     [picker, setPicker] = useState(false),
-    [search, setSearch] = useState({ regular: "", batch: "", request: 0 }),
     [writers, setWriters] = useState(false),
     [maskEditor, setMaskEditor] = useState(false);
+  const [related, setRelated] = useState<RelatedHistoryScope & { returnPage: Page; returnTab: CreationMode }>();
+  const lastNonHistory = useRef<Page>("creation");
+  useEffect(() => {
+    if (page !== "history") lastNonHistory.current = page;
+  }, [page]);
   const [upscaleInput, setUpscaleInput] = useState<{ entries: GalleryEntry[]; nonce: string }>();
   const [galleryInputs, setGalleryInputs] = useState<{ entries: GalleryEntry[]; nonce: string }[]>([]);
   const [credential, setCredential] = useState<boolean | undefined>(),
@@ -167,11 +173,18 @@ export default function App() {
     }
   };
   const relatedHistory = (id: string) => {
-    const task = getState().tasks.find((task) => task.results.some((result) => result.assetId === id));
+    const matches = getState().tasks.filter((task) => !task.historyDeletedAt && taskUsesAsset(task, id));
+    const task = matches.find((task) => task.results.some((result) => result.assetId === id)) ?? matches[0];
     const tab = task?.cloudGroupId ? "batch" : "regular";
+    setRelated({
+      assetId: id,
+      nonce: crypto.randomUUID(),
+      returnPage: page === "history" ? (related?.returnPage ?? lastNonHistory.current) : page,
+      returnTab: related?.returnTab ?? taskTab,
+    });
     setTaskTab(tab);
-    setSearch((current) => ({ regular: id, batch: id, request: current.request + 1 }));
     setPage("history");
+    setViewer(undefined);
   };
   useEffect(() => {
     if (!started) {
@@ -921,11 +934,36 @@ export default function App() {
                 </button>
               ))}
             </div>
+            {related && (
+              <div className="related-scope">
+                <span>
+                  {taskText("relatedImage")} · <code>{related.assetId}</code>
+                </span>
+                <button
+                  title={taskText("exitRelated")}
+                  aria-label={taskText("exitRelated")}
+                  onClick={() => {
+                    setTaskTab(related.returnTab);
+                    setRelated(undefined);
+                  }}
+                >
+                  <XIcon size={16} />
+                </button>
+                <button
+                  onClick={() => {
+                    setTaskTab(related.returnTab);
+                    setPage(related.returnPage);
+                    setRelated(undefined);
+                  }}
+                >
+                  {taskText("backToSource")}
+                </button>
+              </div>
+            )}
           </div>
           <div className="task-view" hidden={taskTab !== "regular"}>
             <History
-              initialSearch={search.regular}
-              searchRequest={search.request}
+              related={related}
               onError={onError}
               onRestore={(draft) => void restore(draft).catch(onError)}
               onView={view}
@@ -933,8 +971,7 @@ export default function App() {
           </div>
           <div className="task-view" hidden={taskTab !== "batch"}>
             <BatchHistory
-              initialSearch={search.batch}
-              searchRequest={search.request}
+              related={related}
               onError={onError}
               onView={view}
               onRestore={(draft) => void restore(draft, "batch").catch(onError)}

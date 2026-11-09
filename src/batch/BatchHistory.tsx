@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowCounterClockwiseIcon,
   InfoIcon,
@@ -20,39 +20,40 @@ import { useApplication } from "../services/store";
 import { native } from "../services/native";
 import { b } from "./messages";
 import { cloudSummary, failedDrafts } from "./service";
+import { parameterAssetIds } from "../services/parameterAssets";
+import { taskUsesAsset, type RelatedHistoryScope } from "../history/related";
 
 export function BatchHistory({
-  initialSearch,
-  searchRequest,
+  related,
   onError,
   onView,
   onRestore,
   onRequeue,
 }: {
-  initialSearch: string;
-  searchRequest: number;
+  related?: RelatedHistoryScope;
   onError: (error: unknown) => void;
   onView: (id: string, ids?: string[]) => void;
   onRestore: (draft: GenerationDraft) => void;
   onRequeue: (drafts: GenerationDraft[]) => void;
 }) {
   const { batches, tasks, gallery } = useApplication();
-  const [query, setQuery] = useState(initialSearch);
+  const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [model, setModel] = useState("all");
   const [provider, setProvider] = useState("all");
   const [since, setSince] = useState("");
   const [until, setUntil] = useState("");
   const [page, setPage] = useState(1);
+  const [relatedPage, setRelatedPage] = useState(1);
   const [detail, setDetail] = useState<string>();
   const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
   const [entries, setEntries] = useState<GalleryEntry[]>([]);
   const errorHandler = useRef(onError);
   errorHandler.current = onError;
-  useEffect(() => {
-    setQuery(initialSearch);
-    setPage(1);
-  }, [initialSearch, searchRequest]);
+  useLayoutEffect(() => {
+    setRelatedPage(1);
+    setDetail(undefined);
+  }, [related?.nonce]);
   const taskMap = useMemo(
     () => new Map(tasks.filter((task) => !task.historyDeletedAt).map((task) => [task.id, task])),
     [tasks],
@@ -81,6 +82,7 @@ export function BatchHistory({
   ];
   const search = query.trim().toLowerCase();
   const filtered = rows.filter(({ batch, requests, summary }) => {
+    if (related) return requests.some((task) => taskUsesAsset(task, related.assetId));
     if (since && batch.createdAt < new Date(`${since}T00:00:00`).getTime()) return false;
     if (until && batch.createdAt > new Date(`${until}T23:59:59.999`).getTime()) return false;
     if (status !== "all") {
@@ -115,12 +117,13 @@ export function BatchHistory({
           task.id.includes(search) ||
           task.draft.references.some((ref) => ref.assetId.includes(search)) ||
           task.draft.mask?.assetId.includes(search) ||
+          parameterAssetIds(task.draft.parameters).some((id) => id.includes(search)) ||
           task.results.some((result) => result.assetId?.includes(search)))
       );
     });
   });
   const pages = Math.max(1, Math.ceil(filtered.length / 20));
-  const currentPage = Math.min(page, pages);
+  const currentPage = Math.min(related ? relatedPage : page, pages);
   const shown = filtered.slice((currentPage - 1) * 20, currentPage * 20);
   const ids = [
     ...new Set(
@@ -160,7 +163,8 @@ export function BatchHistory({
           <input
             aria-label={t("searchHistory")}
             placeholder={t("searchHistory")}
-            value={query}
+            value={related?.assetId ?? query}
+            readOnly={!!related}
             onChange={(event) => {
               setQuery(event.target.value);
               setPage(1);
@@ -169,7 +173,8 @@ export function BatchHistory({
         </div>
         <Select
           aria-label={t("allStatuses")}
-          value={status}
+          value={related ? "all" : status}
+          disabled={!!related}
           onValueChange={(value) => {
             setStatus(value);
             setPage(1);
@@ -183,7 +188,8 @@ export function BatchHistory({
         </Select>
         <Select
           aria-label={t("model")}
-          value={model}
+          value={related ? "all" : model}
+          disabled={!!related}
           onValueChange={(value) => {
             setModel(value);
             setPage(1);
@@ -198,7 +204,8 @@ export function BatchHistory({
         </Select>
         <Select
           aria-label={t("provider")}
-          value={provider}
+          value={related ? "all" : provider}
+          disabled={!!related}
           onValueChange={(value) => {
             setProvider(value);
             setPage(1);
@@ -213,7 +220,8 @@ export function BatchHistory({
           type="date"
           aria-label={b("since")}
           title={b("since")}
-          value={since}
+          value={related ? "" : since}
+          disabled={!!related}
           onChange={(event) => {
             setSince(event.target.value);
             setPage(1);
@@ -224,7 +232,8 @@ export function BatchHistory({
           type="date"
           aria-label={b("until")}
           title={b("until")}
-          value={until}
+          value={related ? "" : until}
+          disabled={!!related}
           onChange={(event) => {
             setUntil(event.target.value);
             setPage(1);
@@ -372,13 +381,19 @@ export function BatchHistory({
       </div>
       {pages > 1 && (
         <div className="pagination">
-          <button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
+          <button
+            disabled={currentPage === 1}
+            onClick={() => (related ? setRelatedPage(currentPage - 1) : setPage(currentPage - 1))}
+          >
             ←
           </button>
           <span>
             {currentPage}/{pages}
           </span>
-          <button disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}>
+          <button
+            disabled={currentPage === pages}
+            onClick={() => (related ? setRelatedPage(currentPage + 1) : setPage(currentPage + 1))}
+          >
             →
           </button>
         </div>

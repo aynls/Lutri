@@ -9,6 +9,21 @@
 .history-toolbar {
   flex-wrap: wrap;
 }
+.task-tabs:has(.related-scope) {
+  flex-wrap: wrap;
+}
+.related-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.related-scope span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .history-scroll {
   flex: 1;
   overflow: auto;

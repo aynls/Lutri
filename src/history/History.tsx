@@ -1,5 +1,5 @@
 import { Select } from "../components/Select";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import {
   ArrowCounterClockwiseIcon,
@@ -27,17 +27,16 @@ import { taskText } from "../i18n/tasks";
 import { BatchUsage, TaskUsage } from "./TaskUsage";
 import { native } from "../services/native";
 import { b } from "../batch/messages";
+import { taskUsesAsset, type RelatedHistoryScope } from "./related";
 
 const active = new Set(["queued", "submitting", "generating", "downloading"]);
 export function History({
-  initialSearch,
-  searchRequest,
+  related,
   onRestore,
   onView,
   onError,
 }: {
-  initialSearch: string;
-  searchRequest: number;
+  related?: RelatedHistoryScope;
   onRestore: (draft: GenerationDraft) => void;
   onView: (id: string, ids?: string[]) => void;
   onError: (error: unknown) => void;
@@ -45,21 +44,24 @@ export function History({
   const { batches, tasks, gallery } = useApplication();
   const errorHandler = useRef(onError);
   errorHandler.current = onError;
-  const [search, setSearch] = useState(initialSearch),
+  const [search, setSearch] = useState(""),
     [status, setStatus] = useState("all"),
     [model, setModel] = useState("all");
   const [provider, setProvider] = useState("all");
   const [since, setSince] = useState("");
   const [until, setUntil] = useState("");
-  useEffect(() => {
-    setSearch(initialSearch);
-    setPage(1);
-  }, [initialSearch, searchRequest]);
   const [expanded, setExpanded] = useState<string>(),
     [page, setPage] = useState(1);
+  const [relatedPage, setRelatedPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]),
     [deleting, setDeleting] = useState(false),
     [notice, setNotice] = useState("");
+  useLayoutEffect(() => {
+    setRelatedPage(1);
+    setSelected([]);
+    setExpanded(undefined);
+    setNotice("");
+  }, [related?.nonce]);
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
   const [pageAssets, setPageAssets] = useState<GalleryEntry[]>([]);
   const assets = useMemo(
@@ -78,8 +80,9 @@ export function History({
     .filter((batch) => !batch.cloud)
     .filter(
       (batch) =>
-        (!since || batch.createdAt >= new Date(`${since}T00:00:00`).getTime()) &&
-        (!until || batch.createdAt <= new Date(`${until}T23:59:59.999`).getTime()),
+        !!related ||
+        ((!since || batch.createdAt >= new Date(`${since}T00:00:00`).getTime()) &&
+          (!until || batch.createdAt <= new Date(`${until}T23:59:59.999`).getTime())),
     )
     .map((batch) => ({
       batch,
@@ -89,6 +92,7 @@ export function History({
     }))
     .filter(({ requests }) =>
       requests.some((task) => {
+        if (related) return taskUsesAsset(task, related.assetId);
         const combination = combinationById(task.draft.combinationId);
         return (
           (model === "all" || combination.model === model) &&
@@ -113,7 +117,7 @@ export function History({
     .sort((a, b) => b.batch.createdAt - a.batch.createdAt);
   const detail = expanded ? taskMap.get(expanded) : undefined;
   const pageCount = Math.max(1, Math.ceil(filtered.length / 20)),
-    currentPage = Math.min(page, pageCount);
+    currentPage = Math.min(related ? relatedPage : page, pageCount);
   const pageRequests = filtered.slice((currentPage - 1) * 20, currentPage * 20).flatMap(({ requests }) => requests);
   const assetKey = JSON.stringify([
     ...new Set(
@@ -172,7 +176,8 @@ export function History({
         <div className="search-input">
           <MagnifyingGlassIcon />
           <input
-            value={search}
+            value={related?.assetId ?? search}
+            readOnly={!!related}
             onChange={(event) => {
               setSearch(event.target.value);
               setPage(1);
@@ -183,7 +188,8 @@ export function History({
         </div>
         <Select
           aria-label={t("allStatuses")}
-          value={status}
+          value={related ? "all" : status}
+          disabled={!!related}
           onValueChange={(nextValue) => {
             setStatus(nextValue);
             setPage(1);
@@ -197,7 +203,8 @@ export function History({
         </Select>
         <Select
           aria-label={t("model")}
-          value={model}
+          value={related ? "all" : model}
+          disabled={!!related}
           onValueChange={(nextValue) => {
             setModel(nextValue);
             setPage(1);
@@ -216,7 +223,8 @@ export function History({
         </Select>
         <Select
           aria-label={t("provider")}
-          value={provider}
+          value={related ? "all" : provider}
+          disabled={!!related}
           onValueChange={(value) => {
             setProvider(value);
             setPage(1);
@@ -240,7 +248,8 @@ export function History({
           type="date"
           aria-label={b("since")}
           title={b("since")}
-          value={since}
+          value={related ? "" : since}
+          disabled={!!related}
           onChange={(event) => {
             setSince(event.target.value);
             setPage(1);
@@ -251,7 +260,8 @@ export function History({
           type="date"
           aria-label={b("until")}
           title={b("until")}
-          value={until}
+          value={related ? "" : until}
+          disabled={!!related}
           onChange={(event) => {
             setUntil(event.target.value);
             setPage(1);
@@ -413,13 +423,19 @@ export function History({
       </div>
       {pageCount > 1 && (
         <div className="pagination">
-          <button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
+          <button
+            disabled={currentPage === 1}
+            onClick={() => (related ? setRelatedPage(currentPage - 1) : setPage(currentPage - 1))}
+          >
             ←
           </button>
           <span>
             {currentPage} / {pageCount}
           </span>
-          <button disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>
+          <button
+            disabled={currentPage === pageCount}
+            onClick={() => (related ? setRelatedPage(currentPage + 1) : setPage(currentPage + 1))}
+          >
             →
           </button>
         </div>

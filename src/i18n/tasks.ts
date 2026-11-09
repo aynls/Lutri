@@ -27,6 +27,9 @@ const messages = {
   select: label("Select", "选择", "選択"),
   retryExport: label("Retry export", "重试导出", "書き出しを再試行"),
   selecting: label("Selected", "已选", "選択済み"),
+  relatedImage: label("Related image", "关联图片", "関連画像"),
+  exitRelated: label("Exit related view", "退出关联查询", "関連表示を終了"),
+  backToSource: label("Back to source", "返回来源", "元の画面に戻る"),
 } as const;
 export const taskText = (key: keyof typeof messages) => localize(messages[key]);
 export const taskStatusLabel = (status: TaskStatus | "missing") =>
