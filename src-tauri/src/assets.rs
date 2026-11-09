@@ -303,24 +303,49 @@ pub fn asset_export(store: tauri::State<Store>, id: String, destination: String)
 }
 
 #[tauri::command]
-pub fn asset_delete(store: tauri::State<Store>, id: String) -> Result<(), String> {
-    delete_asset(&store, &id)
-}
-
-pub fn delete_asset(store: &Store, id: &str) -> Result<(), String> {
+pub fn asset_delete(app: tauri::AppHandle, id: String, confirmed_protected: bool) -> Result<(), String> {
+    use tauri::Manager;
+    let store = app.state::<Store>();
     let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
     let root = store.library.read().map_err(|e| e.to_string())?;
-    delete_asset_locked(store, id, &root)
+    if crate::local_resources::in_use_ids(&app, &[])?.contains(&id) {
+        return Err("ASSET_IN_USE".into());
+    }
+    let current = entry(&store, &id)?;
+    if current["favorite"].as_bool().is_none()
+        || !current["boardIds"]
+            .as_array()
+            .is_some_and(|boards| boards.iter().all(Value::is_string))
+    {
+        return Err("invalid".into());
+    }
+    if crate::cleanup_policy::is_protected(&current) && !confirmed_protected {
+        return Err("ASSET_PROTECTED_CHANGED".into());
+    }
+    delete_asset_locked(&store, &id, &root)
 }
 
 pub fn delete_asset_locked(store: &Store, id: &str, root: &Path) -> Result<(), String> {
-    let value = entry(store, id)?;
-    for key in ["path", "thumbnailPath"] {
-        if let Some(path) = value[key].as_str() {
-            let path = Path::new(path);
-            if path.is_file() && path.starts_with(root) {
-                std::fs::remove_file(path).map_err(|e| e.to_string())?;
-            }
+    let records = {
+        let db = store.db.lock().map_err(|e| e.to_string())?;
+        let mut stmt = db
+            .prepare("SELECT body FROM records WHERE collection IN ('gallery','outputs') AND id=?1")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([id], |row| row.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?
+    };
+    let [body] = records.as_slice() else {
+        return Err("invalid".into());
+    };
+    let value: Value = serde_json::from_str(body).map_err(|e| e.to_string())?;
+    let paths = crate::local_resources::safe_paths(root, id, &value).map_err(str::to_string)?;
+    for path in [&paths.image, &paths.thumbnail] {
+        match std::fs::remove_file(path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.to_string()),
         }
     }
     store

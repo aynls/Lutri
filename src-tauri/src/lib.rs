@@ -1,9 +1,11 @@
 mod assets;
 mod batch;
+mod cleanup_policy;
 mod clipboard;
 mod desktop;
 mod layers;
 mod library;
+mod local_resources;
 mod mcp;
 mod network;
 mod result_cleanup;
@@ -47,7 +49,9 @@ pub fn run() {
             library::gallery_backfill_provenance,
             library::gallery_mutate,
             library::gallery_delete_board,
-            library::gallery_cleanup,
+            local_resources::local_files_query,
+            local_resources::local_files_delete,
+            local_resources::local_files_cleanup,
             library::asset_provenance,
             library::asset_copy,
             library::asset_paste,

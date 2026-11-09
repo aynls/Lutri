@@ -210,8 +210,3 @@ export interface FeedSlot {
   taskId: string;
   resultIndex: number;
 }
-
-export interface CleanupPolicy {
-  enabled: boolean;
-  capacity: number;
-}

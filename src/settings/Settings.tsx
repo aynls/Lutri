@@ -22,6 +22,7 @@ import { getState, refreshUpscaleDevices, savePreferences, useApplication, type 
 import { desktopLabels, selectLocale, setZoom } from "../services/desktop";
 import { settingsText as text } from "./messages";
 import { StorageSettings } from "./StorageSettings";
+import { LocalResourceCleanup } from "./LocalResourceCleanup";
 import "./settings.css";
 
 type SettingsCategory = "general" | "providers" | "llm" | "storage" | "upscale" | "mcp";
@@ -139,7 +140,7 @@ function ProviderSettings({ provider, onError }: { provider: ProviderId; onError
   );
 }
 
-export function Settings({ onError }: { onError: (error: unknown) => void }) {
+export function Settings({ onError, onView }: { onError: (error: unknown) => void; onView: (id: string) => void }) {
   useLocale();
   const { preferences, upscaleDevices: devices, loadingUpscaleDevices: loadingDevices } = useApplication();
   const [requestedProvider] = useState(() => sessionStorage.getItem("lutri.settings.provider"));
@@ -386,53 +387,7 @@ export function Settings({ onError }: { onError: (error: unknown) => void }) {
           hidden={category !== "storage"}
         >
           <StorageSettings onError={onError} />
-          <section>
-            <h2>{t("cleanup")}</h2>
-            {(["generated", "imported"] as const).map((source) => (
-              <div key={source} className="cleanup-setting">
-                <label className="settings-row">
-                  <span>{t(source)}</span>
-                  <input
-                    type="checkbox"
-                    role="switch"
-                    checked={preferences.cleanup[source].enabled}
-                    onChange={(event) =>
-                      attempt(() =>
-                        save({
-                          cleanup: {
-                            ...getState().preferences.cleanup,
-                            [source]: { ...getState().preferences.cleanup[source], enabled: event.target.checked },
-                          },
-                        }),
-                      )
-                    }
-                  />
-                </label>
-                <label className="settings-row">
-                  <span>{t("capacity")}</span>
-                  <input
-                    type="number"
-                    min={30}
-                    step={1}
-                    defaultValue={preferences.cleanup[source].capacity}
-                    onBlur={(event) => {
-                      const capacity = Number(event.target.value);
-                      if (Number.isInteger(capacity) && capacity >= 30)
-                        attempt(() =>
-                          save({
-                            cleanup: {
-                              ...getState().preferences.cleanup,
-                              [source]: { ...getState().preferences.cleanup[source], capacity },
-                            },
-                          }),
-                        );
-                      else event.target.value = String(preferences.cleanup[source].capacity);
-                    }}
-                  />
-                </label>
-              </div>
-            ))}
-          </section>
+          <LocalResourceCleanup onError={onError} onView={onView} />
         </div>
         <div
           className="settings-panel"

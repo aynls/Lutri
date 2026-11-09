@@ -13,7 +13,7 @@ import {
   TrashIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { useApplication } from "../services/store";
+import { retainAssets, useApplication } from "../services/store";
 import { native, imageUrl } from "../services/native";
 import { t } from "../i18n";
 import { ImageStage } from "../components/ImageStage";
@@ -31,6 +31,7 @@ import { BoardAction } from "./BoardAction";
 export interface ImageViewerItem {
   id: string;
   assetId?: string;
+  previewAssetId?: string;
   preview?: Omit<PathPreviewProps, "toolbarTarget">;
   resolveEntry?: () => Promise<GalleryEntry>;
   onExport?: () => Promise<unknown>;
@@ -83,6 +84,11 @@ export function ImageViewer({
   };
   const source = sources.find((item) => item.id === current);
   const assetId = source?.assetId;
+  const previewAssetId = source?.previewAssetId;
+  useEffect(
+    () => retainAssets([assetId, previewAssetId].filter((id): id is string => !!id)),
+    [assetId, previewAssetId],
+  );
   const [loaded, setLoaded] = useState<GalleryEntry[]>([]);
   const [toolbarTarget, setToolbarTarget] = useState<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(true);

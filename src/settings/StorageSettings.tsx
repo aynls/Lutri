@@ -4,6 +4,7 @@ import { native } from "../services/native";
 import { refreshGallery, useApplication } from "../services/store";
 import { t } from "../i18n";
 import { lt } from "../i18n/library";
+import { settingsText as text } from "./messages";
 import "./storage.css";
 
 interface Stats {
@@ -13,19 +14,18 @@ interface Stats {
   bytes: number;
   thumbnailBytes: number;
   missing: number;
-  eligible: { generated: number; imported: number };
 }
 const bytes = (value: number) =>
   new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value / 1024 / 1024) + " MB";
 export function StorageSettings({ onError }: { onError: (error: unknown) => void }) {
-  const { tasks } = useApplication();
+  const { tasks, gallery } = useApplication();
   const [stats, setStats] = useState<Stats>(),
     [busy, setBusy] = useState(false),
     [missing, setMissing] = useState<string[]>([]);
   const reload = async () => setStats(await native<Stats>("library_stats"));
   useEffect(() => {
     void reload().catch(onError);
-  }, []);
+  }, [gallery]);
   const attempt = (action: () => Promise<unknown>) => {
     setBusy(true);
     void action()
@@ -44,7 +44,7 @@ export function StorageSettings({ onError }: { onError: (error: unknown) => void
         {stats && (
           <p className="muted">
             {stats.available
-              ? `${stats.count} · ${bytes(stats.bytes)} + ${bytes(stats.thumbnailBytes)} · ${t("missing")} ${stats.missing}`
+              ? `${text("indexedAssets")} ${stats.count} · ${bytes(stats.bytes)} + ${bytes(stats.thumbnailBytes)} · ${t("missing")} ${stats.missing}`
               : lt("unavailable")}
           </p>
         )}
@@ -97,42 +97,12 @@ export function StorageSettings({ onError }: { onError: (error: unknown) => void
             <details>
               <summary>{t("details")}</summary>
               {missing.map((id) => (
-                <label key={id}>
-                  <input
-                    type="checkbox"
-                    defaultChecked
-                    onChange={(event) => {
-                      event.currentTarget.dataset.selected = String(event.target.checked);
-                    }}
-                    data-missing-id={id}
-                  />
+                <div key={id}>
                   <code>{id}</code>
-                </label>
+                </div>
               ))}
             </details>
-            <button
-              disabled={busy}
-              onClick={() =>
-                attempt(async () => {
-                  if (!(await confirm(lt("missingNotice")))) return;
-                  const ids = Array.from(
-                    document.querySelectorAll<HTMLInputElement>("input[data-missing-id]:checked"),
-                  ).map((input) => input.dataset.missingId!);
-                  await native("library_maintain", { action: "remove", ids });
-                  setMissing([]);
-                  await refreshGallery();
-                  await reload();
-                })
-              }
-            >
-              {lt("removeMissing")}
-            </button>
           </div>
-        )}
-        {stats && (
-          <p className="muted">
-            {lt("counted")} · {t("generated")} {stats.eligible.generated} · {t("imported")} {stats.eligible.imported}
-          </p>
         )}
       </div>
     </section>

@@ -2,7 +2,7 @@ use crate::{assets, storage::Store};
 use rusqlite::{params_from_iter, types::Value as SqlValue};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tauri::Manager;
 
 const CURATED: &str = "collection IN ('gallery','outputs') AND COALESCE(json_extract(body,'$.staged'),0)<>1 AND (json_extract(body,'$.favorite')=1 OR COALESCE(json_array_length(body,'$.boardIds'),0)>0)";
@@ -442,7 +442,7 @@ pub fn staging_purge(
         let db = store.db.lock().map_err(|e| e.to_string())?;
         let mut stmt = db
             .prepare(
-                "SELECT id FROM records WHERE collection IN ('gallery','outputs') AND json_extract(body,'$.staged')=1 AND COALESCE(json_extract(body,'$.favorite'),0)<>1 AND COALESCE(json_array_length(body,'$.boardIds'),0)=0 AND id NOT IN (SELECT value FROM json_each(?1)) AND (?2 IS NULL OR id IN (SELECT value FROM json_each(?2)))",
+                "SELECT id FROM records WHERE collection IN ('gallery','outputs') AND json_extract(body,'$.staged')=1 AND json_type(body,'$.favorite')='false' AND json_type(body,'$.boardIds')='array' AND json_array_length(body,'$.boardIds')=0 AND id NOT IN (SELECT value FROM json_each(?1)) AND (?2 IS NULL OR id IN (SELECT value FROM json_each(?2)))",
             )
             .map_err(|e| e.to_string())?;
         let rows = stmt
@@ -483,48 +483,25 @@ fn decode_image(path: &Path) -> Result<image::DynamicImage, String> {
     image::load_from_memory(&pixmap.encode_png().map_err(|e| e.to_string())?).map_err(|e| e.to_string())
 }
 
-fn rows(store: &Store) -> Result<Vec<Value>, String> {
+fn rows(store: &Store) -> Result<Vec<(String, String, Value)>, String> {
     let db = store.db.lock().map_err(|e| e.to_string())?;
     let mut stmt = db
-        .prepare("SELECT body FROM records WHERE collection='gallery' AND json_extract(body,'$.staged') IS NULL")
+        .prepare("SELECT collection,id,body FROM records WHERE collection IN ('gallery','outputs','masks')")
         .map_err(|e| e.to_string())?;
     let rows = stmt
-        .query_map([], |row| row.get::<_, String>(0))
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })
         .map_err(|e| e.to_string())?;
-    rows.map(|row| serde_json::from_str(&row.map_err(|e| e.to_string())?).map_err(|e| e.to_string()))
-        .collect()
-}
-
-#[tauri::command]
-pub fn gallery_cleanup(store: tauri::State<Store>, policies: Value) -> Result<(), String> {
-    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
-    let root = store.library.read().map_err(|e| e.to_string())?;
-    if !root.is_dir() {
-        return Ok(());
-    }
-    let mut all = rows(&store)?;
-    all.sort_by_key(|row| row["addedAt"].as_i64().unwrap_or(0));
-    for source in ["generated", "imported"] {
-        if policies[source]["enabled"] != true {
-            continue;
-        }
-        let capacity = policies[source]["capacity"]
-            .as_u64()
-            .filter(|v| *v >= 30)
-            .ok_or("Invalid cleanup capacity")? as usize;
-        let eligible: Vec<_> = all
-            .iter()
-            .filter(|row| {
-                row["source"] == source
-                    && row["favorite"] != true
-                    && row["boardIds"].as_array().is_none_or(|v| v.is_empty())
-            })
-            .collect();
-        for row in eligible.iter().take(eligible.len().saturating_sub(capacity)) {
-            assets::delete_asset_locked(&store, row["asset"]["id"].as_str().ok_or("Invalid asset")?, &root)?;
-        }
-    }
-    Ok(())
+    rows.map(|row| {
+        let (collection, id, body) = row.map_err(|e| e.to_string())?;
+        Ok((collection, id, serde_json::from_str(&body).map_err(|e| e.to_string())?))
+    })
+    .collect()
 }
 
 #[tauri::command]
@@ -535,25 +512,35 @@ pub async fn library_stats(app: tauri::AppHandle) -> Result<Value, String> {
 }
 
 fn library_stats_inner(store: &Store) -> Result<Value, String> {
+    let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
     let root = store.library_root()?;
-    let all = rows(&store)?;
-    let mut result = json!({"directory":root,"available":root.is_dir(),"count":all.len(),"bytes":0u64,"thumbnailBytes":0u64,"missing":0,"eligible":{"generated":0,"imported":0}});
+    let all: Vec<Value> = {
+        let db = store.db.lock().map_err(|e| e.to_string())?;
+        let mut stmt = db
+            .prepare("SELECT body FROM records WHERE collection IN ('gallery','outputs','masks')")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        rows.map(|row| serde_json::from_str(&row.map_err(|e| e.to_string())?).map_err(|e| e.to_string()))
+            .collect::<Result<Vec<_>, _>>()?
+    };
+    let mut result = json!({"directory":root,"available":root.is_dir(),"count":all.len(),"bytes":0u64,"thumbnailBytes":0u64,"missing":0});
     for entry in all {
-        if let Some(path) = entry["path"].as_str() {
-            if let Ok(meta) = std::fs::metadata(path) {
-                result["bytes"] = json!(result["bytes"].as_u64().unwrap_or(0) + meta.len());
-            } else {
-                result["missing"] = json!(result["missing"].as_u64().unwrap_or(0) + 1);
+        if let Some(id) = entry["asset"]["id"]
+            .as_str()
+            .filter(|id| uuid::Uuid::parse_str(id).ok().map(|id| id.to_string()).as_deref() == Some(*id))
+        {
+            if let Ok((_, bytes)) = crate::local_resources::checked_file(&root, "assets", &entry, "path", id) {
+                result["bytes"] = json!(result["bytes"].as_u64().unwrap_or(0) + bytes.unwrap_or(0));
+                if bytes.is_none() {
+                    result["missing"] = json!(result["missing"].as_u64().unwrap_or(0) + 1);
+                }
             }
-        }
-        if let Some(path) = entry["thumbnailPath"].as_str() {
-            if let Ok(meta) = std::fs::metadata(path) {
-                result["thumbnailBytes"] = json!(result["thumbnailBytes"].as_u64().unwrap_or(0) + meta.len());
-            }
-        }
-        if entry["favorite"] != true && entry["boardIds"].as_array().is_none_or(|v| v.is_empty()) {
-            if let Some(source) = entry["source"].as_str() {
-                result["eligible"][source] = json!(result["eligible"][source].as_u64().unwrap_or(0) + 1);
+            if let Ok((_, bytes)) =
+                crate::local_resources::checked_file(&root, "thumbnails", &entry, "thumbnailPath", id)
+            {
+                result["thumbnailBytes"] = json!(result["thumbnailBytes"].as_u64().unwrap_or(0) + bytes.unwrap_or(0));
             }
         }
     }
@@ -561,17 +548,16 @@ fn library_stats_inner(store: &Store) -> Result<Value, String> {
 }
 
 #[tauri::command]
-pub async fn library_maintain(
-    app: tauri::AppHandle,
-    action: String,
-    ids: Option<Vec<String>>,
-) -> Result<Value, String> {
-    tauri::async_runtime::spawn_blocking(move || library_maintain_inner(&app.state::<Store>(), action, ids))
+pub async fn library_maintain(app: tauri::AppHandle, action: String) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || library_maintain_inner(&app.state::<Store>(), action))
         .await
         .map_err(|error| error.to_string())?
 }
 
-fn library_maintain_inner(store: &Store, action: String, ids: Option<Vec<String>>) -> Result<Value, String> {
+fn library_maintain_inner(store: &Store, action: String) -> Result<Value, String> {
+    if action != "scan" && action != "thumbnails" {
+        return Err("Unknown maintenance action".into());
+    }
     let _mutation = store.library_mutation.lock().map_err(|e| e.to_string())?;
     let root = store.library.read().map_err(|e| e.to_string())?;
     if !root.is_dir() {
@@ -580,32 +566,42 @@ fn library_maintain_inner(store: &Store, action: String, ids: Option<Vec<String>
     let all = rows(&store)?;
     let mut missing = vec![];
     let mut repaired = 0;
-    for mut entry in all {
-        let id = entry["asset"]["id"].as_str().ok_or("Invalid asset")?.to_string();
-        let path = PathBuf::from(entry["path"].as_str().ok_or("Invalid path")?);
-        if !path.is_file() {
+    for (collection, id, mut entry) in all {
+        if uuid::Uuid::parse_str(&id).ok().map(|id| id.to_string()).as_deref() != Some(&id)
+            || entry["asset"]["id"].as_str() != Some(&id)
+        {
+            continue;
+        }
+        let (image_path, bytes) = match crate::local_resources::checked_file(&root, "assets", &entry, "path", &id) {
+            Ok(path) => path,
+            Err(_) => continue,
+        };
+        if bytes.is_none() {
             missing.push(id.clone());
             entry["availability"] = json!("missing");
-            if action == "remove" && ids.as_ref().is_some_and(|ids| ids.contains(&id)) {
-                assets::delete_asset_locked(&store, &id, &root)?;
-                continue;
-            }
         } else {
             entry["availability"] = json!("available");
-            entry["bytes"] = json!(std::fs::metadata(&path).map_err(|e| e.to_string())?.len());
+            entry["bytes"] = json!(bytes);
             if action == "thumbnails" {
-                let image = decode_image(&path)?;
-                image
-                    .thumbnail(480, 480)
-                    .save_with_format(
-                        entry["thumbnailPath"].as_str().ok_or("Invalid thumbnail")?,
-                        image::ImageFormat::Png,
-                    )
-                    .map_err(|e| e.to_string())?;
-                repaired += 1;
+                if let Ok(paths) = crate::local_resources::safe_paths(&root, &id, &entry) {
+                    let image = decode_image(&image_path)?;
+                    image
+                        .thumbnail(480, 480)
+                        .save_with_format(&paths.thumbnail, image::ImageFormat::Png)
+                        .map_err(|e| e.to_string())?;
+                    repaired += 1;
+                }
             }
         }
-        store.db.lock().map_err(|e|e.to_string())?.execute("UPDATE records SET body=json_set(body,'$.availability',?2,'$.bytes',?3) WHERE collection='gallery' AND id=?1",rusqlite::params![id,entry["availability"].as_str(),entry["bytes"].as_u64()]).map_err(|e|e.to_string())?;
+        store
+            .db
+            .lock()
+            .map_err(|e| e.to_string())?
+            .execute(
+                "UPDATE records SET body=json_set(body,'$.availability',?3,'$.bytes',?4) WHERE collection=?1 AND id=?2",
+                rusqlite::params![collection, id, entry["availability"].as_str(), entry["bytes"].as_u64()],
+            )
+            .map_err(|e| e.to_string())?;
     }
     Ok(json!({"missing":missing,"repaired":repaired}))
 }

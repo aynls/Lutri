@@ -705,6 +705,7 @@ export function Upscale({
           items={(batch ? jobs : results).map((job) => ({
             id: job.id,
             assetId: job.path ? job.assetId : job.input.asset.id,
+            previewAssetId: job.input.asset.id,
             preview: {
               before: job.input.path,
               after: job.path,

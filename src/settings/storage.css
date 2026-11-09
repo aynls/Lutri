@@ -37,3 +37,51 @@
 .storage-settings input[type="checkbox"] {
   width: auto;
 }
+.local-files-dialog .dialog-body {
+  display: block;
+  overflow: auto;
+}
+.local-files-content {
+  display: grid;
+  gap: 12px;
+}
+.local-files-filters {
+  flex-wrap: wrap;
+}
+.local-files-list {
+  max-height: 55vh;
+  overflow: auto;
+}
+.local-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.local-file > input {
+  width: auto;
+}
+.local-file-preview {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  padding: 0;
+  overflow: hidden;
+}
+.local-file-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.local-file-details {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.local-file-details code {
+  overflow-wrap: anywhere;
+}
+.local-files-report ul {
+  overflow-wrap: anywhere;
+}

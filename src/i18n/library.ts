@@ -40,13 +40,6 @@ const messages = {
   ),
   scan: label("Check files", "检查文件", "ファイルを確認"),
   thumbnails: label("Rebuild thumbnails", "重建缩略图", "サムネイルを再生成"),
-  removeMissing: label("Remove missing entries", "清理缺失条目", "欠落項目を削除"),
-  missingNotice: label(
-    "Remove these missing library entries? History references will remain missing.",
-    "清理这些缺失的图库条目？历史引用将保留缺失状态。",
-    "欠落したライブラリ項目を削除しますか？履歴の参照は欠落状態で残ります。",
-  ),
-  counted: label("Counted for cleanup", "清理计入数量", "自動削除の対象数"),
   unavailable: label("Folder unavailable", "目录不可用", "フォルダーを利用できません"),
 };
 export const lt = (key: keyof typeof messages) => localize(messages[key]);

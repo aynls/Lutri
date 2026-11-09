@@ -272,23 +272,6 @@ export function Gallery({
   const deleteEntry = async (entry: GalleryEntry) => {
     if (await deleteImage(entry)) setSelected((previous) => previous.filter((id) => id !== entry.asset.id));
   };
-  const deleteSelected = async () => {
-    if (!(await confirm(t("confirmDelete"), { title: "Lutri", kind: "warning" }))) return;
-    const failed: string[] = [];
-    try {
-      for (const entry of selectedEntries) {
-        try {
-          await native("asset_delete", { id: entry.asset.id });
-        } catch (error) {
-          failed.push(`${entry.asset.id}: ${String(error)}`);
-        }
-      }
-    } finally {
-      await refreshGallery();
-      setSelected([]);
-    }
-    if (failed.length) throw new Error(failed.join("\n"));
-  };
   const importImages = async () => {
     const imported = await chooseImages(stagedImports);
     if (picker && imported.length) onPick ? onPick(imported.slice(0, limit)) : onReference(imported[0]);
@@ -650,10 +633,6 @@ export function Gallery({
                     ))}
                 </Select>
               )}
-              <span className="toolbar-spacer" />
-              <button className="danger-button" disabled={busy} onClick={() => attempt(deleteSelected)}>
-                {t("delete")}
-              </button>
             </div>
           )
         )}

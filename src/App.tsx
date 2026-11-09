@@ -16,6 +16,7 @@ import {
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { initializeDesktop } from "./services/desktop";
+import { startLocalCleanup } from "./services/cleanup";
 import { useLocale } from "./i18n";
 import { AssetPicker } from "./gallery/AssetPicker";
 import { ResizablePanel } from "./components/ResizablePanel";
@@ -183,6 +184,10 @@ export default function App() {
         .catch(onError);
     }
   }, [onError]);
+  useEffect(() => {
+    if (!state.ready) return;
+    return startLocalCleanup(onError);
+  }, [state.ready, onError]);
   useLayoutEffect(
     () => applyAppearance(state.preferences.palette, state.preferences.accent, state.preferences.fontScale),
     [state.preferences.palette, state.preferences.accent, state.preferences.fontScale],
@@ -917,7 +922,7 @@ export default function App() {
             />
           </div>
         </div>
-        {page === "settings" ? <Settings onError={onError} /> : null}
+        {page === "settings" ? <Settings onError={onError} onView={view} /> : null}
         <div className="upscale-host" hidden={page !== "upscale"}>
           <Upscale onError={onError} incoming={upscaleInput} onReference={useImageAsReference} />
         </div>

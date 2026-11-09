@@ -3,7 +3,6 @@ import { emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type {
   Board,
-  CleanupPolicy,
   FeedSlot,
   GalleryEntry,
   GenerationBatch,
@@ -25,7 +24,7 @@ export interface Preferences {
   accent?: Accent;
   fontScale?: number;
   providers: Record<string, { endpoint?: string; deployment?: string }>;
-  cleanup: Record<"generated" | "imported", CleanupPolicy>;
+  localCleanup?: { enabled: boolean; retentionDays: number };
   desktop?: { background: boolean; launchAtLogin: boolean; zoom: number };
   // null selects automatically; -1 uses CPU; nonnegative values select a device.
   upscale?: { concurrency: number; gpuIndex: number | null };
@@ -68,7 +67,7 @@ let state: ApplicationState = {
   preferences: {
     id: "preferences",
     providers: {},
-    cleanup: { generated: { enabled: false, capacity: 200 }, imported: { enabled: false, capacity: 200 } },
+    localCleanup: { enabled: false, retentionDays: 30 },
   },
 };
 const listeners = new Set<() => void>();
@@ -108,6 +107,39 @@ export function retainAssets(ids: string[]) {
   return () => {
     retainedAssets.delete(owner);
   };
+}
+export function inUseAssetIds(): string[] {
+  const { draft, creation, tasks } = state;
+  const drafts = [
+    draft,
+    ...creation.items.map((item) => item.draft),
+    ...[creation.regular, creation.batch, creation.editing?.returnDraft].filter(
+      (entry): entry is GenerationDraft => !!entry,
+    ),
+    ...tasks
+      .filter((task) =>
+        [
+          "queued",
+          "submitting",
+          "submission-unknown",
+          "generating",
+          "retrieval-failed",
+          "downloading",
+          "download-failed",
+        ].includes(task.status),
+      )
+      .map((task) => task.draft),
+  ];
+  return [
+    ...new Set([
+      ...[...retainedAssets.values()].flat(),
+      ...drafts.flatMap((entry) => [
+        ...entry.references.map((reference) => reference.assetId),
+        ...(entry.mask ? [entry.mask.assetId] : []),
+        ...parameterAssetIds(entry.parameters),
+      ]),
+    ]),
+  ];
 }
 export function loadApplication(): Promise<void> {
   return (loading ??= (async () => {

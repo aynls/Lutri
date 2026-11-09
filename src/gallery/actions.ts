@@ -2,7 +2,7 @@ import { confirm, open, save } from "@tauri-apps/plugin-dialog";
 import type { GalleryEntry } from "../domain/types";
 import { t } from "../i18n";
 import { native } from "../services/native";
-import { getState, refreshGallery, savePreferences } from "../services/store";
+import { flushWrites, getState, refreshGallery, savePreferences } from "../services/store";
 import { imageExtensions, importPaths } from "./imports";
 
 export const copyAssetImage = (id: string) => native<void>("asset_copy", { id });
@@ -18,8 +18,24 @@ export async function favorite(entry: GalleryEntry) {
 }
 
 export async function deleteImage(entry: GalleryEntry): Promise<boolean> {
-  if (!(await confirm(t("confirmDeleteImage"), { title: "Lutri", kind: "warning" }))) return false;
-  await native("asset_delete", { id: entry.asset.id });
+  const current = (await native<GalleryEntry[]>("gallery_entries", { ids: [entry.asset.id] }))[0];
+  if (!current) throw new Error(t("missing"));
+  const protectedImage = current.favorite || current.boardIds.length > 0;
+  if (
+    !(await confirm(t(protectedImage ? "confirmDeleteProtected" : "confirmDeleteImage"), {
+      title: "Lutri",
+      kind: "warning",
+    }))
+  )
+    return false;
+  await flushWrites();
+  try {
+    await native("asset_delete", { id: entry.asset.id, confirmedProtected: protectedImage });
+  } catch (error) {
+    if (String(error).includes("ASSET_IN_USE")) throw new Error(t("assetInUse"));
+    if (String(error).includes("ASSET_PROTECTED_CHANGED")) throw new Error(t("assetProtectionChanged"));
+    throw error;
+  }
   await refreshGallery();
   return true;
 }

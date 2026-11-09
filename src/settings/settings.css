@@ -391,9 +391,6 @@
 .provider-configured {
   color: var(--accent);
 }
-.cleanup-setting + .cleanup-setting {
-  margin-top: 20px;
-}
 .mcp-heading {
   display: flex;
   align-items: center;

@@ -9,6 +9,8 @@ const mutations = new Set([
   "asset_download",
   "layer_result_save",
   "asset_delete",
+  "local_files_delete",
+  "local_files_cleanup",
   "asset_provenance",
   "assets_publish",
   "staging_purge",
@@ -20,7 +22,13 @@ const mutations = new Set([
 ]);
 export async function native<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   const result = await invoke<T>(command, args);
-  if (mutations.has(command)) void emit("assets-changed", { source: getCurrentWindow().label }).catch(() => {});
+  if (
+    mutations.has(command) &&
+    (!["local_files_delete", "local_files_cleanup"].includes(command) ||
+      (result as { deleted: string[]; errors: unknown[] }).deleted.length > 0 ||
+      (result as { deleted: string[]; errors: unknown[] }).errors.length > 0)
+  )
+    void emit("assets-changed", { source: getCurrentWindow().label }).catch(() => {});
   return result;
 }
 export const imageUrl = (path: string) => convertFileSrc(path);
