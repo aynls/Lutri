@@ -165,11 +165,11 @@ fn save_image_with_id(
 }
 
 pub fn entry(store: &Store, id: &str) -> Result<Value, String> {
-    read_entry(store, id, "collection IN ('gallery','outputs')")
+    read_entry(store, id, "collection='outputs'")
 }
 
 fn image_entry(store: &Store, id: &str) -> Result<Value, String> {
-    read_entry(store, id, "collection IN ('gallery','outputs','masks')")
+    read_entry(store, id, "collection IN ('outputs','masks')")
 }
 
 fn read_entry(store: &Store, id: &str, collection_filter: &str) -> Result<Value, String> {
@@ -329,7 +329,7 @@ pub fn delete_asset_locked(store: &Store, id: &str, root: &Path) -> Result<(), S
     let records = {
         let db = store.db.lock().map_err(|e| e.to_string())?;
         let mut stmt = db
-            .prepare("SELECT body FROM records WHERE collection IN ('gallery','outputs') AND id=?1")
+            .prepare("SELECT body FROM records WHERE collection='outputs' AND id=?1")
             .map_err(|e| e.to_string())?;
         let rows = stmt
             .query_map([id], |row| row.get::<_, String>(0))
@@ -353,7 +353,7 @@ pub fn delete_asset_locked(store: &Store, id: &str, root: &Path) -> Result<(), S
         .lock()
         .map_err(|e| e.to_string())?
         .execute(
-            "DELETE FROM records WHERE collection IN ('gallery','outputs') AND id=?1",
+            "DELETE FROM records WHERE collection='outputs' AND id=?1",
             [id],
         )
         .map_err(|e| e.to_string())?;

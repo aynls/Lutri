@@ -12,7 +12,7 @@ use std::{
 };
 use tauri::Manager;
 
-const IMAGE_ROWS: &str = "SELECT collection,id,body FROM records WHERE collection IN ('gallery','outputs') AND COALESCE(json_extract(body,'$.staged'),0)<>1";
+const IMAGE_ROWS: &str = "SELECT collection,id,body FROM records WHERE collection='outputs' AND COALESCE(json_extract(body,'$.staged'),0)<>1";
 
 pub struct SafePaths {
     pub image: PathBuf,
@@ -214,12 +214,6 @@ pub async fn local_files_query(
         let usage = in_use_ids(&app, &keep_ids)?;
         let now = now_ms()?;
         let mut rows = image_rows(&store)?;
-        let duplicates: HashSet<String> = {
-            let db = store.db.lock().map_err(|e| e.to_string())?;
-            let mut stmt = db.prepare("SELECT id FROM records WHERE collection IN ('gallery','outputs') GROUP BY id HAVING count(*)>1").map_err(|e| e.to_string())?;
-            let rows = stmt.query_map([], |row| row.get::<_, String>(0)).map_err(|e| e.to_string())?;
-            rows.collect::<Result<HashSet<_>, _>>().map_err(|e| e.to_string())?
-        };
         rows.sort_by(|a, b| b.2["addedAt"].as_u64().unwrap_or(0).cmp(&a.2["addedAt"].as_u64().unwrap_or(0)).then_with(|| a.1.cmp(&b.1)));
         let search = search.unwrap_or_default().trim().to_lowercase();
         let mut results = Vec::new();
@@ -227,7 +221,7 @@ pub async fn local_files_query(
             let protected = cleanup_policy::is_protected(&entry);
             let in_use = usage.contains(&id);
             let paths = safe_paths(&root, &id, &entry);
-            let can_delete = !duplicates.contains(&id) && paths.is_ok() && cleanup_policy::manual_candidate(&entry, &usage);
+            let can_delete = paths.is_ok() && cleanup_policy::manual_candidate(&entry, &usage);
             let valid_id = uuid::Uuid::parse_str(&id).ok().map(|id| id.to_string()).as_deref() == Some(&id)
                 && entry["asset"]["id"].as_str() == Some(&id);
             let image = valid_id.then(|| checked_file(&root, "assets", &entry, "path", &id).ok()).flatten();
@@ -249,7 +243,7 @@ pub async fn local_files_query(
                 "protected":protected,
                 "inUse":in_use,
                 "canDelete":can_delete,
-                "automaticEligible":!duplicates.contains(&id) && paths.is_ok() && cleanup_policy::automatic_candidate(&entry, &policy, now, &usage),
+                "automaticEligible":paths.is_ok() && cleanup_policy::automatic_candidate(&entry, &policy, now, &usage),
                 "missing":image.as_ref().is_some_and(|(_, bytes)| bytes.is_none())
             }));
         }
@@ -282,7 +276,7 @@ fn remove_selected(
         let records = (|| -> Result<Vec<String>, String> {
             let db = store.db.lock().map_err(|e| e.to_string())?;
             let mut stmt = db
-                .prepare("SELECT body FROM records WHERE collection IN ('gallery','outputs') AND id=?1")
+                .prepare("SELECT body FROM records WHERE collection='outputs' AND id=?1")
                 .map_err(|e| e.to_string())?;
             let rows = stmt
                 .query_map([&id], |row| row.get::<_, String>(0))

@@ -291,7 +291,7 @@ pub async fn upscale_run(
             .lock()
             .map_err(|e| e.to_string())?
             .execute(
-                "UPDATE records SET body=?1 WHERE collection IN ('gallery','outputs') AND id=?2",
+                "UPDATE records SET body=?1 WHERE collection='outputs' AND id=?2",
                 rusqlite::params![entry.to_string(), id],
             )
             .map_err(|e| e.to_string())?;

@@ -40,7 +40,7 @@ export interface RecordChange {
 export const readRecords = <T>(collection: string) => invoke<T[]>("records_read", { collection });
 export async function commit(changes: RecordChange[]) {
   await invoke<void>("records_commit", { changes });
-  if (changes.some((change) => change.collection === "gallery"))
+  if (changes.some((change) => change.collection === "outputs"))
     void emit("assets-changed", { source: getCurrentWindow().label }).catch(() => {});
 }
 export const importAsset = (source: { path?: string; dataUrl?: string; url?: string }, staged = false) =>
