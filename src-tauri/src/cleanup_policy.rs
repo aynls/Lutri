@@ -43,11 +43,7 @@ pub fn manual_candidate(entry: &Value, in_use: &HashSet<String>) -> bool {
 }
 
 pub fn automatic_candidate(entry: &Value, policy: &CleanupPolicy, now_ms: u64, in_use: &HashSet<String>) -> bool {
-    if !policy.enabled
-        || validate_policy(policy).is_err()
-        || entry["source"] != "generated"
-        || !manual_candidate(entry, in_use)
-    {
+    if !policy.enabled || validate_policy(policy).is_err() || !manual_candidate(entry, in_use) {
         return false;
     }
     let Some(created_at) = entry["addedAt"].as_u64() else {

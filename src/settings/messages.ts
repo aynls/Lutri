@@ -63,7 +63,7 @@ const messages = {
   missingRecord: label("Record missing", "记录不存在", "記録がありません"),
   outsideManaged: label("Unsafe path", "路径不安全", "安全でないパス"),
   keepDays: label("Keep days", "保留天数", "保持日数"),
-  autoScope: label("Unprotected generated results only", "仅清理未受保护的生成结果", "保護されていない生成結果のみ"),
+  autoScope: label("Unprotected images only", "仅清理未受保护的图片", "保護されていない画像のみ"),
   selectPage: label("Select cleanable on this page", "选择本页可清理项", "このページの削除可能項目を選択"),
   cleanConfirm: label(
     "Delete selected local files and their resource records? External copies remain.",
