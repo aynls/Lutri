@@ -106,7 +106,7 @@ pub fn records_commit(store: tauri::State<Store>, changes: Vec<RecordChange>) ->
     let transaction = db.transaction().map_err(|e| e.to_string())?;
     for change in changes {
         if let Some(mut value) = change.value {
-            if change.collection == "outputs" {
+            if change.collection == "assets" {
                 // Ignore stale absolute paths from a window opened before a migration.
                 for (key, directory) in [("path", "assets"), ("thumbnailPath", "thumbnails")] {
                     if let Some(name) = value[key]
@@ -173,7 +173,7 @@ fn migrate_library(app: &tauri::AppHandle, store: &Store, directory: String) -> 
     let mut db = store.db.lock().map_err(|e| e.to_string())?;
     let mut entries = {
         let mut stmt = db
-            .prepare("SELECT collection,id,body FROM records WHERE collection IN ('outputs','masks')")
+            .prepare("SELECT collection,id,body FROM records WHERE collection IN ('assets','masks')")
             .map_err(|e| e.to_string())?;
         let rows = stmt
             .query_map([], |row| {

@@ -12,7 +12,7 @@ use std::{
 };
 use tauri::Manager;
 
-const IMAGE_ROWS: &str = "SELECT collection,id,body FROM records WHERE collection='outputs' AND COALESCE(json_extract(body,'$.staged'),0)<>1";
+const IMAGE_ROWS: &str = "SELECT collection,id,body FROM records WHERE collection='assets' AND COALESCE(json_extract(body,'$.staged'),0)<>1";
 
 pub struct SafePaths {
     pub image: PathBuf,
@@ -276,7 +276,7 @@ fn remove_selected(
         let records = (|| -> Result<Vec<String>, String> {
             let db = store.db.lock().map_err(|e| e.to_string())?;
             let mut stmt = db
-                .prepare("SELECT body FROM records WHERE collection='outputs' AND id=?1")
+                .prepare("SELECT body FROM records WHERE collection='assets' AND id=?1")
                 .map_err(|e| e.to_string())?;
             let rows = stmt
                 .query_map([&id], |row| row.get::<_, String>(0))

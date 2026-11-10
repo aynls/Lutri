@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use std::path::Path;
 use tauri::Manager;
 
-const CURATED: &str = "collection='outputs' AND COALESCE(json_extract(body,'$.staged'),0)<>1 AND (json_extract(body,'$.favorite')=1 OR COALESCE(json_array_length(body,'$.boardIds'),0)>0)";
+const CURATED: &str = "collection='assets' AND COALESCE(json_extract(body,'$.staged'),0)<>1 AND (json_extract(body,'$.favorite')=1 OR COALESCE(json_array_length(body,'$.boardIds'),0)>0)";
 
 #[derive(Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -154,7 +154,7 @@ pub fn gallery_entries(store: tauri::State<Store>, ids: Vec<String>) -> Result<V
     let db = store.db.lock().map_err(|e| e.to_string())?;
     let mut result = vec![];
     let mut stmt = db
-        .prepare("SELECT body FROM records WHERE collection='outputs' AND id=?1")
+        .prepare("SELECT body FROM records WHERE collection='assets' AND id=?1")
         .map_err(|e| e.to_string())?;
     for id in ids {
         if let Ok(body) = stmt.query_row([id], |row| row.get::<_, String>(0)) {
@@ -264,7 +264,7 @@ pub fn gallery_mutate(
     for id in ids {
         let (collection, body): (String, String) = tx
             .query_row(
-                "SELECT collection,body FROM records WHERE collection='outputs' AND id=?1",
+                "SELECT collection,body FROM records WHERE collection='assets' AND id=?1",
                 [&id],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
@@ -316,7 +316,7 @@ pub fn gallery_delete_board(store: tauri::State<Store>, id: String) -> Result<()
         .map_err(|e| e.to_string())?
         .as_millis() as u64;
     let entries = {
-        let mut stmt = tx.prepare("SELECT collection,id,body FROM records WHERE collection='outputs' AND EXISTS(SELECT 1 FROM json_each(body,'$.boardIds') WHERE value=?1)").map_err(|e| e.to_string())?;
+        let mut stmt = tx.prepare("SELECT collection,id,body FROM records WHERE collection='assets' AND EXISTS(SELECT 1 FROM json_each(body,'$.boardIds') WHERE value=?1)").map_err(|e| e.to_string())?;
         let rows = stmt
             .query_map([&id], |row| {
                 Ok((
@@ -355,7 +355,7 @@ pub fn gallery_delete_board(store: tauri::State<Store>, id: String) -> Result<()
 pub fn asset_provenance(store: tauri::State<Store>, id: String, provenance: Value) -> Result<(), String> {
     let db = store.db.lock().map_err(|e| e.to_string())?;
     db.execute(
-        "UPDATE records SET body=json_set(body,'$.provenance',json(?2)) WHERE collection='outputs' AND id=?1",
+        "UPDATE records SET body=json_set(body,'$.provenance',json(?2)) WHERE collection='assets' AND id=?1",
         rusqlite::params![id, provenance.to_string()],
     )
     .map_err(|e| e.to_string())?;
@@ -368,7 +368,7 @@ pub fn gallery_backfill_provenance(store: tauri::State<Store>, entries: Vec<Valu
     let tx = db.transaction().map_err(|e| e.to_string())?;
     for entry in entries {
         let id = entry["id"].as_str().ok_or("Invalid asset ID")?;
-        tx.execute("UPDATE records SET body=json_set(body,'$.provenance',json(?2)) WHERE collection='outputs' AND id=?1 AND json_extract(body,'$.provenance.model') IS NULL",rusqlite::params![id,entry["provenance"].to_string()]).map_err(|e|e.to_string())?;
+        tx.execute("UPDATE records SET body=json_set(body,'$.provenance',json(?2)) WHERE collection='assets' AND id=?1 AND json_extract(body,'$.provenance.model') IS NULL",rusqlite::params![id,entry["provenance"].to_string()]).map_err(|e|e.to_string())?;
     }
     tx.commit().map_err(|e| e.to_string())
 }
@@ -420,7 +420,7 @@ pub fn assets_publish(store: tauri::State<Store>, ids: Vec<String>) -> Result<()
         .lock()
         .map_err(|e| e.to_string())?
         .execute(
-            "UPDATE records SET body=json_set(json_remove(body,'$.staged'),'$.unlisted',json(CASE WHEN json_extract(body,'$.favorite')=1 OR COALESCE(json_array_length(body,'$.boardIds'),0)>0 THEN 'false' ELSE 'true' END)) WHERE collection='outputs' AND json_extract(body,'$.staged')=1 AND id IN (SELECT value FROM json_each(?1))",
+            "UPDATE records SET body=json_set(json_remove(body,'$.staged'),'$.unlisted',json(CASE WHEN json_extract(body,'$.favorite')=1 OR COALESCE(json_array_length(body,'$.boardIds'),0)>0 THEN 'false' ELSE 'true' END)) WHERE collection='assets' AND json_extract(body,'$.staged')=1 AND id IN (SELECT value FROM json_each(?1))",
             rusqlite::params![serde_json::to_string(&ids).map_err(|e| e.to_string())?],
         )
         .map_err(|e| e.to_string())?;
@@ -442,7 +442,7 @@ pub fn staging_purge(
         let db = store.db.lock().map_err(|e| e.to_string())?;
         let mut stmt = db
             .prepare(
-                "SELECT id FROM records WHERE collection='outputs' AND json_extract(body,'$.staged')=1 AND json_type(body,'$.favorite')='false' AND json_type(body,'$.boardIds')='array' AND json_array_length(body,'$.boardIds')=0 AND id NOT IN (SELECT value FROM json_each(?1)) AND (?2 IS NULL OR id IN (SELECT value FROM json_each(?2)))",
+                "SELECT id FROM records WHERE collection='assets' AND json_extract(body,'$.staged')=1 AND json_type(body,'$.favorite')='false' AND json_type(body,'$.boardIds')='array' AND json_array_length(body,'$.boardIds')=0 AND id NOT IN (SELECT value FROM json_each(?1)) AND (?2 IS NULL OR id IN (SELECT value FROM json_each(?2)))",
             )
             .map_err(|e| e.to_string())?;
         let rows = stmt
@@ -486,7 +486,7 @@ fn decode_image(path: &Path) -> Result<image::DynamicImage, String> {
 fn rows(store: &Store) -> Result<Vec<(String, String, Value)>, String> {
     let db = store.db.lock().map_err(|e| e.to_string())?;
     let mut stmt = db
-        .prepare("SELECT collection,id,body FROM records WHERE collection IN ('outputs','masks')")
+        .prepare("SELECT collection,id,body FROM records WHERE collection IN ('assets','masks')")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |row| {
@@ -517,7 +517,7 @@ fn library_stats_inner(store: &Store) -> Result<Value, String> {
     let all: Vec<Value> = {
         let db = store.db.lock().map_err(|e| e.to_string())?;
         let mut stmt = db
-            .prepare("SELECT body FROM records WHERE collection IN ('outputs','masks')")
+            .prepare("SELECT body FROM records WHERE collection IN ('assets','masks')")
             .map_err(|e| e.to_string())?;
         let rows = stmt
             .query_map([], |row| row.get::<_, String>(0))
