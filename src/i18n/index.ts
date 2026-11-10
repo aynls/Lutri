@@ -228,7 +228,6 @@ const messages = {
   search: ["Search asset ID", "搜索资产 ID", "アセット ID を検索"],
   empty: ["No images yet", "暂无图片", "画像はありません"],
   emptyHistory: ["No matching batches", "暂无匹配批次", "一致するバッチはありません"],
-  clear: ["Clear feed", "清理瀑布流", "一覧をクリア"],
   copyId: ["Copy asset ID", "复制资产 ID", "アセット ID をコピー"],
   related: ["Find related history", "查找相关历史", "関連履歴を検索"],
   useReference: ["Use as reference", "用作参考图", "参照画像に使用"],

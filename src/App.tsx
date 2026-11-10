@@ -3,6 +3,7 @@ import { applyAppearance } from "./appearance";
 import { createPortal } from "react-dom";
 import {
   ApertureIcon,
+  ArrowCounterClockwiseIcon,
   ArrowUpRightIcon,
   ClockCounterClockwiseIcon,
   CaretRightIcon,
@@ -151,15 +152,15 @@ export default function App() {
       setModeBusy(false);
     }
   };
-  const clearDraft = async () => {
+  const resetCreation = async () => {
     if (!state.ready || modeBusy || batchBusy || submitting) return;
     setModeBusy(true);
     try {
       if (
-        !(await confirm(c("clearDraftConfirm"), {
-          title: c("clearDraft"),
+        !(await confirm(c("resetCreationConfirm"), {
+          title: c("resetCreation"),
           kind: "warning",
-          okLabel: c("clearDraft"),
+          okLabel: c("resetCreation"),
           cancelLabel: t("cancel"),
         }))
       )
@@ -623,41 +624,6 @@ export default function App() {
       <main className="workspace">
         <header className="workspace-header">
           <h1>{page === "gallery" ? t("resources") : t(page)}</h1>
-          {page === "creation" ? (
-            <div className="button-row">
-              <button
-                disabled={!state.ready || modeBusy || batchBusy || submitting || !hasDraftEdits(state.draft)}
-                onClick={() => void clearDraft().catch(onError)}
-              >
-                {c("clearDraft")}
-              </button>
-              {!isBatch && (
-                <>
-                  {!!queuedBatches.length && (
-                    <button
-                      onClick={() =>
-                        void Promise.all(queuedBatches.map((batch) => cancelBatchQueued(batch.id))).catch(onError)
-                      }
-                    >
-                      {c("stopQueued")} ·{" "}
-                      {state.tasks.filter((task) => !task.cloudGroupId && task.status === "queued").length}
-                    </button>
-                  )}
-                  <button
-                    disabled={!state.feed.length}
-                    onClick={() =>
-                      void (async () => {
-                        if (await confirm(c("clearConfirm"), { title: "Lutri", kind: "warning" }))
-                          await removeFeed(state.feed.map((slot) => slot.id));
-                      })().catch(onError)
-                    }
-                  >
-                    {t("clear")}
-                  </button>
-                </>
-              )}
-            </div>
-          ) : null}
         </header>
         <div className={page === "creation" ? "creation-host" : "creation-host workspace-hidden"}>
           <div
@@ -671,6 +637,16 @@ export default function App() {
             }}
           >
             <ResizablePanel className="creation-panel" storageKey="lutri.creation.panel">
+              <header className="creation-section-header">
+                <h2>{c("creationSettings")}</h2>
+                <button
+                  disabled={!state.ready || modeBusy || batchBusy || submitting || !hasDraftEdits(state.draft)}
+                  onClick={() => void resetCreation().catch(onError)}
+                >
+                  <ArrowCounterClockwiseIcon size={16} aria-hidden="true" />
+                  {c("resetCreation")}
+                </button>
+              </header>
               <div
                 className="creation-scroll"
                 ref={creationScroll}
@@ -898,14 +874,52 @@ export default function App() {
                 }}
               />
             ) : (
-              <Feed
-                onView={view}
-                onReference={addReference}
-                onEdit={editImage}
-                onRestore={(draft) => void restore(draft).catch(onError)}
-                onRelated={relatedHistory}
-                onError={onError}
-              />
+              <section className="creation-results" aria-labelledby="creation-results-title">
+                <header className="creation-section-header">
+                  <h2 id="creation-results-title">
+                    {c("generationResults")}
+                    {!!state.feed.length && <span className="creation-result-count"> · {state.feed.length}</span>}
+                  </h2>
+                  <div className="creation-section-actions">
+                    {!!queuedBatches.length && (
+                      <button
+                        onClick={() =>
+                          void Promise.all(queuedBatches.map((batch) => cancelBatchQueued(batch.id))).catch(onError)
+                        }
+                      >
+                        {c("stopQueued")} ·{" "}
+                        {state.tasks.filter((task) => !task.cloudGroupId && task.status === "queued").length}
+                      </button>
+                    )}
+                    <button
+                      disabled={!state.feed.length}
+                      onClick={() =>
+                        void (async () => {
+                          if (
+                            await confirm(c("clearResultsConfirm"), {
+                              title: c("clearResults"),
+                              kind: "warning",
+                              okLabel: c("clearResults"),
+                              cancelLabel: t("cancel"),
+                            })
+                          )
+                            await removeFeed(state.feed.map((slot) => slot.id));
+                        })().catch(onError)
+                      }
+                    >
+                      {c("clearResults")}
+                    </button>
+                  </div>
+                </header>
+                <Feed
+                  onView={view}
+                  onReference={addReference}
+                  onEdit={editImage}
+                  onRestore={(draft) => void restore(draft).catch(onError)}
+                  onRelated={relatedHistory}
+                  onError={onError}
+                />
+              </section>
             )}
           </div>
         </div>

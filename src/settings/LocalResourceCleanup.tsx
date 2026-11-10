@@ -125,7 +125,7 @@ export function LocalResourceCleanup({
   return (
     <section>
       <h2>{text("localFiles")}</h2>
-      <button onClick={() => setOpen(true)}>{text("manageFiles")}</button>
+      <button className="local-files-button" onClick={() => setOpen(true)}>{text("manageFiles")}</button>
       <h3>{t("cleanup")}</h3>
       <label className="settings-row">
         <span>{text("autoScope")}</span>

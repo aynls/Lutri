@@ -321,6 +321,10 @@
 .settings-panel section > button {
   margin-top: 16px;
 }
+.settings-panel section > .local-files-button {
+  display: flex;
+  margin-top: 0;
+}
 .settings-panel section > button,
 .settings-page .button-row button {
   border: 1px solid var(--line);
