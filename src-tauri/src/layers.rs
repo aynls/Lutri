@@ -25,16 +25,17 @@ pub fn layer_directory_available(directory: String) -> bool {
     path.is_absolute() && path.is_dir()
 }
 
+fn write_new(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    let mut file = std::fs::File::create_new(path)?;
+    file.write_all(bytes)?;
+    file.sync_all()
+}
+
 fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let temporary = path.with_extension(format!("{}.tmp", uuid::Uuid::new_v4()));
     let outcome = (|| {
-        use std::io::Write;
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temporary)?;
-        file.write_all(bytes)?;
-        file.sync_all()?;
+        write_new(&temporary, bytes)?;
         std::fs::rename(&temporary, path)
     })();
     if outcome.is_err() {
@@ -55,6 +56,16 @@ fn export_directory(directory: &str, id: &str, staging: &Path) -> Result<PathBuf
             if let Ok(bytes) = std::fs::read(&manifest) {
                 let saved: Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
                 if saved["id"] == id && saved["directory"] == directory && target.is_dir() {
+                    if let Some(token) = saved["temporaryToken"].as_str() {
+                        let token = uuid::Uuid::parse_str(token).map_err(|e| e.to_string())?;
+                        for stem in ["composite", "layers"] {
+                            match std::fs::remove_file(target.join(format!("{stem}.{token}.tmp"))) {
+                                Ok(()) => {}
+                                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                                Err(error) => return Err(error.to_string()),
+                            }
+                        }
+                    }
                     return Ok(target);
                 }
             }
@@ -210,8 +221,15 @@ fn compose_and_save(
         let token = uuid::Uuid::new_v4();
         let png_temp = target.join(format!("composite.{token}.tmp"));
         let psd_temp = target.join(format!("layers.{token}.tmp"));
+        write_atomic(
+            &staging.join("delivery.json"),
+            &serde_json::to_vec(&json!({
+                "id":id,"directory":directory,"complete":false,"temporaryToken":token.to_string(),
+            }))
+            .map_err(|e| e.to_string())?,
+        )?;
         let outcome = (|| {
-            write_atomic(&png_temp, &png)?;
+            write_new(&png_temp, &png).map_err(|e| e.to_string())?;
             psd::write(&psd_temp, &layers, composite.as_rgba8().ok_or("invalid_layer_result")?)?;
             std::fs::rename(&png_temp, &composite_path).map_err(|e| e.to_string())?;
             delivery["compositePath"] = json!(composite_path);

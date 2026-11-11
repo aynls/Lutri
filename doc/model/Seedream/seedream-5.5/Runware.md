@@ -6,7 +6,7 @@
 
 `positivePrompt` 为 1–10000 字符；`inputs.referenceImages` 按实际提交顺序最多 10 张。Lutri 暴露 `resolution: 1K | 1.5K | 2K`，初始 2K；`numberResults` 为 1–20；`outputFormat` 为 PNG、JPG 或 WEBP，Lutri 初始 PNG。
 
-`settings.background` 为 opaque 或 transparent。透明输出在 Lutri 固定为 PNG，适用于文本生成与参考图生成。接口也支持配对 width/height（每边 256–16383），但与 resolution 互斥；本期表单只暴露分辨率档位，不暴露自定义宽高。
+`settings.background` 为 opaque 或 transparent。透明输出在 Lutri 固定为 PNG，适用于文本生成与参考图生成。普通生成不发送 layerDecomposition 及拆分选项。接口也支持配对 width/height（每边 256–16383），但与 resolution 互斥；本期表单只暴露分辨率档位，不暴露自定义宽高。
 
 ## 图层拆分
 

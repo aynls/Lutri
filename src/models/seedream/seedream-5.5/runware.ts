@@ -66,6 +66,7 @@ export const combination: ModelCombination = {
   compile: (context) => {
     const p = values(fields, context.draft);
     const settings = take(p, { layer_decomposition: "layerDecomposition", background: "background" });
+    if (!settings.layerDecomposition) delete settings.layerDecomposition;
     if (settings.layerDecomposition) {
       if (p.layer_resolution) p.resolution = p.layer_resolution;
       settings.layerDecompositionMaxImages = Number(p.max_layers ?? 29) + 1;

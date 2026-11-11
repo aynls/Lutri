@@ -72,6 +72,7 @@ export const combination: ModelCombination = {
     if (context.draft.regions.length) context = { ...context, prompt: seedreamRegions(context) };
     const p = values(fields, context.draft);
     const settings = take(p, { layer_decomposition: "layerDecomposition", background: "background" });
+    if (!settings.layerDecomposition) delete settings.layerDecomposition;
     if (settings.layerDecomposition) {
       delete p.width;
       delete p.height;
