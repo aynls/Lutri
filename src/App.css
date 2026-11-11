@@ -1221,7 +1221,7 @@ img.asset-image.loaded {
 }
 .result-actions button {
   padding: 5px;
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: 15px;
   color: var(--muted);
   flex-shrink: 0;
 }

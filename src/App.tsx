@@ -914,9 +914,7 @@ export default function App() {
                 <Feed
                   onView={view}
                   onReference={addReference}
-                  onEdit={editImage}
                   onRestore={(draft) => void restore(draft).catch(onError)}
-                  onRelated={relatedHistory}
                   onError={onError}
                 />
               </section>

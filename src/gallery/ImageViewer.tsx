@@ -80,7 +80,7 @@ export function ImageViewer({
       if (focus instanceof HTMLElement && focus.isConnected) focus.focus({ preventScroll: true });
     };
   }, []);
-  const { gallery, tasks, ready } = useApplication();
+  const { gallery, tasks, boards, ready } = useApplication();
   const [selected, setSelected] = useState(initialId),
     [info, setInfo] = useState(true),
     [error, setError] = useState("");
@@ -261,7 +261,7 @@ export function ImageViewer({
                     >
                       <HeartIcon weight={entry?.favorite ? "fill" : "regular"} />
                     </button>
-                    <BoardAction key={entry.asset.id} entry={entry} disabled={disabled} />
+                    <BoardAction key={entry.asset.id} entry={entry} boards={boards} disabled={disabled} />
                   </>
                 )}
                 <button

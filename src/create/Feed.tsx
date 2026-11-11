@@ -7,9 +7,6 @@ import {
   HeartIcon,
   DownloadSimpleIcon,
   PlusIcon,
-  ClockCounterClockwiseIcon,
-  CopyIcon,
-  PencilSimpleIcon,
 } from "@phosphor-icons/react";
 import type { GalleryEntry, GenerationDraft } from "../domain/types";
 import { displayPrompt } from "../domain/references";
@@ -17,9 +14,10 @@ import { ModelIcon } from "../components/ModelIcon";
 import { t } from "../i18n";
 import { combinationById } from "../models";
 import { AssetImage } from "../gallery/AssetImage";
+import { BoardAction } from "../gallery/BoardAction";
 import { CopyButton } from "../components/CopyButton";
 import { LayerDelivery } from "../components/LayerDelivery";
-import { copyAssetImage, exportImages, favorite } from "../gallery/actions";
+import { exportImages, favorite } from "../gallery/actions";
 import { execute } from "../services/generation";
 import { removeFeed, useApplication } from "../services/store";
 import { c } from "./messages";
@@ -27,19 +25,15 @@ import { c } from "./messages";
 export function Feed({
   onView,
   onReference,
-  onEdit,
   onRestore,
-  onRelated,
   onError,
 }: {
   onView: (id: string, ids?: string[]) => void;
   onReference: (entry: GalleryEntry) => void;
-  onEdit: (entry: GalleryEntry) => void;
   onRestore: (draft: GenerationDraft) => void;
-  onRelated: (id: string) => void;
   onError: (error: unknown) => void;
 }) {
-  const { feed, tasks, gallery, ready } = useApplication();
+  const { feed, tasks, gallery, boards, ready } = useApplication();
   const container = useRef<HTMLDivElement>(null);
   const masonry = useRef<HTMLDivElement>(null);
   const observed = useRef<Set<string> | undefined>(undefined);
@@ -159,16 +153,6 @@ export function Feed({
                       <button title={t("restore")} aria-label={t("restore")} onClick={() => onRestore(task.draft)}>
                         <ArrowCounterClockwiseIcon size={15} />
                       </button>
-                      <button title={c("edit")} aria-label={c("edit")} onClick={() => onEdit(asset)}>
-                        <PencilSimpleIcon size={15} />
-                      </button>
-                      <button
-                        title={c("copyImage")}
-                        aria-label={c("copyImage")}
-                        onClick={() => attempt(() => copyAssetImage(asset.asset.id))}
-                      >
-                        <CopyIcon size={15} />
-                      </button>
                       <button
                         title={t("useReference")}
                         aria-label={t("useReference")}
@@ -179,19 +163,18 @@ export function Feed({
                       <button
                         title={t("favorites")}
                         aria-label={t("favorites")}
+                        aria-pressed={asset.favorite}
                         onClick={() => attempt(() => favorite(asset))}
                       >
                         <HeartIcon size={15} weight={asset.favorite ? "fill" : "regular"} />
                       </button>
+                      <BoardAction key={asset.asset.id} entry={asset} boards={boards} />
                       <button
                         title={t("saveAs")}
                         aria-label={t("saveAs")}
                         onClick={() => attempt(() => exportImages([asset]))}
                       >
                         <DownloadSimpleIcon size={15} />
-                      </button>
-                      <button title={t("related")} aria-label={t("related")} onClick={() => onRelated(asset.asset.id)}>
-                        <ClockCounterClockwiseIcon size={15} />
                       </button>
                     </div>
                   </div>
