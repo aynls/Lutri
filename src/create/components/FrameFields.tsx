@@ -16,6 +16,9 @@ const pairs = [
   [1440, 2560],
   [3072, 2048],
   [2048, 3072],
+  [4096, 4096],
+  [4096, 2304],
+  [2304, 4096],
 ];
 
 export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {

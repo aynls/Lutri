@@ -9,6 +9,7 @@ const familyIcons: Record<string, { file: string; monochrome?: boolean }> = {
   Ideogram: { file: "ideogram.svg", monochrome: true },
   MAI: { file: "microsoft-color.svg" },
   Muse: { file: "meta-color.svg" },
+  MiniMax: { file: "minimax-color.svg" },
 };
 
 export function ModelIcon({ family, size = 22 }: { family: string; size?: number }) {
