@@ -42,7 +42,7 @@ function resumable(task: GenerationTask) {
   }
   return (
     !["queued", "submitting"].includes(task.status) &&
-    (!!task.recovery || task.results.some((result) => !result.assetId && (result.url || result.layerSources)))
+    (!!task.recovery || task.results.some((result) => result.layerSources || (!result.assetId && result.url)))
   );
 }
 
@@ -61,6 +61,7 @@ export function taskSummary(task: GenerationTask) {
     prompt: Array.from(task.draft.prompt).slice(0, 160).join(""),
     assetIds: task.results.flatMap((result) => (result.assetId ? [result.assetId] : [])),
     savedResults: task.results.filter((result) => !!result.assetId).length,
+    deliveredPsdResults: task.results.filter((result) => result.layerDelivery?.status === "completed").length,
     resultCount: task.results.length,
     error: task.error,
     canResume: resumable(task),
@@ -189,6 +190,8 @@ export const taskTools = [
             inGallery: entry ? (entry.favorite || entry.boardIds.length > 0) && !entry.staged : false,
             error: result.error,
             exportError: result.exportError,
+            path: entry?.path,
+            layerDelivery: result.layerDelivery,
           };
         }),
       );

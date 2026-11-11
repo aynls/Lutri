@@ -10,8 +10,8 @@ const layer = toggle("layer_decomposition", ["Separate layers", "图层拆分", 
   allowDefault: false,
 });
 const fields: FieldDefinition[] = [
-  width(64, 4096),
-  height(64, 4096),
+  width(256, 16383),
+  height(256, 16383),
   resolution(["1K", "1.5K", "2K", "auto"]),
   layer,
   select("background", ["Background", "背景", "背景"], ["opaque", "transparent"]),

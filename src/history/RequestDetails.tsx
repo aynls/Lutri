@@ -8,6 +8,7 @@ import { t } from "../i18n";
 import { useApplication } from "../services/store";
 import { AssetImage } from "../gallery/AssetImage";
 import { CopyButton } from "../components/CopyButton";
+import { LayerDelivery } from "../components/LayerDelivery";
 import { taskText } from "../i18n/tasks";
 import { TaskUsage } from "./TaskUsage";
 import { retryResultExport } from "../services/generation";
@@ -202,7 +203,8 @@ export function RequestDetails({
                     )}
                   </button>
                   {result.status === "downloading" && <span>{t("downloading")}</span>}
-                  {result.error && <p className="error-text">{result.error}</p>}
+                  {result.error && !result.layerDelivery && <p className="error-text">{result.error}</p>}
+                  <LayerDelivery task={task} result={result} onError={onError} />
                   <TaskUsage task={task} result={result} compact />
                   {result.exportError && (
                     <>

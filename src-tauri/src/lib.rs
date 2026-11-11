@@ -8,6 +8,7 @@ mod library;
 mod local_resources;
 mod mcp;
 mod network;
+mod psd;
 mod result_cleanup;
 mod storage;
 pub mod upscale;

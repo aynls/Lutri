@@ -127,6 +127,12 @@ export interface GenerationResult {
   metadata?: Parameters;
   exportError?: string;
   layerSources?: LayerSource[];
+  layerDelivery?: {
+    status: "pending" | "failed" | "completed";
+    compositePath?: string;
+    psdPath?: string;
+    error?: string;
+  };
 }
 
 export interface GenerationTask {

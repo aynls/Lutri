@@ -98,6 +98,7 @@ export interface ModelCombination {
   protocol: Protocol;
   batch?: { protocol: "google" | "openai"; unsupportedFields?: string[] };
   maxReferences: number;
+  layerDecomposition?: { maxLayers: number };
   mask?: "alpha" | "white" | "black";
   regions?: "prompt" | "runware" | "fal" | "seedream";
   /** Provider-documented region cap; combinations without one fall back to `defaultMaxRegions`. */

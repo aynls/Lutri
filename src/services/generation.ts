@@ -1,4 +1,11 @@
-import type { GalleryEntry, GenerationBatch, GenerationDraft, GenerationTask, Parameters } from "../domain/types";
+import type {
+  GalleryEntry,
+  GenerationBatch,
+  GenerationDraft,
+  GenerationResult,
+  GenerationTask,
+  Parameters,
+} from "../domain/types";
 import { c } from "../create/messages";
 import { t } from "../i18n";
 import { compilePrompt } from "../domain/references";
@@ -18,6 +25,7 @@ import { deletingTaskIds } from "./taskLocks";
 import { submittedPrompt } from "../providers/submittedPrompt";
 import { orderedCreationDraft, validateCreation } from "../models/creation";
 import { resolveOutputs, type OutputOptions } from "./outputs";
+import { validateLayerSources } from "../providers/layers";
 
 const running = new Set<string>();
 const providerBlockedUntil = new Map<string, number>();
@@ -56,6 +64,7 @@ function layerError(error: unknown) {
     layer_output_conflict: "layerOutputConflict",
     invalid_layer_result: "invalidLayerResult",
     invalid_layer_bounds: "invalidLayerBounds",
+    psd_size_limit: "psdSizeLimit",
   } as const;
   const key = messages[String(error) as keyof typeof messages];
   return key ? c(key) : sanitizeDiagnostic(error);
@@ -137,6 +146,8 @@ export async function receive(
   failures?: string[],
 ): Promise<void> {
   const task = structuredClone(currentTask);
+  if (complete && task.draft.parameters.layer_decomposition === true && !images.length && !failures?.length)
+    throw new Error(c("invalidLayerResult"));
   task.awaitingResults = !complete;
   const previousResults = [...task.results];
   const remainingFailures = failures?.map(sanitizeDiagnostic);
@@ -150,7 +161,11 @@ export async function receive(
     });
   }
   const removedCount = previousResults.length - task.results.length;
-  for (const [index, image] of images.entries()) {
+  for (const [index, received] of images.entries()) {
+    const image =
+      task.draft.parameters.layer_decomposition === true && !received.layerSources && !received.error
+        ? { ...received, url: undefined, error: c("invalidLayerResult") }
+        : received;
     if (!complete && (image.layerSources || task.draft.parameters.layer_decomposition === true)) continue;
     const remoteId = image.remoteId ?? `result:${index}`;
     const existing = task.results.find((result) => result.remoteId === remoteId);
@@ -169,6 +184,7 @@ export async function receive(
       index: task.results.length,
       url: staged.url,
       layerSources: staged.layerSources,
+      ...(staged.layerSources ? { layerDelivery: { status: "pending" as const } } : {}),
       mediaType: image.mediaType,
       status: image.error ? ("failed" as const) : ("pending" as const),
       error: image.error ? sanitizeDiagnostic(image.error) : undefined,
@@ -231,30 +247,41 @@ export async function receive(
 
 export async function downloadResults(task: GenerationTask) {
   for (const result of task.results) {
-    if (result.assetId || (!result.url && !result.layerSources)) continue;
+    if ((result.assetId && !result.layerSources) || (!result.url && !result.layerSources)) continue;
     result.status = "downloading";
     await saveTask({ ...task, results: [...task.results] });
     try {
       const layerSources = result.layerSources;
-      const asset = layerSources
-        ? await native<GalleryEntry>("layer_result_save", {
+      const combination = combinationById(task.draft.combinationId);
+      let asset: GalleryEntry;
+      if (layerSources) {
+        const maxLayers = combination.layerDecomposition?.maxLayers ?? 0;
+        const invalid = validateLayerSources(layerSources, maxLayers);
+        if (invalid) throw invalid;
+        const saved = await native<{ asset: GalleryEntry; delivery: NonNullable<GenerationResult["layerDelivery"]> }>(
+          "layer_result_save",
+          {
             directory: task.draft.layerOutputDirectory ?? "",
             resultId: result.id,
             sources: layerSources,
-          })
-        : await downloadAsset(result.url!, result.id);
+            maxLayers,
+          },
+        );
+        asset = saved.asset;
+        result.layerDelivery = saved.delivery;
+        if (result.layerDelivery.error) result.layerDelivery.error = layerError(result.layerDelivery.error);
+      } else asset = await downloadAsset(result.url!, result.id);
       result.assetId = asset.asset.id;
       result.mediaType = asset.asset.mediaType;
       result.status = "saved";
       delete result.error;
-      if (layerSources) {
+      if (layerSources && result.layerDelivery?.status === "completed") {
         const urls = [...new Set(layerSources.map((source) => source.url).filter((url) => url.startsWith("staged:")))];
         delete result.layerSources;
         delete result.url;
         await saveTask({ ...task, results: [...task.results] });
         if (urls.length) await native("result_discard", { urls }).catch(() => {});
       }
-      const combination = combinationById(task.draft.combinationId);
       try {
         await native("asset_provenance", {
           id: asset.asset.id,
@@ -276,16 +303,21 @@ export async function downloadResults(task: GenerationTask) {
         result.metadata = { ...result.metadata, gallery_refresh_error: sanitizeDiagnostic(error) };
       }
     } catch (error) {
-      result.status = "failed";
+      result.status = result.assetId ? "saved" : "failed";
       result.error = result.layerSources ? layerError(error) : sanitizeDiagnostic(error);
+      if (result.layerSources)
+        result.layerDelivery = { ...result.layerDelivery, status: "failed", error: result.error };
     }
     await saveTask({ ...task, results: [...task.results] });
   }
   task.status = task.awaitingResults
     ? "generating"
-    : task.results.every((result) => result.status === "saved")
+    : task.results.every(
+          (result) =>
+            result.status === "saved" && (!result.layerDelivery || result.layerDelivery.status === "completed"),
+        )
       ? "completed"
-      : task.results.some((result) => (result.url || result.layerSources) && !result.assetId)
+      : task.results.some((result) => result.layerSources || (result.url && !result.assetId))
         ? "download-failed"
         : "failed";
   task.updatedAt = Date.now();
@@ -397,7 +429,7 @@ async function runTask(id: string, initial = false) {
     delete task.httpStatus;
     if (task.results.some((result) => result.url || result.layerSources || result.assetId) && !task.awaitingResults) {
       await downloadResults(task);
-      if (task.status === "download-failed" && task.recovery) {
+      if (task.status === "download-failed" && task.recovery && task.results.some((result) => !result.assetId)) {
         const refreshed = await poll(combination, task.recovery);
         if (refreshed.done) {
           for (const result of task.results) {

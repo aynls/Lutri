@@ -1,6 +1,8 @@
 # Seedream 5.0 API（Runware）
 
-Lutri 的图层拆分默认关闭，开启后必须设置本地图层另存为目录。此目录保存在草稿中，不发送给供应商。完整拆分结果按返回的位置和层序合成；底图、透明 PNG 和 `layers.json` 自动写入目录下的 `Lutri-<结果 ID>` 子目录，图库只保存合成 PNG。底图另存为 PNG；位置清单使用输出底图坐标系。下载与另存为失败保留原任务供重试，成功后移除临时图层来源。
+Lutri 的图层拆分默认关闭，开启后要求一张源图及本地输出目录。目录不发送给供应商。每个结果在 `Lutri-<结果 ID>` 子目录交付 `composite.png` 和 `layers.psd`，图库展示合成图；下载图块、层名、层序、边界及恢复状态保存在应用暂存区。PSD 保存独立 RGBA 像素图层，支持中日文层名，按边界写入图块；合成预览与 PNG 使用相同像素。两个文件均通过临时文件提交，全部成功才标记交付完成。失败后可重试本地保存，不重新生图；历史与 MCP 分别记录合成图保存状态、PSD 交付状态和产物路径。不处理旧任务兼容。
+
+拆分时不发送普通尺寸、背景、生成数量及提示词优化参数。Pro 的拆分分辨率可选 1K / 2K；Flash 可选 1K / 1.5K / 2K；自动表示省略 resolution。底图和图层来自 `data[].imageURL` 与 `data[].outputs.layers`，要求底图加 1–16 层，图层的 `zIndex` 唯一且为正；`boundingBox.absolute` 为 `[left, top, right, bottom]`，`normalized` 使用 0–1000。缺少名称时按层序命名。
 
 ```http
 POST https://api.runware.ai/v1

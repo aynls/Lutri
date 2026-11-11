@@ -1,3 +1,10 @@
+.layer-delivery {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  overflow-wrap: anywhere;
+}
+
 /* Shared desktop surfaces and image inspection. */
 .studio-dialog {
   padding: 0;

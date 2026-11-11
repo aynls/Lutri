@@ -110,6 +110,9 @@ export const modelTools = [
         })),
         inputs: {
           maxReferences: combination.maxReferences,
+          layerDecomposition: combination.layerDecomposition
+            ? { ...combination.layerDecomposition, sourceImages: 1, artifacts: ["composite.png", "layers.psd"] }
+            : null,
           primaryReference: combination.primaryReference ?? false,
           creationControl: combination.creationControl ?? null,
           creationModes: combination.creationControl ? ["generate", "edit"] : [],

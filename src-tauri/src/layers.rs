@@ -1,4 +1,4 @@
-use crate::{assets, storage::Store};
+use crate::{assets, psd, storage::Store};
 use image::{imageops, DynamicImage, ImageFormat, Rgba, Rgba32FImage, RgbaImage};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -43,18 +43,18 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
     outcome.map_err(|error| error.to_string())
 }
 
-fn export_directory(directory: &str, id: &str) -> Result<PathBuf, String> {
+fn export_directory(directory: &str, id: &str, staging: &Path) -> Result<PathBuf, String> {
     if !layer_directory_available(directory.to_owned()) {
         return Err("layer_directory_unavailable".into());
     }
     let target = Path::new(directory).join(format!("Lutri-{id}"));
-    let manifest = target.join("layers.json");
+    let manifest = staging.join("delivery.json");
     match std::fs::create_dir(&target) {
         Ok(()) => {}
         Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
             if let Ok(bytes) = std::fs::read(&manifest) {
                 let saved: Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
-                if saved["id"] == id {
+                if saved["id"] == id && saved["directory"] == directory && target.is_dir() {
                     return Ok(target);
                 }
             }
@@ -66,7 +66,8 @@ fn export_directory(directory: &str, id: &str) -> Result<PathBuf, String> {
     }
     write_atomic(
         &manifest,
-        &serde_json::to_vec_pretty(&json!({"id":id,"complete":false})).map_err(|e| e.to_string())?,
+        &serde_json::to_vec_pretty(&json!({"id":id,"directory":directory,"complete":false}))
+            .map_err(|e| e.to_string())?,
     )?;
     Ok(target)
 }
@@ -156,31 +157,84 @@ fn resize_layer(image: RgbaImage, width: u32, height: u32) -> RgbaImage {
     })
 }
 
-fn compose_and_save(store: &Store, id: String, target: PathBuf, sources: Vec<LayerSource>) -> Result<Value, String> {
-    let mut canvas = image::open(target.join("00-base.png"))
+fn compose_and_save(
+    store: &Store,
+    id: String,
+    directory: String,
+    staging: PathBuf,
+    sources: Vec<LayerSource>,
+) -> Result<Value, String> {
+    let mut canvas = image::open(staging.join("0.png"))
         .map_err(|e| e.to_string())?
         .to_rgba8();
     let (width, height) = canvas.dimensions();
-    let mut manifest = vec![json!({"file":"00-base.png","z_index":0,"width":width,"height":height})];
+    if width > 30000 || height > 30000 || width as u64 * height as u64 > 36_000_000 {
+        return Err("invalid_layer_result".into());
+    }
+    let mut layers = vec![psd::Layer {
+        path: staging.join("0.png"),
+        bounds: [0, 0, width, height],
+        name: sources[0]
+            .name
+            .clone()
+            .filter(|name| !name.trim().is_empty())
+            .unwrap_or_else(|| "Base".into()),
+    }];
     for layer in sources.iter().skip(1) {
-        let file = format!("{:02}-layer.png", layer.z_index);
-        let image = image::open(target.join(&file)).map_err(|e| e.to_string())?.to_rgba8();
-        let (source_width, source_height) = image.dimensions();
+        let image = image::open(staging.join(format!("{}.png", layer.z_index)))
+            .map_err(|e| e.to_string())?
+            .to_rgba8();
         let [l, t, r, b] = bounds(layer, width, height)?;
         let resized = resize_layer(image, r - l, b - t);
         imageops::overlay(&mut canvas, &resized, l as i64, t as i64);
-        manifest.push(json!({"file":file,"z_index":layer.z_index,"name":layer.name,"description":layer.description,
-            "width":source_width,"height":source_height,"bounding_box":{"absolute":[l,t,r,b],"normalized":layer.normalized_bounds}}));
+        let path = staging.join(format!("{}-tile.png", layer.z_index));
+        write_atomic(&path, &encode_png(&DynamicImage::ImageRgba8(resized))?)?;
+        layers.push(psd::Layer {
+            path,
+            bounds: [l, t, r, b],
+            name: layer
+                .name
+                .clone()
+                .filter(|name| !name.trim().is_empty())
+                .unwrap_or_else(|| format!("Layer {}", layer.z_index)),
+        });
     }
-    let png = encode_png(&DynamicImage::ImageRgba8(canvas))?;
-    write_atomic(
-        &target.join("layers.json"),
-        &serde_json::to_vec_pretty(&json!({
-            "id":id,"complete":true,"canvas":{"width":width,"height":height},"layers":manifest,
-        }))
-        .map_err(|e| e.to_string())?,
-    )?;
-    assets::save_generated_with_id(store, &png, id)
+    let composite = DynamicImage::ImageRgba8(canvas);
+    let png = encode_png(&composite)?;
+    let asset = assets::save_generated_with_id(store, &png, id.clone())?;
+    let mut delivery = json!({"status":"failed"});
+    let export = (|| -> Result<(), String> {
+        let target = export_directory(&directory, &id, &staging)?;
+        let composite_path = target.join("composite.png");
+        let psd_path = target.join("layers.psd");
+        let token = uuid::Uuid::new_v4();
+        let png_temp = target.join(format!("composite.{token}.tmp"));
+        let psd_temp = target.join(format!("layers.{token}.tmp"));
+        let outcome = (|| {
+            write_atomic(&png_temp, &png)?;
+            psd::write(&psd_temp, &layers, composite.as_rgba8().ok_or("invalid_layer_result")?)?;
+            std::fs::rename(&png_temp, &composite_path).map_err(|e| e.to_string())?;
+            delivery["compositePath"] = json!(composite_path);
+            std::fs::rename(&psd_temp, &psd_path).map_err(|e| e.to_string())?;
+            delivery["psdPath"] = json!(psd_path);
+            write_atomic(
+                &staging.join("delivery.json"),
+                &serde_json::to_vec(&json!({"id":id,"directory":directory,"complete":true}))
+                    .map_err(|e| e.to_string())?,
+            )?;
+            Ok(())
+        })();
+        if outcome.is_err() {
+            let _ = std::fs::remove_file(png_temp);
+            let _ = std::fs::remove_file(psd_temp);
+        }
+        outcome
+    })();
+    match export {
+        Ok(()) => delivery["status"] = json!("completed"),
+        Err(error) => delivery["error"] = json!(error),
+    }
+    Ok(json!({"asset":asset,"delivery":delivery}))
 }
 
 #[tauri::command]
@@ -189,36 +243,35 @@ pub async fn layer_result_save(
     directory: String,
     result_id: String,
     mut sources: Vec<LayerSource>,
+    max_layers: usize,
 ) -> Result<Value, String> {
     use tauri::Manager;
     let id = uuid::Uuid::parse_str(&result_id)
         .map_err(|e| e.to_string())?
         .to_string();
     let store = app.state::<Store>();
-    if let Ok(existing) = assets::entry(&store, &id) {
-        return Ok(existing);
-    }
     sources.sort_by_key(|layer| layer.z_index);
     let mut indices = HashSet::new();
-    if sources.is_empty()
-        || sources.len() > 17
+    if !(1..=99).contains(&max_layers)
+        || sources.len() < 2
+        || sources.len() > max_layers + 1
         || sources[0].z_index != 0
         || sources.iter().any(|s| s.url.is_empty() || !indices.insert(s.z_index))
     {
         return Err("invalid_layer_result".into());
     }
-    let target = export_directory(&directory, &id)?;
+    let staging = store.root.join("staging").join("layers").join(&id);
+    std::fs::create_dir_all(&staging).map_err(|e| e.to_string())?;
+    write_atomic(
+        &staging.join("sources.json"),
+        &serde_json::to_vec(&sources).map_err(|e| e.to_string())?,
+    )?;
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(180))
         .build()
         .map_err(|e| e.to_string())?;
     for source in &sources {
-        let filename = if source.z_index == 0 {
-            "00-base.png".to_owned()
-        } else {
-            format!("{:02}-layer.png", source.z_index)
-        };
-        let path = target.join(filename);
+        let path = staging.join(format!("{}.png", source.z_index));
         if path.is_file() {
             continue;
         }
@@ -236,7 +289,9 @@ pub async fn layer_result_save(
         .map_err(|e| e.to_string())??;
     }
     let worker_app = app.clone();
-    tauri::async_runtime::spawn_blocking(move || compose_and_save(&worker_app.state::<Store>(), id, target, sources))
-        .await
-        .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        compose_and_save(&worker_app.state::<Store>(), id, directory, staging, sources)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }

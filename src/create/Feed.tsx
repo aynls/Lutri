@@ -18,6 +18,7 @@ import { t } from "../i18n";
 import { combinationById } from "../models";
 import { AssetImage } from "../gallery/AssetImage";
 import { CopyButton } from "../components/CopyButton";
+import { LayerDelivery } from "../components/LayerDelivery";
 import { copyAssetImage, exportImages, favorite } from "../gallery/actions";
 import { execute } from "../services/generation";
 import { removeFeed, useApplication } from "../services/store";
@@ -220,6 +221,7 @@ export function Feed({
                       : String(slot.resultIndex + 1).padStart(2, "0")}
                   </span>
                 </footer>
+                {result?.layerDelivery && <LayerDelivery task={task} result={result} onError={onError} />}
                 {prompt.trim() ? (
                   <div className="result-prompt-wrap">
                     <p className="result-prompt" tabIndex={0} aria-label={t("prompt")}>

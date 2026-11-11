@@ -54,6 +54,7 @@ async function discardStagedResults(removed: GenerationTask[]) {
     task.results.flatMap((result) => [
       ...(result.url ? [result.url] : []),
       ...(result.layerSources ?? []).map((source) => source.url),
+      ...(result.layerDelivery ? [`staged-layers:${result.id}`] : []),
     ]);
   const current = getState();
   const retainedIds = new Set(current.feed.map((slot) => slot.taskId));
@@ -63,7 +64,7 @@ async function discardStagedResults(removed: GenerationTask[]) {
       removed
         .filter((task) => !retainedIds.has(task.id) && !isTaskScheduled(task.id))
         .flatMap(resultUrls)
-        .filter((url) => url.startsWith("staged:") && !retainedUrls.has(url)),
+        .filter((url) => (url.startsWith("staged:") || url.startsWith("staged-layers:")) && !retainedUrls.has(url)),
     ),
   ];
   if (urls.length) await native("result_discard", { urls });

@@ -82,7 +82,9 @@ export const creationSchema = z.strictObject({
     .string()
     .min(1)
     .optional()
-    .describe("Existing absolute folder required for layer_decomposition=true."),
+    .describe(
+      "Existing absolute folder required for layer_decomposition=true; delivers composite.png and layers.psd in a Lutri-<result ID> subfolder.",
+    ),
 });
 export type CreationInput = z.infer<typeof creationSchema>;
 export const executionMode = z.enum(["regular", "batch"]);
