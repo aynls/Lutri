@@ -11,7 +11,7 @@ import { t } from "../i18n";
 import { compilePrompt } from "../domain/references";
 import { validateDraft } from "../models/validateDraft";
 import { combinationById } from "../models";
-import { maxRequestCount } from "../models/shared";
+import { maxRequestCount, values } from "../models/shared";
 import { HttpError, array, object, send } from "../providers/transport";
 import { imageResults, responseMetadata, type RemoteImage } from "../providers/results";
 import { poll, recoveryFrom } from "../providers/recovery";
@@ -255,7 +255,16 @@ export async function downloadResults(task: GenerationTask) {
       const combination = combinationById(task.draft.combinationId);
       let asset: GalleryEntry;
       if (layerSources) {
-        const maxLayers = combination.layerDecomposition?.maxLayers ?? 0;
+        const parameters = values(combination.fields, task.draft);
+        const maxLayers = Math.min(
+          combination.layerDecomposition?.maxLayers ?? 0,
+          Number(
+            parameters.max_layers ??
+              combination.fields.find((field) => field.key === "max_layers")?.default ??
+              combination.layerDecomposition?.maxLayers ??
+              0,
+          ),
+        );
         const invalid = validateLayerSources(layerSources, maxLayers);
         if (invalid) throw invalid;
         const saved = await native<{ asset: GalleryEntry; delivery: NonNullable<GenerationResult["layerDelivery"]> }>(

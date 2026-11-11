@@ -32,7 +32,7 @@ import { missingPromptReferences } from "./domain/references";
 import { t } from "./i18n";
 import { validateDraft } from "./models/validateDraft";
 import { combinationById } from "./models";
-import { initialDraft, maxRequestCount } from "./models/shared";
+import { initialDraft, maxRequestCount, referenceLimit } from "./models/shared";
 import { useApplication, loadApplication, saveDraft, removeFeed, getState, refreshGallery } from "./services/store";
 import { assetExists, imageUrl as assetImageUrl, importAsset, native } from "./services/native";
 import { ImageViewer } from "./gallery/ImageViewer";
@@ -234,7 +234,7 @@ export default function App() {
   const appendReferences = useCallback(async (entries: GalleryEntry[]) => {
     if (!entries.length) return;
     const draft = getState().draft;
-    const limit = combinationById(draft.combinationId).maxReferences;
+    const limit = referenceLimit(combinationById(draft.combinationId), draft);
     if (!limit) throw new Error(c("unsupportedImages"));
     if (draft.references.length + entries.length > limit) throw new Error(c("tooMany"));
     await saveDraft({
@@ -343,7 +343,7 @@ export default function App() {
         for (const reference of missing) approved.set(reference.id, reference.assetId);
         continue;
       }
-      const limit = combinationById(current.combinationId).maxReferences;
+      const limit = referenceLimit(combinationById(current.combinationId), current);
       if ((current.references.length || missing.length) && !limit) throw new Error(c("unsupportedImages"));
       if (current.references.length + missing.length > limit) throw new Error(c("tooMany"));
       const candidate = { ...current, prompt: snapshot.prompt, references: [...current.references, ...missing] };
@@ -422,7 +422,7 @@ export default function App() {
       purpose: "reference" as const,
     };
     const references = [reference, ...(keep ? current.references.filter((ref) => ref.id !== reference.id) : [])];
-    if (references.length > target.maxReferences) {
+    if (references.length > referenceLimit(target, current)) {
       onError(c("tooMany"));
       return false;
     }
@@ -718,7 +718,7 @@ export default function App() {
                     onChange={changeDraft}
                     onAdd={(source) => void addSource(source).catch(onError)}
                     onView={view}
-                    limit={combination.maxReferences}
+                    limit={referenceLimit(combination, state.draft)}
                     primary={!combination.creationControl && combination.primaryReference}
                     targetId={editTargetId(state.draft, combination)}
                     stableTarget={!!combination.creationControl && state.draft.creationMode === "edit"}
@@ -1025,7 +1025,7 @@ export default function App() {
           onSelect={(entries) => void addReferences(entries).catch(onError)}
           onClose={() => setPicker(false)}
           onError={onError}
-          limit={Math.max(0, combination.maxReferences - state.draft.references.length)}
+          limit={Math.max(0, referenceLimit(combination, state.draft) - state.draft.references.length)}
         />
       )}
       {urlImport && (

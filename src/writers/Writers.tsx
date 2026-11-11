@@ -25,6 +25,7 @@ import { Dialog } from "../components/Dialog";
 import { chooseImages } from "../gallery/actions";
 import { combinationById } from "../models";
 import { editTargetId } from "../models/creation";
+import { referenceLimit as modelReferenceLimit } from "../models/shared";
 import { c } from "../create/messages";
 import { writerMessages } from "./request";
 
@@ -107,7 +108,7 @@ export function Writers({
   const [accepting, setAccepting] = useState(false);
   const acceptingRef = useRef(false);
   const combination = combinationById(draft.combinationId);
-  const referenceLimit = combination.maxReferences;
+  const referenceLimit = modelReferenceLimit(combination, draft);
   const addReferences = async (entries: GalleryEntry[]) => {
     if (!entries.length) return;
     await onAddReferences(entries);

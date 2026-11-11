@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { combinations } from "../../models";
-import { initialDraft, maxRequestCount, regionLimit } from "../../models/shared";
+import { initialDraft, maxRequestCount, referenceLimit, regionLimit } from "../../models/shared";
 import { batchRequestLimit } from "../../batch/capabilities";
 import { native } from "../native";
 import { getState } from "../store";
@@ -109,7 +109,7 @@ export const modelTools = [
           active: (!visible || visible(draft)) && !unsupported.includes(field.key),
         })),
         inputs: {
-          maxReferences: combination.maxReferences,
+          maxReferences: referenceLimit(combination, draft),
           layerDecomposition: combination.layerDecomposition
             ? { ...combination.layerDecomposition, sourceImages: 1, artifacts: ["composite.png", "layers.psd"] }
             : null,

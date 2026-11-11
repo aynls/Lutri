@@ -4,7 +4,8 @@ import { validateFields, values } from "../shared";
 import type { FieldDefinition, ModelCombination } from "../types";
 
 export function withLayerDelivery(combination: ModelCombination): ModelCombination {
-  if (!combination.fields.some((field) => field.key === "layer_decomposition")) return combination;
+  if (combination.layerDecomposition || !combination.fields.some((field) => field.key === "layer_decomposition"))
+    return combination;
   const runware = combination.provider === "runware";
   const flash = combination.model === "seedream-5-flash";
   const normalOnly = new Set([

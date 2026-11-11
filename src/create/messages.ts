@@ -25,6 +25,11 @@ const messages = {
   psdDelivered: label("PSD delivered", "PSD已交付", "PSDを保存済み"),
   layerSaving: label("Saving PNG / PSD", "正在保存 PNG / PSD", "PNG / PSDを保存中"),
   psdSizeLimit: label("PSD exceeds the size limit", "PSD 超出大小限制", "PSDのサイズ上限を超えています"),
+  singleLayerSource: label(
+    "Layer separation requires one source image",
+    "图层拆分需要一张源图",
+    "レイヤー分離には元画像が1枚必要です",
+  ),
   creationMode: label("Creation mode", "创作方式", "作成モード"),
   generateMode: label("Generate", "生成", "生成"),
   editMode: label("Edit", "编辑", "編集"),
