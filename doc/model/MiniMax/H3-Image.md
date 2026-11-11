@@ -20,7 +20,7 @@
 
 `POST https://openrouter.ai/api/v1/images`，Bearer 鉴权。模型为 `minimax/minimax-h3-image` / `minimax/minimax-h3-image-highspeed`。参考图放入 `input_references: [{ type: "image_url", image_url: { url } }]`。
 
-Lutri 使用 `size: "宽x高"`，`n` 为 1–10，`output_format` 为 png、jpeg 或 webp。接口还公布 resolution、aspect_ratio 及 `disable_prompt_enhanced` 透传能力；本期不额外暴露这些与显式尺寸重叠或依赖供应商透传的控件。结果复用 Image API 的 `data` 解析。
+Lutri 使用 `size: "宽x高"`，`n` 为 1–10，`output_format` 为 png、jpeg 或 webp。文生图的提示词优化开关 `enable_prompt_expansion` 取反后映射到 `provider.options.minimax.disable_prompt_enhanced`；编辑不发送此开关。关闭优化时仍提交显式尺寸。接口还公布 resolution、aspect_ratio，本期不额外暴露这些与显式尺寸重叠的控件。结果复用 Image API 的 `data` 解析。
 
 ## 官方来源
 
@@ -32,3 +32,4 @@ Lutri 使用 `size: "宽x高"`，`n` 为 1–10，`output_format` 为 png、jpeg
 - https://fal.ai/models/minimax/h3-image/highspeed/edit/api
 - https://openrouter.ai/api/v1/images/models/minimax/minimax-h3-image/endpoints
 - https://openrouter.ai/api/v1/images/models/minimax/minimax-h3-image-highspeed/endpoints
+- https://openrouter.ai/docs/guides/overview/multimodal/image-generation
