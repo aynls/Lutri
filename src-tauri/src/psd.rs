@@ -39,6 +39,7 @@ fn plane(writer: &mut impl Write, image: &RgbaImage, channel: usize) -> io::Resu
     Ok(())
 }
 
+/// Write layer records and channel data in bottom-to-top order.
 pub fn write(path: &Path, layers: &[Layer], composite: &RgbaImage) -> Result<(), String> {
     let outcome = || -> io::Result<()> {
         if layers.is_empty() || layers.len() > 100 || composite.width() > 30000 || composite.height() > 30000 {
@@ -71,7 +72,7 @@ pub fn write(path: &Path, layers: &[Layer], composite: &RgbaImage) -> Result<(),
         let info = writer.stream_position()?;
         u32_be(&mut writer, 0)?;
         writer.write_all(&(-(layers.len() as i16)).to_be_bytes())?;
-        for layer in layers.iter().rev() {
+        for layer in layers {
             let [left, top, right, bottom] = layer.bounds;
             for value in [top, left, bottom, right] {
                 u32_be(&mut writer, value)?;
@@ -108,7 +109,7 @@ pub fn write(path: &Path, layers: &[Layer], composite: &RgbaImage) -> Result<(),
             }
             length(&mut writer, extra)?;
         }
-        for layer in layers.iter().rev() {
+        for layer in layers {
             let image = image::open(&layer.path).map_err(io::Error::other)?.to_rgba8();
             let [left, top, right, bottom] = layer.bounds;
             if image.dimensions() != (right - left, bottom - top) {

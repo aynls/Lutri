@@ -1,7 +1,7 @@
 use crate::storage::Store;
 use std::collections::HashSet;
 
-/// Discard only generated response staging files after their task records are gone.
+/// Discard staging files once task records no longer need them for recovery.
 #[tauri::command]
 pub fn result_discard(store: tauri::State<Store>, urls: Vec<String>) -> Result<usize, String> {
     let mut ids = HashSet::new();
@@ -24,10 +24,13 @@ pub fn result_discard(store: tauri::State<Store>, urls: Vec<String>) -> Result<u
             .query_row(
                 "SELECT EXISTS(SELECT 1 FROM records, json_each(records.body,'$.results') AS result \
                  WHERE records.collection='tasks' AND (json_extract(result.value,'$.url')=?1 \
-                 OR json_extract(result.value,'$.id')=?2 \
+                 OR (json_extract(result.value,'$.id')=?2 AND (NOT ?3 \
+                 OR json_extract(result.value,'$.layerDelivery.status') IS NOT 'completed' \
+                 OR json_extract(result.value,'$.layerSources') IS NOT NULL \
+                 OR json_extract(result.value,'$.url') IS NOT NULL)) \
                  OR EXISTS(SELECT 1 FROM json_each(result.value,'$.layerSources') AS layer \
                  WHERE json_extract(layer.value,'$.url')=?1)))",
-                [&url, &id],
+                rusqlite::params![url, id, layers],
                 |row| row.get::<_, bool>(0),
             )
             .map_err(|error| error.to_string())?;

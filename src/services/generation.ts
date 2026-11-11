@@ -285,11 +285,14 @@ export async function downloadResults(task: GenerationTask) {
       result.status = "saved";
       delete result.error;
       if (layerSources && result.layerDelivery?.status === "completed") {
-        const urls = [...new Set(layerSources.map((source) => source.url).filter((url) => url.startsWith("staged:")))];
+        const urls = [result.url, ...layerSources.map((source) => source.url)].filter((url) =>
+          url?.startsWith("staged:"),
+        );
+        urls.push(`staged-layers:${result.id}`);
         delete result.layerSources;
         delete result.url;
         await saveTask({ ...task, results: [...task.results] });
-        if (urls.length) await native("result_discard", { urls }).catch(() => {});
+        await native("result_discard", { urls: [...new Set(urls)] }).catch(() => {});
       }
       try {
         await native("asset_provenance", {
