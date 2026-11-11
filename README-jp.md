@@ -12,7 +12,7 @@
 
 Lutri は、クリエイターのためのデスクトップ AI 画像生成ワークベンチです。多彩な画像生成モデルとプロバイダーを集め、それぞれのモデルと API に合わせて個別に対応。プロンプト Writer で一つのアイデアからさまざまな表現を探り、内蔵のローカル超解像モデルで細部を磨けます。
 
-**10 のモデルシリーズ · 15 のプロバイダー · 複数の AI 作家によるプロンプト Writer · 4 つのローカル超解像モデル**
+**11 のモデルシリーズ · 15 のプロバイダー · 複数の AI 作家によるプロンプト Writer · 4 つのローカル超解像モデル**
 
 ![Lutri — Every model. Its full potential.](public/readme/banner.png)
 ![Lutri の画像生成画面](public/readme/readme-screen-shot.png)
@@ -26,13 +26,14 @@ Lutri は、クリエイターのためのデスクトップ AI 画像生成ワ�
 | **FLUX** | FLUX 3 Image、FLUX 3 Image Klein |
 | **GPT Image** | GPT Image 2.6 Flare、GPT Image 2.6 Sunburst、GPT Image 2.5 Flare、GPT Image 2.5 Sunburst |
 | **Nano Banana / Gemini** | Nano Banana 2.1、Nano Banana 2、Nano Banana 2 Lite、Nano Banana Pro |
-| **Seedream** | Seedream 5 Pro、Seedream 5 Lite、Seedream 5 Flash |
+| **Seedream** | Seedream 5.5、Seedream 5 Pro、Seedream 5 Lite、Seedream 5 Flash |
 | **Qwen Image** | Qwen Image 3.0、Qwen Image 3.0-pro、Qwen Image 2.1-pro、Qwen Image 2.1-turbo |
 | **Grok** | Grok Imagine Image 2.0 |
 | **MAI Image** | MAI Image 2.6、MAI Image 2.5 |
 | **Muse** | Muse Image |
 | **Recraft** | Recraft v4.1、Recraft v4.1 pro、Recraft v4.1 utility、Recraft v4.1 utility pro、Recraft v4 styles、Recraft v4 styles pro<br>**SVG:** Recraft V4 Vector、Recraft V4 Pro Vector、Recraft V4.1 Vector、Recraft V4.1 Pro Vector、Recraft V4 Styles Vector、Recraft V4 Styles Pro Vector |
 | **Ideogram** | Ideogram 4.5、Ideogram 4.0 |
+| **MiniMax** | MiniMax H3-Image、MiniMax H3-Image HighSpeed |
 
 ### プロバイダー
 

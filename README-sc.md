@@ -12,7 +12,7 @@
 
 Lutri 是一款面向创作者的桌面 AI 图像生成工作台。汇集丰富的生图模型与供应商，为每个模型与 API 量身适配；通过提示词 Writer 探索同一个想法的不同表达，再用内置本地超分模型提升画面细节。
 
-**10 个模型系列 · 15 个 Provider · 多作家提示词 Writer · 4 款本地超分模型**
+**11 个模型系列 · 15 个 Provider · 多作家提示词 Writer · 4 款本地超分模型**
 
 ![Lutri — Every model. Its full potential.](public/readme/banner.png)
 ![Lutri 创作界面](public/readme/readme-screen-shot.png)
@@ -26,13 +26,14 @@ Lutri 是一款面向创作者的桌面 AI 图像生成工作台。汇集丰富�
 | **FLUX** | FLUX 3 Image、FLUX 3 Image Klein |
 | **GPT Image** | GPT Image 2.6 Flare、GPT Image 2.6 Sunburst、GPT Image 2.5 Flare、GPT Image 2.5 Sunburst |
 | **Nano Banana / Gemini** | Nano Banana 2.1、Nano Banana 2、Nano Banana 2 Lite、Nano Banana Pro |
-| **Seedream** | Seedream 5 Pro、Seedream 5 Lite、Seedream 5 Flash |
+| **Seedream** | Seedream 5.5、Seedream 5 Pro、Seedream 5 Lite、Seedream 5 Flash |
 | **Qwen Image** | Qwen Image 3.0、Qwen Image 3.0-pro、Qwen Image 2.1-pro、Qwen Image 2.1-turbo |
 | **Grok** | Grok Imagine Image 2.0 |
 | **MAI Image** | MAI Image 2.6、MAI Image 2.5 |
 | **Muse** | Muse Image |
 | **Recraft** | Recraft v4.1、Recraft v4.1 pro、Recraft v4.1 utility、Recraft v4.1 utility pro、Recraft v4 styles、Recraft v4 styles pro<br>**SVG:** Recraft V4 Vector、Recraft V4 Pro Vector、Recraft V4.1 Vector、Recraft V4.1 Pro Vector、Recraft V4 Styles Vector、Recraft V4 Styles Pro Vector |
 | **Ideogram** | Ideogram 4.5、Ideogram 4.0 |
+| **MiniMax** | MiniMax H3-Image、MiniMax H3-Image HighSpeed |
 
 ### Providers
 

@@ -12,7 +12,7 @@ English · [简体中文](README-sc.md) · [日本語](README-jp.md)
 
 Lutri is a desktop AI image generation workbench for creators. It brings together a wide range of image models and providers, with integrations tailored to each model and API. Explore different ways to express an idea with Prompt Writer, then refine the details with built-in local upscaling models.
 
-**10 model families · 15 providers · Multi-writer Prompt Writer · 4 local upscaling models**
+**11 model families · 15 providers · Multi-writer Prompt Writer · 4 local upscaling models**
 
 ![Lutri — Every model. Its full potential.](public/readme/banner.png)
 ![Lutri creation workspace](public/readme/readme-screen-shot.png)
@@ -26,13 +26,14 @@ Each model has its own strengths and ways of interpreting an idea. Lutri tailors
 | **FLUX** | FLUX 3 Image, FLUX 3 Image Klein |
 | **GPT Image** | GPT Image 2.6 Flare, GPT Image 2.6 Sunburst, GPT Image 2.5 Flare, GPT Image 2.5 Sunburst |
 | **Nano Banana / Gemini** | Nano Banana 2.1, Nano Banana 2, Nano Banana 2 Lite, Nano Banana Pro |
-| **Seedream** | Seedream 5 Pro, Seedream 5 Lite, Seedream 5 Flash |
+| **Seedream** | Seedream 5.5, Seedream 5 Pro, Seedream 5 Lite, Seedream 5 Flash |
 | **Qwen Image** | Qwen Image 3.0, Qwen Image 3.0-pro, Qwen Image 2.1-pro, Qwen Image 2.1-turbo |
 | **Grok** | Grok Imagine Image 2.0 |
 | **MAI Image** | MAI Image 2.6, MAI Image 2.5 |
 | **Muse** | Muse Image |
 | **Recraft** | Recraft v4.1, Recraft v4.1 pro, Recraft v4.1 utility, Recraft v4.1 utility pro, Recraft v4 styles, Recraft v4 styles pro<br>**SVG:** Recraft V4 Vector, Recraft V4 Pro Vector, Recraft V4.1 Vector, Recraft V4.1 Pro Vector, Recraft V4 Styles Vector, Recraft V4 Styles Pro Vector |
 | **Ideogram** | Ideogram 4.5, Ideogram 4.0 |
+| **MiniMax** | MiniMax H3-Image, MiniMax H3-Image HighSpeed |
 
 ### Providers
 
