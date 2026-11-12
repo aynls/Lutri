@@ -15,7 +15,7 @@ import { McpSettings } from "./McpSettings";
 import { LlmSettings } from "./LlmSettings";
 import { localePreference, t, useLocale, type LocalePreference } from "../i18n";
 import { lt } from "../i18n/library";
-import { maxRequestCount, providerNames } from "../models/shared";
+import { maxRequestCount, minimaxEndpoints, providerNames } from "../models/shared";
 import type { ProviderId } from "../models/types";
 import { native } from "../services/native";
 import { getState, refreshUpscaleDevices, savePreferences, useApplication, type Preferences } from "../services/store";
@@ -47,6 +47,16 @@ function ProviderSettings({ provider, onError }: { provider: ProviderId; onError
       .catch(onError)
       .finally(() => setBusy(false));
   };
+  const saveField = (field: "endpoint" | "deployment", value: string) => {
+    attempt(async () => {
+      const prefs = getState().preferences;
+      await savePreferences({
+        ...prefs,
+        providers: { ...prefs.providers, [provider]: { ...prefs.providers[provider], [field]: value } },
+      });
+      setChecked(false);
+    });
+  };
   return (
     <details className="provider-setting" id={`provider-${provider}`}>
       <summary>
@@ -57,6 +67,20 @@ function ProviderSettings({ provider, onError }: { provider: ProviderId; onError
         <CaretRightIcon className="provider-chevron" size={16} aria-hidden="true" />
       </summary>
       <div className="provider-fields">
+        {provider === "minimax" && (
+          <label htmlFor="minimax-api-region">
+            <span>{text("apiRegion")}</span>
+            <Select
+              id="minimax-api-region"
+              value={preferences.providers.minimax?.endpoint ?? minimaxEndpoints.global}
+              disabled={busy}
+              onValueChange={(endpoint) => saveField("endpoint", endpoint)}
+            >
+              <option value={minimaxEndpoints.global}>{text("apiRegionGlobal")}</option>
+              <option value={minimaxEndpoints.mainland}>{text("apiRegionMainland")}</option>
+            </Select>
+          </label>
+        )}
         <label>
           {t("key")}
           <input
@@ -78,17 +102,7 @@ function ProviderSettings({ provider, onError }: { provider: ProviderId; onError
               {t(field)}
               <input
                 defaultValue={preferences.providers[provider]?.[field] ?? ""}
-                onBlur={(event) => {
-                  const value = event.target.value.trim();
-                  attempt(async () => {
-                    const prefs = getState().preferences;
-                    await savePreferences({
-                      ...prefs,
-                      providers: { ...prefs.providers, [provider]: { ...prefs.providers[provider], [field]: value } },
-                    });
-                    setChecked(false);
-                  });
-                }}
+                onBlur={(event) => saveField(field, event.target.value.trim())}
               />
             </label>
           ))}

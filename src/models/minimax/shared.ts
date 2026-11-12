@@ -2,12 +2,14 @@ import { ParameterFields } from "../../create/components/Fields";
 import { dimensionErrors, validateFields, values } from "../shared";
 import type { FieldDefinition, ModelCombination } from "../types";
 
+export const minimaxModelId = (highspeed: boolean) => `minimax-h3-image${highspeed ? "-highspeed" : ""}`;
+
 export function minimax(
   highspeed: boolean,
   adapter: Pick<ModelCombination, "provider" | "protocol" | "compile" | "outputCount"> &
     Partial<ModelCombination> & { fields: FieldDefinition[] },
 ): ModelCombination {
-  const model = `minimax-h3-image${highspeed ? "-highspeed" : ""}`;
+  const model = minimaxModelId(highspeed);
   return {
     id: `${model}:${adapter.provider}`,
     model,
@@ -18,9 +20,9 @@ export function minimax(
     Form: ParameterFields,
     docs: ["doc/model/MiniMax/H3-Image.md"],
     groups: [
-      { id: "frame", fields: ["width", "height", "size", "resolution"] },
+      { id: "frame", fields: ["width", "height", "size", "resolution", "aspect_ratio", "area"] },
       { id: "generation", fields: ["numberResults", "num_images", "n"] },
-      { id: "output", fields: ["outputFormat", "output_format"], collapsed: true },
+      { id: "output", fields: ["outputFormat", "output_format", "output_compression"], collapsed: true },
       { id: "advanced", fields: ["promptOptimizer", "enable_prompt_expansion"], collapsed: true },
     ],
     validate: (draft) => {

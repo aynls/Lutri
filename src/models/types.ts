@@ -12,6 +12,7 @@ export type ProviderId =
   | "qwencloud"
   | "ark"
   | "byteplus"
+  | "minimax"
   | "xai"
   | "azure"
   | "meta"

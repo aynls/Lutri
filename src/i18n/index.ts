@@ -208,7 +208,7 @@ const messages = {
   back: ["Back", "返回", "戻る"],
   save: ["Save", "保存", "保存"],
   saveAs: ["Save as", "另存为", "名前を付けて保存"],
-  specifySavePath: ["Specify save path", "指定另存为路径", "保存先を指定"],
+  specifySavePath: ["Choose save folder", "选择保存目录", "保存先フォルダーを選択"],
   autoSave: ["Auto save as", "自动另存为", "自動で別名保存"],
   saveDirectoryRequired: ["Choose a save folder", "请选择另存为目录", "保存先フォルダーを選択してください"],
   retry: ["Resume task", "继续获取结果", "結果を再取得"],

@@ -39,7 +39,7 @@ Each model has its own strengths and ways of interpreting an idea. Lutri tailors
 
 Choose from the following providers and routing services to suit your workflow, model needs, and accounts:
 
-**Black Forest Labs · OpenAI · Google · xAI · Meta · Microsoft Foundry · Recraft · Ideogram · QwenCloud · Volcengine · BytePlus · fal · OpenRouter · Runware · Comfy Router**
+**Black Forest Labs · OpenAI · Google · xAI · Meta · Microsoft Foundry · Recraft · Ideogram · QwenCloud · Volcengine · BytePlus · fal · OpenRouter · Runware · Comfy Router · MiniMax**
 
 ## Prompt Writer ✒️
 

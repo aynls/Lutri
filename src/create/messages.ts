@@ -1,28 +1,28 @@
 import { label, localize } from "../i18n";
 
 const messages = {
-  layerDirectory: label("Layer output folder", "图层另存为目录", "レイヤー保存先"),
+  layerDirectory: label("Composite PNG and PSD folder", "合成图和 PSD 保存目录", "合成画像と PSD の保存先"),
   layerDirectoryRequired: label(
-    "Choose a layer output folder",
-    "请选择图层另存为目录",
-    "レイヤー保存先を選択してください",
+    "Choose a folder for the composite PNG and PSD",
+    "请选择合成图和 PSD 的保存目录",
+    "合成画像と PSD の保存先を選択してください",
   ),
   layerDirectoryUnavailable: label(
-    "Layer output folder is unavailable",
-    "图层另存为目录不可用",
-    "レイヤー保存先を利用できません",
+    "The folder for the composite PNG and PSD is unavailable",
+    "合成图和 PSD 的保存目录不可用",
+    "合成画像と PSD の保存先を利用できません",
   ),
   layerOutputConflict: label(
-    "Layer output folder contains unrelated files",
-    "图层目录中已有其他文件",
-    "レイヤー保存先に別のファイルがあります",
+    "The result folder already contains other files",
+    "结果子目录中已有其他文件",
+    "結果フォルダーに別のファイルがあります",
   ),
   invalidLayerResult: label("Invalid layer result", "图层结果不完整", "レイヤー結果が不完全です"),
   invalidLayerBounds: label("Invalid layer placement", "图层位置信息无效", "レイヤーの位置情報が無効です"),
-  openPsdLocation: label("Show PSD in folder", "打开PSD文件位置", "PSDの保存場所を開く"),
+  openPsdLocation: label("Show PSD in folder", "在文件夹中显示 PSD", "PSD をフォルダーで表示"),
   retryLayerSave: label("Retry local save", "重试本地保存", "ローカル保存を再試行"),
-  compositeSaved: label("Composite saved", "合成图已保存", "合成画像を保存済み"),
-  psdDelivered: label("PSD delivered", "PSD已交付", "PSDを保存済み"),
+  compositeSaved: label("Composite saved to gallery", "合成图已存入图库", "合成画像をギャラリーに保存済み"),
+  layerOutputSaved: label("Composite PNG and PSD saved", "合成图和 PSD 已保存", "合成画像と PSD を保存済み"),
   layerSaving: label("Saving PNG / PSD", "正在保存 PNG / PSD", "PNG / PSDを保存中"),
   psdSizeLimit: label("PSD exceeds the size limit", "PSD 超出大小限制", "PSDのサイズ上限を超えています"),
   singleLayerSource: label(

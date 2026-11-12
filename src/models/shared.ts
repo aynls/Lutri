@@ -31,12 +31,19 @@ export const providerNames: Record<ProviderId, string> = {
   qwencloud: "QwenCloud",
   ark: "Volcengine",
   byteplus: "BytePlus",
+  minimax: "MiniMax",
   xai: "xAI",
   azure: "Microsoft Foundry",
   meta: "Meta",
   recraft: "Recraft",
   ideogram: "Ideogram",
 };
+
+export const minimaxEndpoints = {
+  global: "https://api.minimax.io",
+  mainland: "https://api.minimax.cn",
+} as const;
+
 export function request(provider: ProviderId, url: string, body: Json): CompiledRequest {
   const [authHeader, authPrefix] =
     provider === "bfl"

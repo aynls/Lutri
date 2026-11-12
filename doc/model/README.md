@@ -24,7 +24,7 @@ Ideogram 4.5 × Ideogram / Comfy 继续使用独立的 `edit_mode: generate | pr
 | Nano Banana | [API 资料](Gemini/Nano-Banana-API.md) |
 | Seedream 5.0 | [各供应商](Seedream/seedream-5/) |
 | Seedream 5.5 | [Runware](Seedream/seedream-5.5/Runware.md)、[Comfy Router](Seedream/seedream-5.5/Comfy.md) |
-| MiniMax H3-Image / HighSpeed | [Runware、fal、OpenRouter](MiniMax/H3-Image.md) |
+| MiniMax H3-Image / HighSpeed | [Runware、fal、OpenRouter、Comfy Router、MiniMax](MiniMax/H3-Image.md) |
 | Grok Imagine Image 2.0 | [API 资料](Grok/Grok-Imagine-Image-2.0-API.md) |
 | MAI Image | [API 资料](MAI/MAI-Image.md) |
 | Muse Image | [API 资料](Muse/Muse-Image.md) |

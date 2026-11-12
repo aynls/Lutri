@@ -1,6 +1,23 @@
 # MiniMax H3-Image / H3-Image HighSpeed
 
-两个版本分别注册，同属 MiniMax 家族；均支持文本生成及最多 16 张参考图编辑。Lutri 默认提交 2048×2048，常用尺寸包含 4K。参考标记在输入准备完成后按实际提交顺序转换成 `Image 1` 等。
+两个版本分别注册，同属 MiniMax 家族，均支持文本生成及最多 16 张参考图编辑。参考标记在输入准备完成后按实际提交顺序转换成 `Image 1` 等。
+
+## Comfy Router
+
+`POST https://api.comfy.org/v2/models/minimax/minimax-h3-image`。HighSpeed 使用 `minimax-h3-image-highspeed` 路径。使用 `X-API-Key` 鉴权，由路径选择模型。传入 `images: [{ image_url }]` 时执行编辑，无参考图时执行文生图。参考图按提交顺序传入，可用公开 HTTP(S) URL 或 Base64 data URI，Lutri 使用 data URI。
+
+## MiniMax 官方 API
+
+国际站使用 `https://api.minimax.io`，中国大陆站使用 `https://api.minimax.cn`。在 Lutri 的 MiniMax 供应商设置中选站点并保存该站点的 API Key，默认国际站。使用 Bearer 鉴权。文生图走 `POST /v1/images/generations`，编辑走 `POST /v1/images/edits`。模型字段为 `MiniMax-H3-Image` 或 `MiniMax-H3-Image-Highspeed`。
+
+参考图按顺序放入 `images: [{ image_url }]`。Lutri 使用 Base64 data URI，并校验编辑请求 JSON（含 Base64）不超过 64 MiB。官方还接受公开 URL 或 `mm_file://` 文件引用。Lutri 使用同步 JSON 响应，指定 `response_format: "url"`。
+
+### Comfy Router 与官方 API 的共用参数
+
+- `size: "宽x高"` 为自定义像素尺寸，面积为 655360–20000000 像素，宽高比为 1:3–3:1。切换到自动尺寸时，可指定 `area: 1K | 2K | 4K`（Lutri 默认 2K）和 `aspect_ratio`（`auto` 或整数比例 `X:Y`，两项各为 1–300，宽高比仍为 1:3–3:1）。显式尺寸与面积档位、宽高比互斥。
+- `n` 为 1–10。格式为 jpeg、png、webp，`output_compression` 为 0–100，仅用于 JPEG 或 WebP。
+- `disable_prompt_enhanced` 仅用于文生图。关闭提示词优化时需指定宽高或固定比例。提示词最多 32000 字符。参考图每边 128–8192 像素，长边不超过短边 4 倍，支持 JPEG、PNG、WebP、HEIC、HEIF。
+- 两家复用同步 Images 结果解析，下载 `data[].url`，记录单图错误、`revised_prompt` 和响应中的 `usage`。
 
 ## Runware
 
@@ -24,6 +41,12 @@ Lutri 使用 `size: "宽x高"`，`n` 为 1–10，`output_format` 为 png、jpeg
 
 ## 官方来源
 
+- https://github.com/Comfy-Org/docs/blob/main/development/comfy-router/models/minimax/minimax-h3-image/code.mdx
+- https://github.com/Comfy-Org/docs/blob/main/development/comfy-router/models/minimax/minimax-h3-image-highspeed/code.mdx
+- https://platform.minimax.io/docs/guides/image-generation
+- https://platform.minimax.cn/docs/guides/image-generation
+- https://platform.minimax.io/docs/api-reference/image-generation-h3-generations
+- https://platform.minimax.io/docs/api-reference/image-generation-h3-edits
 - https://runware.ai/docs/models/minimax-h3-image
 - https://runware.ai/docs/models/minimax-h3-image/guides/prompting
 - https://runware.ai/docs/models/minimax-h3-image/guides/editing-images

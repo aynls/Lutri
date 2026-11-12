@@ -49,7 +49,7 @@ export function DirectoryPicker(props: Props) {
         onClick={() => void choose()}
       >
         <FolderOpenIcon />
-        {props.value || t("specifySavePath")}
+        <span>{props.value || t("specifySavePath")}</span>
       </button>
       {props.value && (
         <button

@@ -2,7 +2,7 @@ import { count, format, text, toggle } from "../fields";
 import { openRouter } from "../requests";
 import { values } from "../shared";
 import type { FieldDefinition } from "../types";
-import { minimax } from "./shared";
+import { minimax, minimaxModelId } from "./shared";
 
 const fields: FieldDefinition[] = [
   { ...text("size", ["Image size", "图片尺寸", "画像サイズ"]), default: "2048x2048" },
@@ -25,10 +25,6 @@ export const minimaxOpenRouter = (highspeed: boolean) =>
       if (typeof p.enable_prompt_expansion === "boolean")
         p.provider = { options: { minimax: { disable_prompt_enhanced: !p.enable_prompt_expansion } } };
       delete p.enable_prompt_expansion;
-      return openRouter(
-        `minimax/minimax-h3-image${highspeed ? "-highspeed" : ""}`,
-        { size: "2048x2048", ...p },
-        context,
-      );
+      return openRouter(`minimax/${minimaxModelId(highspeed)}`, { size: "2048x2048", ...p }, context);
     },
   });

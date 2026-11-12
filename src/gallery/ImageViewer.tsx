@@ -11,6 +11,7 @@ import {
   HeartIcon,
   InfoIcon,
   PencilSimpleIcon,
+  PlusIcon,
   TrashIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -217,17 +218,6 @@ export function ImageViewer({
         <span className="toolbar-spacer" />
         {(entry || source?.resolveEntry) && (
           <>
-            {(onReference || source?.onReference) && (
-              <button
-                className="viewer-reference-button"
-                disabled={disabled}
-                onClick={() =>
-                  source?.onReference ? withAction(source.onReference) : onReference && withEntry(onReference)
-                }
-              >
-                {t("useReference")}
-              </button>
-            )}
             {onEdit && (
               <button disabled={disabled} title={c("edit")} aria-label={c("edit")} onClick={() => withEntry(onEdit)}>
                 <PencilSimpleIcon />
@@ -248,30 +238,30 @@ export function ImageViewer({
                 <ArrowUpRightIcon />
               </button>
             )}
-            {entry && (
+            {(onReference || source?.onReference) && (
+              <button
+                title={t("useReference")}
+                aria-label={t("useReference")}
+                disabled={disabled}
+                onClick={() =>
+                  source?.onReference ? withAction(source.onReference) : onReference && withEntry(onReference)
+                }
+              >
+                <PlusIcon />
+              </button>
+            )}
+            {entry && !readOnly && (
               <>
-                {!readOnly && (
-                  <>
-                    <button
-                      disabled={disabled}
-                      title={entry?.favorite ? t("removeFavorite") : t("favorites")}
-                      aria-label={entry?.favorite ? t("removeFavorite") : t("favorites")}
-                      aria-pressed={entry?.favorite ?? false}
-                      onClick={() => withEntry(favorite)}
-                    >
-                      <HeartIcon weight={entry?.favorite ? "fill" : "regular"} />
-                    </button>
-                    <BoardAction key={entry.asset.id} entry={entry} boards={boards} disabled={disabled} />
-                  </>
-                )}
                 <button
-                  title={lt("copyImage")}
-                  aria-label={lt("copyImage")}
                   disabled={disabled}
-                  onClick={() => withEntry((resolved) => copyAssetImage(resolved.asset.id))}
+                  title={entry.favorite ? t("removeFavorite") : t("favorites")}
+                  aria-label={entry.favorite ? t("removeFavorite") : t("favorites")}
+                  aria-pressed={entry.favorite}
+                  onClick={() => withEntry(favorite)}
                 >
-                  <CopyIcon />
+                  <HeartIcon weight={entry.favorite ? "fill" : "regular"} />
                 </button>
+                <BoardAction key={entry.asset.id} entry={entry} boards={boards} disabled={disabled} />
               </>
             )}
             {(entry || source?.onExport) && (
@@ -286,15 +276,14 @@ export function ImageViewer({
                 <DownloadSimpleIcon />
               </button>
             )}
-            {(source?.onDelete || (entry && onDelete && !entry.unlisted && !entry.staged)) && (
+            {entry && (
               <button
-                className="danger-button"
+                title={lt("copyImage")}
+                aria-label={lt("copyImage")}
                 disabled={disabled}
-                title={source?.onDelete ? t("deleteUpscaleResult") : t("delete")}
-                aria-label={source?.onDelete ? t("deleteUpscaleResult") : t("delete")}
-                onClick={() => (source?.onDelete ? withAction(source.onDelete) : onDelete && withEntry(onDelete))}
+                onClick={() => withEntry((resolved) => copyAssetImage(resolved.asset.id))}
               >
-                <TrashIcon />
+                <CopyIcon />
               </button>
             )}
             {path && (
@@ -305,6 +294,17 @@ export function ImageViewer({
                 onClick={() => attempt(() => revealItemInDir(path))}
               >
                 <FolderOpenIcon />
+              </button>
+            )}
+            {(source?.onDelete || (entry && onDelete && !entry.unlisted && !entry.staged)) && (
+              <button
+                className="danger-button"
+                disabled={disabled}
+                title={source?.onDelete ? t("deleteUpscaleResult") : t("delete")}
+                aria-label={source?.onDelete ? t("deleteUpscaleResult") : t("delete")}
+                onClick={() => (source?.onDelete ? withAction(source.onDelete) : onDelete && withEntry(onDelete))}
+              >
+                <TrashIcon />
               </button>
             )}
           </>

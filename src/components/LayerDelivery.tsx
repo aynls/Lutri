@@ -21,7 +21,7 @@ export function LayerDelivery({
     <div className="layer-delivery">
       <small role="status">
         {delivery.status === "completed"
-          ? c("psdDelivered")
+          ? c("layerOutputSaved")
           : busy
             ? c("layerSaving")
             : result.assetId
