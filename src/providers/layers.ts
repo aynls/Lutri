@@ -5,10 +5,12 @@ import { resultUrl } from "./media";
 export function layerSource(raw: Json, base = false): LayerSource {
   const value = object(raw);
   const image = value.image ? object(value.image) : value;
-  const box = object(value.bounding_box ?? value.boundingBox);
+  const layer = value.layer ? object(value.layer) : value;
+  const box = object(layer.bounding_box ?? layer.boundingBox);
+  const zIndex = layer.z_index ?? layer.zIndex;
   return {
     url: resultUrl(image) ?? "",
-    zIndex: base ? 0 : typeof (value.z_index ?? value.zIndex) === "number" ? Number(value.z_index ?? value.zIndex) : -1,
+    zIndex: base ? 0 : typeof zIndex === "number" ? zIndex : -1,
     bounds:
       box.absolute === undefined
         ? undefined
@@ -17,8 +19,8 @@ export function layerSource(raw: Json, base = false): LayerSource {
       box.normalized === undefined
         ? undefined
         : array(box.normalized).map((value) => (typeof value === "number" ? value : -1)),
-    name: string(value.name),
-    description: string(value.description),
+    name: string(layer.name),
+    description: string(layer.description),
   };
 }
 
