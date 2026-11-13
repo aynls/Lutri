@@ -65,6 +65,7 @@ const messages = {
     "风格设置仅用于生成",
     "スタイル設定は生成時のみ使用できます",
   ),
+  styleReferenceRequired: label("Add a style reference", "请添加风格参考图", "スタイル参照画像を追加してください"),
   invalidImageContext: label("Context must be an array", "上下文必须是数组", "コンテキストは配列で指定してください"),
   promptControlled: label("Guided by the prompt", "通过提示词控制", "プロンプトによる制御"),
   frame: label("Output size", "输出尺寸", "出力サイズ"),

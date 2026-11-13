@@ -10,18 +10,22 @@ import { recraftV41VectorCombinations } from "./recraft-v4.1-vector";
 import { recraftV41ProVectorCombinations } from "./recraft-v4.1-pro-vector";
 import { recraftV4StylesVectorCombinations } from "./recraft-v4-styles-vector";
 import { recraftV4StylesProVectorCombinations } from "./recraft-v4-styles-pro-vector";
+import { recraftOpenRouter } from "./openrouter";
 
 export const recraftCombinations = [
-  ...recraftV41Combinations,
-  ...recraftV41ProCombinations,
-  ...recraftV41UtilityCombinations,
-  ...recraftV41UtilityProCombinations,
-  ...recraftV4StylesCombinations,
-  ...recraftV4StylesProCombinations,
-  ...recraftV4VectorCombinations,
-  ...recraftV4ProVectorCombinations,
-  ...recraftV41VectorCombinations,
-  ...recraftV41ProVectorCombinations,
-  ...recraftV4StylesVectorCombinations,
-  ...recraftV4StylesProVectorCombinations,
-];
+  recraftV41Combinations,
+  recraftV41ProCombinations,
+  recraftV41UtilityCombinations,
+  recraftV41UtilityProCombinations,
+  recraftV4StylesCombinations,
+  recraftV4StylesProCombinations,
+  recraftV4VectorCombinations,
+  recraftV4ProVectorCombinations,
+  recraftV41VectorCombinations,
+  recraftV41ProVectorCombinations,
+  recraftV4StylesVectorCombinations,
+  recraftV4StylesProVectorCombinations,
+].flatMap((combinations) => [
+  ...combinations,
+  ...combinations.filter(({ provider }) => provider === "recraft").map(recraftOpenRouter),
+]);
