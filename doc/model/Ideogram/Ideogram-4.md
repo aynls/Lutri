@@ -91,6 +91,44 @@ curl 'https://api.comfy.org/v2/models/ideogram/ideogram-4-5' \
   -d '{"prompt":"A vintage travel poster","quality":"high","num_images":1}'
 ```
 
+## fal
+
+Lutri 将 JSON 发送至 `https://queue.fal.run/` 下的对应路径，使用 `Authorization: Key FAL_KEY`。提交后按队列地址查询，完成后从 `images[].url` 读取图片。设置 `sync_mode` 可使结果以 data URI 返回。两个模型均需要 `prompt`，支持可选 `seed` 和默认开启的 `enable_safety_checker`。
+
+### 4.0
+
+使用 `ideogram/v4` 文生图，选择一张源图时使用 `ideogram/v4/image-to-image`，通过 `image_url` 传入。
+
+| 字段 | 说明 |
+| --- | --- |
+| `num_images` | 1–4，默认 1。 |
+| `image_size` | 支持 fal 尺寸预设和 `{width,height}`。文生图默认 `square_hd`，显式宽高均为 512–3,840 的 16 倍数。图生图默认 `auto`，按源图比例输出，每边最多 8,192 像素且总像素约为 2,500 万以内。显式宽高按图生图 Schema 为 1–14,142。 |
+| `strength` | 仅图生图。范围 0–1，默认 0.8。 |
+| `rendering_speed` | `TURBO`、`BALANCED`（默认）或 `QUALITY`。 |
+| `expansion_model` | `None` 关闭扩展，`Medium`（默认）快速扩展，`Large` 使用 Magic Prompt。 |
+| `acceleration` | `none`（默认）、`low`、`regular` 或 `high`。 |
+| `output_format` | `jpeg`（默认）或 `png`。 |
+
+[文生图](https://fal.ai/models/ideogram/v4/api) · [图生图](https://fal.ai/models/ideogram/v4/image-to-image/api)
+
+### 4.5
+
+使用 `ideogram/v4.5` 文生图。选择图片时使用 `ideogram/v4.5/edit`，第一张为 `image_url`，其余按顺序进入 `reference_image_urls`。最多可传 4 张参考图。使用 `mask_url` 时最多 3 张参考图，蒙版与原图同尺寸，黑色编辑、白色保留。
+
+| 字段 | 说明 |
+| --- | --- |
+| `num_images` | 1–8，默认 1。 |
+| `quality` | 文生图支持 `low`、`medium`、`high`。编辑额外支持 `very_low`。默认 `medium`。 |
+| `enable_prompt_expansion` | 仅文生图，默认开启。 |
+| `edit_precision` | `regular`（默认）为常规编辑，`high` 为精确编辑。 |
+| `image_size` | 文生图默认 `square_hd`，可用 fal 预设或 Schema 列出的精确尺寸。编辑默认 `auto`。无蒙版的常规编辑可指定预设或尺寸，每边至少 256 且为 32 的倍数，面积最多 4,194,304 像素，长边与短边的比例最多 6:1。 |
+| `context_window` | 仅精确编辑。默认 `none`，`auto` 根据蒙版确定区域，需要提供蒙版。 |
+| `context_window_box` | 仅精确编辑。对象字段为 `x_min`、`y_min`、`x_max`、`y_max`，以 Lutri 缩放后实际提交的原图像素为准，右下边界不包含在区域内。每边至少 256，面积最多 4,194,304 像素，长短边比例最多 6:1。区域须位于提交的原图内。可配合区域内的蒙版，不能与 `context_window: "auto"` 同用。 |
+
+填写自定义宽高时，Lutri 将 `WxH` 转成 `{width,height}`。
+
+[文生图](https://fal.ai/models/ideogram/v4.5/api) · [编辑](https://fal.ai/models/ideogram/v4.5/edit/api)
+
 ## 参考来源
 
 - [Ideogram：4.0 生成](https://developer.ideogram.ai/api-reference/images/generate/ideogram-4)、[4.5 生成](https://developer.ideogram.ai/api-reference/images/generate/ideogram-4-5)、[4.5 精确编辑](https://developer.ideogram.ai/api-reference/images/precise-edit/ideogram-4-5)

@@ -107,25 +107,34 @@ HTTP 请求发送至 `https://api.runware.ai/v1`，使用 `Authorization: Bearer
 
 ## fal
 
-fal 将文生图和编辑分成两个端点。2.1 使用 `google/nano-banana-2.1` 和 `google/nano-banana-2.1/edit`；2 使用 `fal-ai/nano-banana-2` 和 `fal-ai/nano-banana-2/edit`；Pro 使用 `fal-ai/nano-banana-pro` 和 `fal-ai/nano-banana-pro/edit`。
+fal 将文生图和编辑分成两个端点。
 
-Lutri 对这三个 fal 组合提供创作方式。2 / Pro 的生成模式使用基础路径，将参考图按顺序编码为 `context` 中的 `{type: "image", image_url: "..."}`，排在用户已有 context 之前，不重复发送 image_urls；引用图片和 context 图片合计最多 14 张。编辑模式通过 image_urls 发送原图及参考图并走 /edit，原图以稳定引用 ID 指定。2.1 有图片时仍走 /edit，以提示词区分参考创作与编辑原图。自动模式保留原有分流及提示词。
+| 版本 | 文生图 | 编辑 |
+| --- | --- | --- |
+| 2 Lite | `google/nano-banana-2-lite` | `google/nano-banana-2-lite/edit` |
+| 2.1 | `google/nano-banana-2.1` | `google/nano-banana-2.1/edit` |
+| 2 | `fal-ai/nano-banana-2` | `fal-ai/nano-banana-2/edit` |
+| Pro | `fal-ai/nano-banana-pro` | `fal-ai/nano-banana-pro/edit` |
+
+Lutri 对这四个 fal 组合提供创作方式。2 / Pro 的生成模式使用基础路径，将参考图按顺序编码为 `context` 中的 `{type: "image", image_url: "..."}`，排在用户已有 context 之前，不重复发送 image_urls；引用图片和 context 图片合计最多 14 张。编辑模式通过 image_urls 发送原图及参考图并走 /edit，原图以稳定引用 ID 指定。2 Lite 和 2.1 有图片时走 `/edit`，以提示词区分参考创作与编辑原图。自动模式使用原始提示词。
 
 使用 `@fal-ai/client` 设置 `FAL_KEY` 后可调用 `fal.subscribe(model, { input: {...} })`；长任务可用 `fal.queue.submit`、`status` 和 `result`。`prompt` 必填，编辑使用有序 `image_urls`，接受可访问 URL 或 Base64 data URI。2 的编辑端点将 `image_urls` 和 `context` 中图片合计限制为 14 张；2.1 最多 14 张。结果的 `images` 数组包含图片 URL；`sync_mode` 可返回 data URI，但结果不会保存在请求历史中。
 
 | 字段 | fal 语义 |
 | --- | --- |
-| `num_images` | 生成数量，默认 1。 |
-| `resolution` | 默认 `1K`；2.1 和 Pro 为 `1K`、`2K`、`4K`，2 还可用 `0.5K`。 |
-| `aspect_ratio` | 2 和 2.1 默认 `auto`；Pro 文生图默认 `1:1`、编辑默认 `auto`。端点列出的可选比例包括常用比例及 `4:1`、`1:4`、`8:1`、`1:8`。 |
+| `num_images` | 生成数量，默认 1。2 Lite 可生成 1–4 张。 |
+| `resolution` | 2.1 和 Pro 支持 `1K`、`2K`、`4K`，2 还可用 `0.5K`，默认均为 `1K`。2 Lite 由供应商决定输出尺寸。 |
+| `aspect_ratio` | 2 Lite、2 和 2.1 默认 `auto`。Pro 文生图默认 `1:1`，编辑默认 `auto`。2 Lite、2 和 2.1 的可选比例包括常用比例及 `4:1`、`1:4`、`8:1`、`1:8`。 |
 | `output_format` | `jpeg`、`png`、`webp`，默认 `png`。 |
 | `safety_tolerance` | 字符串 `1` 至 `6`，默认 `4`。 |
 | `system_prompt` | 可选系统指令，默认空字符串。 |
 | `limit_generations` | 实验性限制输出，默认 true，可能影响生成质量。 |
-| `thinking_level` | 2 为 `minimal` 或 `high`，默认 `minimal`；2.1 为 `minimal`、`medium`、`high`，默认 `medium`；Pro 只支持 `high`。 |
+| `thinking_level` | 2 Lite 为 `minimal` 或 `high`，省略时关闭。2 为 `minimal` 或 `high`，默认 `minimal`。2.1 为 `minimal`、`medium`、`high`，默认 `medium`。Pro 只支持 `high`。 |
 | `enable_web_search` | 是否联网搜索；2 还公开 `enable_image_search`。 |
 
 2 和 Pro 的 `history` / `context` 可以承载原生会话、图片及文档，`return_history` 可返回后续复用的会话。继续会话时需保留原始 parts 和 thought signature。响应还可能包含 `description`、`conversations`、`grounding_metadata`。2.1 编辑的 `image_urls` 在提供视频或 PDF 时可省略。
+
+2 Lite 的 `prompt` 为 3–50,000 字符，`system_prompt` 最长 50,000 字符，`seed` 为可选整数。Lutri 最多发送 14 张参考图，编辑按顺序填入 `image_urls`。输出格式、审核容忍度和内嵌结果设置沿用上表及队列响应。 [文生图](https://fal.ai/models/google/nano-banana-2-lite/api) · [编辑 Schema](https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=google/nano-banana-2-lite/edit)
 
 2026-11-05 核对补充：2 的 fal Schema 还列有 `temperature`、`top_p`、`max_output_tokens` 和 `seed`；省略时保留供应商默认值。Comfy 的图片输出格式路径为 `generationConfig.imageConfig.imageOutputOptions.mimeType`，思考等级路径为 `generationConfig.thinkingConfig.thinkingLevel`，枚举采用大写。Google Interactions 的完整图片输出位于 `steps` 中 `type: model_output` 的 `content` 数组；图片块使用 `data` 与 `mime_type`。实现应逐张读取，不能只取 SDK 的最后一张便捷结果。
 
