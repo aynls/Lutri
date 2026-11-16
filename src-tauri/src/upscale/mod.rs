@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     io::{BufRead, BufReader},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 use tauri::{ipc::Channel, Manager};
@@ -105,13 +105,46 @@ fn resources(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/upscale"))
 }
 
-fn runtime_path(root: &std::path::Path) -> Result<PathBuf, String> {
+fn runtime_path(root: &Path) -> Result<PathBuf, String> {
     let relative = match (std::env::consts::OS, std::env::consts::ARCH) {
         ("windows", "x86_64") => "windows-x86_64/ncnn.dll",
         ("linux", "x86_64") => "linux-x86_64/libncnn.so",
+        ("macos", "aarch64") => {
+            let executable = std::env::current_exe().map_err(|e| e.to_string())?;
+            if let Some(contents) = executable
+                .parent()
+                .filter(|directory| directory.ends_with("Contents/MacOS"))
+                .and_then(Path::parent)
+            {
+                return Ok(contents.join("Frameworks/libncnn.dylib"));
+            }
+            "macos-aarch64/libncnn.dylib"
+        }
         _ => return Err("No bundled NCNN runtime for this platform".into()),
     };
     Ok(root.join(relative))
+}
+
+fn upscale_command(runtime: &Path) -> Result<Command, String> {
+    let mut command = Command::new(std::env::current_exe().map_err(|e| e.to_string())?);
+    command.stdout(Stdio::piped()).stderr(Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000);
+    }
+    if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        let driver = runtime.with_file_name("libMoltenVK.dylib");
+        if !driver.is_file() {
+            return Err(format!("The bundled MoltenVK library is missing: {}", driver.display()));
+        }
+        // NCNN checks these ICD overrides before NCNN_VULKAN_DRIVER.
+        command
+            .env_remove("VK_DRIVER_FILES")
+            .env_remove("VK_ICD_FILENAMES")
+            .env("NCNN_VULKAN_DRIVER", driver);
+    }
+    Ok(command)
 }
 
 #[tauri::command]
@@ -213,17 +246,8 @@ pub async fn upscale_run(
             complete: false,
         };
         std::fs::write(&job_path, serde_json::to_vec(&job).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-        let mut command = Command::new(std::env::current_exe().map_err(|e| e.to_string())?);
-        command
-            .arg("--upscale-worker")
-            .arg(&job_path)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null());
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            command.creation_flags(0x08000000);
-        }
+        let mut command = upscale_command(&job.runtime)?;
+        command.arg("--upscale-worker").arg(&job_path);
         if let Some(index) = gpu_index {
             if index < -1 {
                 return Err("Invalid upscale device".into());
@@ -373,17 +397,8 @@ pub async fn upscale_devices(app: tauri::AppHandle) -> Result<Vec<Value>, String
 fn probe_devices(app: &tauri::AppHandle) -> Result<Vec<Value>, String> {
     use std::io::Read;
     let path = runtime_path(&resources(app)?)?;
-    let mut command = Command::new(std::env::current_exe().map_err(|e| e.to_string())?);
-    command
-        .arg("--upscale-devices")
-        .arg(path)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null());
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        command.creation_flags(0x08000000);
-    }
+    let mut command = upscale_command(&path)?;
+    command.arg("--upscale-devices").arg(path);
     let mut child = command.spawn().map_err(|e| e.to_string())?;
     let started = std::time::Instant::now();
     while child.try_wait().map_err(|e| e.to_string())?.is_none() {

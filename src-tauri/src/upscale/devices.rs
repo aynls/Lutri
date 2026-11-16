@@ -5,8 +5,8 @@ use std::{
     path::Path,
 };
 
-// These symbols are from the bundled x64 NCNN build. Resolve the complete set
-// before calling; never derive NCNN indices from a separate Vulkan enumeration.
+// The bundled NCNN runtimes expose these GPU functions using the MSVC or
+// Itanium C++ ABI. Resolve them together to keep device indices in NCNN's order.
 pub fn enumerate(path: &Path) -> Result<Vec<Value>, String> {
     unsafe {
         let library = Library::new(path).map_err(|e| e.to_string())?;

@@ -1,6 +1,6 @@
 # Local super-resolution components
 
-Lutri's Rust image pipeline calls NCNN's C API. Windows x64 and Linux x64 packages include only their respective runtime and the shared model files.
+Lutri's Rust image pipeline calls NCNN's C API. Each platform package includes its own runtime and the shared model files.
 
 | Files | Source | License |
 | --- | --- | --- |
@@ -18,6 +18,6 @@ General uses the official general checkpoint directly, without interpolation wit
 
 Real-CUGAN Pro uses native 2×/3× weights and exact sequential `syncgap=1`: synchronize each of `gap0` through `gap3` across all tiles before final reconstruction. Activations are recomputed rather than retained per tile, trading additional inference time for bounded intermediate memory. 2× uses 18-pixel padding/alignment 2; 3× uses 14-pixel padding/alignment 4. The network consumes its padding; only right/bottom alignment excess is discarded. Single-pixel borders use repeated reflection safely.
 
-The NCNN distribution includes Vulkan shader tooling. Retain the accompanying glslang and SPIR-V license texts when redistributing these resources. File sizes and SHA-256 values are recorded in `manifest.json`.
+The NCNN distribution includes Vulkan shader tooling. Retain the accompanying glslang and SPIR-V license texts when redistributing these resources. Sizes and SHA-256 values for checked-in assets, and SHA-256 values for the macOS build inputs, are recorded in `manifest.json`.
 
 Windows x64 requires the Microsoft Visual C++ x64 Redistributable matching MSVC 14.50 or later, including the OpenMP runtime. Linux x64 uses the system `libgomp.so.1` and supports Vulkan where available. Debian and RPM packages declare the OpenMP runtime dependency; AppImage users may need to install their distribution's OpenMP runtime. macOS Apple Silicon uses bundled MoltenVK for GPU inference, with NCNN's CPU fallback if no compatible device is available. Custom models retain their own licenses; importing them into LutriUI does not change those terms.
