@@ -16,7 +16,15 @@ pub struct Desktop {
     quit: MenuItem<tauri::Wry>,
 }
 
-fn request_exit(app: &tauri::AppHandle) {
+pub fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+pub fn request_exit(app: &tauri::AppHandle) {
     if let Some(desktop) = app.try_state::<Desktop>() {
         if desktop.exiting.swap(true, Ordering::SeqCst) {
             return;
@@ -60,13 +68,7 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .menu(&menu)
         .tooltip("Lutri")
         .on_menu_event(|app, event| match event.id.as_ref() {
-            "open" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.unminimize();
-                    let _ = window.set_focus();
-                }
-            }
+            "open" => show_main_window(app),
             "quit" => request_exit(app),
             _ => (),
         });

@@ -18,11 +18,7 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            desktop::show_main_window(app)
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -104,9 +100,18 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building Lutri")
-        .run(|app, event| {
-            if matches!(event, tauri::RunEvent::Exit) {
-                app.state::<clipboard::Clipboard>().close();
+        .run(|app, event| match event {
+            tauri::RunEvent::Exit => app.state::<clipboard::Clipboard>().close(),
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::Reopen {
+                has_visible_windows: false,
+                ..
+            } => desktop::show_main_window(app),
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::ExitRequested { code: None, api, .. } => {
+                api.prevent_exit();
+                desktop::request_exit(app);
             }
+            _ => (),
         });
 }
