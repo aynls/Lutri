@@ -10,9 +10,10 @@ import { recraftV41VectorCombinations } from "./recraft-v4.1-vector";
 import { recraftV41ProVectorCombinations } from "./recraft-v4.1-pro-vector";
 import { recraftV4StylesVectorCombinations } from "./recraft-v4-styles-vector";
 import { recraftV4StylesProVectorCombinations } from "./recraft-v4-styles-pro-vector";
+import { recraftV41FlashV2Combinations } from "./recraft-v4.1-flash-v2";
 import { recraftOpenRouter } from "./openrouter";
 
-export const recraftCombinations = [
+const existingCombinations = [
   recraftV41Combinations,
   recraftV41ProCombinations,
   recraftV41UtilityCombinations,
@@ -29,3 +30,5 @@ export const recraftCombinations = [
   ...combinations,
   ...combinations.filter(({ provider }) => provider === "recraft").map(recraftOpenRouter),
 ]);
+
+export const recraftCombinations = [...existingCombinations, ...recraftV41FlashV2Combinations];

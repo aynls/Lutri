@@ -29,4 +29,5 @@ Ideogram 4.5 × Ideogram / Comfy 继续使用独立的 `edit_mode: generate | pr
 | MAI Image | [API 资料](MAI/MAI-Image.md) |
 | Muse Image | [API 资料](Muse/Muse-Image.md) |
 | Recraft V4 | [API 资料](Recraft/Recraft-V4.md)、[OpenRouter](Recraft/Recraft-OpenRouter.md) |
+| Recraft V4.1 Flash V2 | [Recraft、OpenRouter、fal](Recraft/Recraft-V4.1-Flash-V2.md) |
 | Ideogram 4 | [API 资料](Ideogram/Ideogram-4.md) |

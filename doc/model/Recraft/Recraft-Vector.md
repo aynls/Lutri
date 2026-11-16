@@ -31,7 +31,7 @@
 | `random_seed` | 整数；官方未给出上下界，应用限于 JavaScript 可安全表示的整数。 |
 | `controls.colors` | 至多 10 色，每项 `{"rgb":[r,g,b]}`，分量为 0–255 的整数；可带 0–1 的 `weight`，须全部设置或全部省略，权重合计不超过 1。 |
 | `controls.background_color` | `{"rgb":[r,g,b]}`。 |
-| `response_format` | 应用提供 `url`、`b64_json`；默认 URL。供应商还支持 multipart 响应，但应用传输层暂不解析，不提供该选项。 |
+| `response_format` | Lutri 的 Vector 组合提供 `url` 和 `b64_json`，默认 `url`。 |
 
 输出固定 SVG，不发送栅格 `image_format`，也不提供压缩质量设置。V4 Styles 两个组合必须提供风格 ID 或参考图；其余四个组合可纯文字生成。
 

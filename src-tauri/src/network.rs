@@ -1,8 +1,12 @@
+use crate::storage::Store;
 use futures_util::StreamExt;
+use reqwest::header::CONTENT_TYPE;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use tauri::ipc::Channel;
+
+mod recraft;
 
 fn credential(provider: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new("app.lutri.studio", provider).map_err(|e| e.to_string())
@@ -187,7 +191,8 @@ fn prepare(request: HttpRequest) -> Result<reqwest::RequestBuilder, String> {
 }
 
 #[tauri::command]
-pub async fn http_request(request: HttpRequest) -> Result<HttpResponse, String> {
+pub async fn http_request(store: tauri::State<'_, Store>, request: HttpRequest) -> Result<HttpResponse, String> {
+    let is_recraft = request.provider == "recraft";
     let response = prepare(request)?.send().await.map_err(|e| e.to_string())?;
     let status = response.status().as_u16();
     let retry_after = response
@@ -195,7 +200,23 @@ pub async fn http_request(request: HttpRequest) -> Result<HttpResponse, String> 
         .get("retry-after")
         .and_then(|v| v.to_str().ok())
         .map(str::to_owned);
-    let body = response.text().await.map_err(|e| e.to_string())?;
+    let multipart = is_recraft
+        && response.status().is_success()
+        && response
+            .headers()
+            .get(CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .is_some_and(|value| {
+                value
+                    .split(';')
+                    .next()
+                    .is_some_and(|mime| mime.trim().eq_ignore_ascii_case("multipart/form-data"))
+            });
+    let body = if multipart {
+        recraft::multipart_result(&store, response).await?
+    } else {
+        response.text().await.map_err(|e| e.to_string())?
+    };
     Ok(HttpResponse {
         status,
         body,

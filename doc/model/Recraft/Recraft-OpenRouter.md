@@ -1,5 +1,7 @@
 # Recraft API（OpenRouter）
 
+Flash V2 的比例、配色字段和图片输入限制见 [Recraft V4.1 Flash V2](Recraft-V4.1-Flash-V2.md#openrouter)。
+
 Lutri 使用 `POST https://openrouter.ai/api/v1/images` 和 OpenRouter API key。每次请求发送 `model`、`prompt`、可选 `aspect_ratio` 与 `n`（1–6）。`input_references` 按输入顺序发送，使用 `image_url` 类型。
 
 | 变体 | 模型 ID（`recraft/` 后缀） | 图片输入 |
