@@ -1,6 +1,6 @@
 # Recraft V4.1 / V4 Styles API
 
-本文记录 V4.1 和 V4 Styles 栅格模型。另见 [Recraft V4.1 Flash V2](Recraft-V4.1-Flash-V2.md) 和 [Recraft Vector](Recraft-Vector.md)。
+本文记录 V4.1 和 V4 Styles 栅格模型。另见 [Recraft V4.1 Flash V2](Recraft-V4.1-Flash-V2.md)、[Recraft Vector](Recraft-Vector.md) 和 [Comfy Router](Recraft-Comfy.md)。
 
 ## Recraft 官方
 

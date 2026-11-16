@@ -12,6 +12,7 @@ import { recraftV4StylesVectorCombinations } from "./recraft-v4-styles-vector";
 import { recraftV4StylesProVectorCombinations } from "./recraft-v4-styles-pro-vector";
 import { recraftV41FlashV2Combinations } from "./recraft-v4.1-flash-v2";
 import { recraftOpenRouter } from "./openrouter";
+import { recraftComfy } from "./comfy";
 
 const existingCombinations = [
   recraftV41Combinations,
@@ -26,9 +27,9 @@ const existingCombinations = [
   recraftV41ProVectorCombinations,
   recraftV4StylesVectorCombinations,
   recraftV4StylesProVectorCombinations,
-].flatMap((combinations) => [
-  ...combinations,
-  ...combinations.filter(({ provider }) => provider === "recraft").map(recraftOpenRouter),
-]);
+].flatMap((combinations) => {
+  const originals = combinations.filter(({ provider }) => provider === "recraft");
+  return [...combinations, ...originals.flatMap(recraftComfy), ...originals.map(recraftOpenRouter)];
+});
 
 export const recraftCombinations = [...existingCombinations, ...recraftV41FlashV2Combinations];

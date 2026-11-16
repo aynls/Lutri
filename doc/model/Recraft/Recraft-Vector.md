@@ -2,6 +2,8 @@
 
 核对日期：2026-11-07。先核对各供应商的模型页、参数 Schema 和请求示例，再按以下组合适配。范围为 V4、V4.1、V4 Styles 的六个原生 SVG 模型；不包含旧版 V2/V3，也不把独立的位图描摹工具 Recraft Vectorize 当作生图模型。
 
+V4.1 Vector、V4.1 Pro Vector、V4 Styles Vector 和 V4 Styles Pro Vector 的 Comfy Router 参数见 [Recraft API（Comfy Router）](Recraft-Comfy.md)。
+
 ## 模型与供应商
 
 | Lutri 模型 | Recraft `model` | fal 路径 | Runware AIR |

@@ -68,7 +68,7 @@ const channel = (value: Json | undefined) =>
 /** Color encodings and weight support are provider contracts, not interchangeable RGB objects. */
 export function vectorColorErrors(
   p: Parameters,
-  provider: Extract<ProviderId, "recraft" | "runware" | "fal">,
+  provider: Extract<ProviderId, "recraft" | "runware" | "fal" | "comfy">,
 ): string[] {
   const errors: string[] = [];
   const valid = (value: Json): boolean => {
@@ -92,24 +92,26 @@ export function vectorColorErrors(
   if (colors !== undefined && colors !== null) {
     if (!Array.isArray(colors) || !colors.every(valid))
       errors.push(`${localize(label("Palette", "配色", "パレット"))}: RGB 0–255`);
-    else if (provider === "recraft") {
+    else if (provider === "recraft" || provider === "comfy") {
       if (colors.length > 10) errors.push(`${localize(label("Palette", "配色", "パレット"))}: ≤ 10`);
-      const weights = colors
-        .map((color) => (color as Parameters).weight)
-        .filter((weight) => weight !== undefined && weight !== null);
-      if (
-        (weights.length > 0 && weights.length !== colors.length) ||
-        weights.reduce<number>((sum, weight) => sum + Number(weight), 0) > 1 + Number.EPSILON
-      )
-        errors.push(
-          localize(
-            label(
-              "Set every color weight; total ≤ 1",
-              "请设置全部颜色权重，合计 ≤ 1",
-              "全色の重みを指定してください。合計 ≤ 1",
+      if (provider === "recraft") {
+        const weights = colors
+          .map((color) => (color as Parameters).weight)
+          .filter((weight) => weight !== undefined && weight !== null);
+        if (
+          (weights.length > 0 && weights.length !== colors.length) ||
+          weights.reduce<number>((sum, weight) => sum + Number(weight), 0) > 1 + Number.EPSILON
+        )
+          errors.push(
+            localize(
+              label(
+                "Set every color weight; total ≤ 1",
+                "请设置全部颜色权重，合计 ≤ 1",
+                "全色の重みを指定してください。合計 ≤ 1",
+              ),
             ),
-          ),
-        );
+          );
+      }
     }
   }
   if (p.background_color !== undefined && p.background_color !== null && !valid(p.background_color))
