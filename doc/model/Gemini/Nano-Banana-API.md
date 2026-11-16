@@ -70,6 +70,8 @@ Content-Type: application/json
 
 ## Comfy Router
 
+[2 Lite](Nano-Banana-2-Lite-Comfy.md) 使用 `vertexai/gemini-3.1-flash-lite-image`，输出分辨率为 1K。
+
 2.1、2 和 Pro 的模型路径分别为 `vertexai/gemini-nano-banana-2.1`、`vertexai/gemini-3.1-flash-image`、`vertexai/gemini-3-pro-image`。Comfy Router 是云端服务。
 
 ```http
