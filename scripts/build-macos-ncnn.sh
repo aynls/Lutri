@@ -59,8 +59,8 @@ cmake --install "$build_dir/build" --prefix "$build_dir/install"
 
 ncnn_library="$build_dir/install/lib/libncnn.dylib"
 moltenvk_library="$build_dir/$moltenvk_path"
-xcrun lipo -verify_arch arm64 "$ncnn_library"
-xcrun lipo -verify_arch arm64 "$moltenvk_library"
+xcrun lipo "$ncnn_library" -verify_arch arm64
+xcrun lipo "$moltenvk_library" -verify_arch arm64
 mkdir -p "$output_dir"
 install -m 755 "$ncnn_library" "$output_dir/libncnn.dylib"
 install -m 755 "$moltenvk_library" "$output_dir/libMoltenVK.dylib"
