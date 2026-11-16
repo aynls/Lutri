@@ -107,7 +107,7 @@ Development requires Node.js 24 or later, npm, and Rust.
 npm ci
 npm run dev       # Frontend development
 npm run app:dev   # Desktop development
-npm run app:build # Full installer for the current platform
+npm run app:build # Desktop bundle for the current platform
 npm run typecheck
 npm run format
 npm run format:check
@@ -121,4 +121,23 @@ Start MCP in Settings, then copy its configuration into a client that supports S
 
 ### Local upscaling and platform builds
 
-The project includes NCNN runtimes for Windows x64 and Linux x64, along with Real-ESRGAN and Real-CUGAN models. The runtime is selected for the target platform. GPU inference requires a graphics driver with Vulkan support. Licenses are in `src-tauri/resources/upscale`.
+Local upscaling uses NCNN with Real-ESRGAN and Real-CUGAN models. GPU inference uses the system Vulkan driver on Windows x64 and Linux x64, and bundled MoltenVK on Apple Silicon. Licenses are in `src-tauri/resources/upscale`.
+
+### macOS (Apple Silicon)
+
+Lutri requires macOS 14 or later. Open the `.dmg` and drag Lutri into Applications.
+
+To build on an Apple Silicon Mac, install the Xcode Command Line Tools, CMake, and Python 3.10 or later. Run the NCNN script before the first desktop development or release build.
+
+```sh
+bash scripts/build-macos-ncnn.sh
+npm run app:build -- --target aarch64-apple-darwin
+python3 -m venv src-tauri/target/macos-packaging
+source src-tauri/target/macos-packaging/bin/activate
+python -m pip install dmgbuild==1.6.7
+bundle=src-tauri/target/aarch64-apple-darwin/release/bundle
+version=$(node -p "require('./package.json').version")
+python scripts/build-macos-dmg.py "$bundle/macos/Lutri.app" "$bundle/dmg/Lutri_${version}_aarch64.dmg"
+```
+
+The release workflow uses ad hoc signing by default, so macOS may require manual approval the first time Lutri opens. To sign and notarize public releases, configure the GitHub Actions secrets `APPLE_CERTIFICATE` (a base64-encoded Developer ID Application `.p12`), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD` (an app-specific password), and `APPLE_TEAM_ID`.

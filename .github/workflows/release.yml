@@ -23,7 +23,7 @@ env:
 
 jobs:
   build:
-    name: Build ${{ matrix.platform }} x64
+    name: Build ${{ matrix.platform }} ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     strategy:
@@ -31,11 +31,17 @@ jobs:
       matrix:
         include:
           - platform: windows
+            arch: x64
             runner: windows-latest
             target: x86_64-pc-windows-msvc
           - platform: linux
+            arch: x64
             runner: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+          - platform: macos
+            arch: arm64
+            runner: macos-15
+            target: aarch64-apple-darwin
     steps:
       - uses: actions/checkout@v7
         with:
@@ -67,6 +73,15 @@ jobs:
             libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
             libssl-dev libdbus-1-dev libxdo-dev libgomp1 libvulkan1 libfuse2 xdg-utils
 
+      - name: Build macOS upscaling libraries
+        if: runner.os == 'macOS'
+        run: bash scripts/build-macos-ncnn.sh
+
+      - uses: actions/setup-python@v7
+        if: runner.os == 'macOS'
+        with:
+          python-version: "3.12"
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -79,17 +94,76 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build installers
+      - name: Check macOS signing configuration
+        if: runner.os == 'macOS'
+        id: macos-signing
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [[ -z "$APPLE_CERTIFICATE$APPLE_CERTIFICATE_PASSWORD$APPLE_ID$APPLE_PASSWORD$APPLE_TEAM_ID" ]]; then
+            echo "::warning::Building an ad hoc signed macOS installer without Apple notarization."
+          elif [[ -n "$APPLE_CERTIFICATE" && -n "$APPLE_CERTIFICATE_PASSWORD" && -n "$APPLE_ID" && -n "$APPLE_PASSWORD" && -n "$APPLE_TEAM_ID" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Configure all macOS signing and notarization secrets together."
+            exit 1
+          fi
+
+      - uses: Apple-Actions/import-codesign-certs@v7
+        if: steps.macos-signing.outputs.enabled == 'true'
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Select Developer ID identity
+        if: steps.macos-signing.outputs.enabled == 'true'
+        run: |
+          identity=$(security find-identity -v -p codesigning | awk -F '"' '$2 ~ /^Developer ID Application:/ && !found { print $2; found = 1 }')
+          if [[ -z "$identity" ]]; then
+            echo "::error::The imported certificate must be a Developer ID Application certificate."
+            exit 1
+          fi
+          echo "APPLE_SIGNING_IDENTITY=$identity" >> "$GITHUB_ENV"
+
+      - name: Build Tauri bundles
+        if: steps.macos-signing.outputs.enabled != 'true'
         run: npm run app:build -- --target ${{ matrix.target }} --ci
+
+      - name: Build hardened macOS application
+        if: steps.macos-signing.outputs.enabled == 'true'
+        run: npm run app:build -- --target ${{ matrix.target }} --ci --config '{"bundle":{"macOS":{"hardenedRuntime":true}}}'
+
+      - name: Build branded macOS installer
+        if: runner.os == 'macOS'
+        env:
+          BUNDLE_DIR: src-tauri/target/${{ matrix.target }}/release/bundle
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          python -m pip install dmgbuild==1.6.7
+          mkdir -p "$BUNDLE_DIR/dmg"
+          dmg="$BUNDLE_DIR/dmg/Lutri_${RELEASE_TAG#v}_aarch64.dmg"
+          python scripts/build-macos-dmg.py "$BUNDLE_DIR/macos/Lutri.app" "$dmg"
+          if [[ -n "${APPLE_SIGNING_IDENTITY:-}" ]]; then
+            codesign --sign "$APPLE_SIGNING_IDENTITY" --timestamp --identifier app.lutri.studio.dmg "$dmg"
+            xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+            xcrun stapler staple "$dmg"
+          fi
 
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
-          name: installers-${{ matrix.platform }}-x64
+          name: installers-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe
             src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
             src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+            src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*_aarch64.dmg
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
@@ -105,7 +179,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: installers-*-x64
+          pattern: installers-*
           path: installers
           merge-multiple: true
 
@@ -125,8 +199,9 @@ jobs:
               }));
               return groups.flat();
             }
-            const files = (await filesIn('installers')).filter(file => /(?:-setup\.exe|\.deb|\.AppImage)$/.test(file));
-            for (const suffix of ['-setup.exe', '.deb', '.AppImage']) {
+            const suffixes = ['-setup.exe', '.deb', '.AppImage', '_aarch64.dmg'];
+            const files = (await filesIn('installers')).filter(file => suffixes.some(suffix => file.endsWith(suffix)));
+            for (const suffix of suffixes) {
               if (!files.some(file => file.endsWith(suffix))) {
                 throw new Error(`Missing installer: ${suffix}`);
               }

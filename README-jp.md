@@ -107,7 +107,7 @@ Real-ESRGAN シリーズは 1×・2×・3×・4×、Real-CUGAN Pro は 2×・3×
 npm ci
 npm run dev       # フロントエンド開発
 npm run app:dev   # デスクトップアプリ開発
-npm run app:build # 現在のプラットフォーム向けのインストーラーをビルド
+npm run app:build # 現在のプラットフォーム向けのアプリパッケージをビルド
 npm run typecheck
 npm run format
 npm run format:check
@@ -121,4 +121,23 @@ MCP は設定から起動します。サーバーはローカルアドレスの�
 
 ### ローカル超解像とプラットフォーム別ビルド
 
-プロジェクトには Windows x64・Linux x64 用の NCNN ランタイムと、Real-ESRGAN・Real-CUGAN モデルが含まれています。対象プラットフォームに応じたランタイムを使用します。GPU 推論には Vulkan 対応のグラフィックスドライバーが必要です。関連ライセンスは `src-tauri/resources/upscale` にあります。
+ローカル超解像には NCNN と Real-ESRGAN、Real-CUGAN モデルを使用します。GPU 推論では、Windows x64 と Linux x64 はシステムの Vulkan ドライバーを、Apple Silicon は同梱の MoltenVK を使用します。関連ライセンスは `src-tauri/resources/upscale` にあります。
+
+### macOS（Apple Silicon）
+
+Lutri の動作には macOS 14 以降が必要です。`.dmg` を開き、Lutri を「アプリケーション」にドラッグしてください。
+
+Apple Silicon Mac でビルドするには、Xcode Command Line Tools、CMake、Python 3.10 以降が必要です。初めてデスクトップアプリを開発用に起動するか、リリース用にビルドする前に、NCNN のビルドスクリプトを実行します。
+
+```sh
+bash scripts/build-macos-ncnn.sh
+npm run app:build -- --target aarch64-apple-darwin
+python3 -m venv src-tauri/target/macos-packaging
+source src-tauri/target/macos-packaging/bin/activate
+python -m pip install dmgbuild==1.6.7
+bundle=src-tauri/target/aarch64-apple-darwin/release/bundle
+version=$(node -p "require('./package.json').version")
+python scripts/build-macos-dmg.py "$bundle/macos/Lutri.app" "$bundle/dmg/Lutri_${version}_aarch64.dmg"
+```
+
+リリースのワークフローでは既定でアドホック署名を使用します。初回起動時に macOS で手動の許可が必要な場合があります。一般配布向けの Developer ID 署名と公証を有効にするには、GitHub Actions のシークレット `APPLE_CERTIFICATE`（Base64 でエンコードした Developer ID Application の `.p12`）、`APPLE_CERTIFICATE_PASSWORD`、`APPLE_ID`、`APPLE_PASSWORD`（アプリ用パスワード）、`APPLE_TEAM_ID` を設定してください。
