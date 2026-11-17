@@ -142,7 +142,11 @@ fn upscale_command(runtime: &Path) -> Result<Command, String> {
         command
             .env_remove("VK_DRIVER_FILES")
             .env_remove("VK_ICD_FILENAMES")
-            .env("NCNN_VULKAN_DRIVER", driver);
+            .env("NCNN_VULKAN_DRIVER", driver)
+            // NCNN's dummy image can crash Apple's Metal driver when MoltenVK
+            // binds it to a placement heap. Keep GPU compute, using ordinary
+            // Metal resource allocations instead (MoltenVK's supported mode).
+            .env("MVK_CONFIG_USE_MTLHEAP", "0");
     }
     Ok(command)
 }

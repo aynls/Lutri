@@ -28,7 +28,6 @@ def main():
             "filesystem": "APFS",
             "files": [str(app)],
             "symlinks": {"Applications": "/Applications"},
-            "hide_extensions": [app.name],
             "icon": str(src_tauri / "icons/icon.icns"),
             "background": str(src_tauri / "macos/installer-background.png"),
             "window_rect": ((150, 150), (640, 350)),
