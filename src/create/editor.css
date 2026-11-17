@@ -70,8 +70,7 @@
   transform: translate(-50%, -50%);
   background: var(--line);
 }
-.region-list-resizer:hover::after,
-.region-list-resizer:focus-visible::after {
+.region-list-resizer:hover::after {
   background: var(--accent);
 }
 .region-list > button {

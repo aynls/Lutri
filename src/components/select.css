@@ -16,7 +16,6 @@ button.select-trigger {
 button.select-trigger:hover:not(:disabled) {
   background: var(--raised);
 }
-button.select-trigger:focus-visible,
 button.select-trigger[data-state="open"] {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 15%, transparent);
@@ -64,7 +63,6 @@ button.select-trigger[data-state="open"] {
   cursor: pointer;
   user-select: none;
   overflow-wrap: anywhere;
-  outline: none;
 }
 .select-option[data-state="checked"] {
   background: var(--accent-soft);

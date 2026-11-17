@@ -103,8 +103,7 @@
   right: auto;
   left: -4px;
 }
-.panel-resizer:hover::after,
-.panel-resizer:focus-visible::after {
+.panel-resizer:hover::after {
   background: var(--accent);
 }
 .toolbar-spacer {
@@ -128,13 +127,6 @@
 .search-input input {
   border: 0;
   background: none;
-}
-.search-input:focus-within {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.search-input input:focus-visible {
-  outline: none;
 }
 .segmented-control {
   display: flex;

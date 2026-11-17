@@ -257,11 +257,6 @@
   border: 1px solid var(--line);
   border-radius: 3px;
 }
-.settings-page .theme-option:focus-visible,
-.settings-page .accent-swatch:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 4px;
-}
 @media (max-width: 1100px) {
   .theme-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -362,9 +357,6 @@
 }
 .provider-setting > summary:hover,
 .provider-setting[open] > summary {
-  background: var(--surface);
-}
-.provider-setting > summary:focus-visible {
   background: var(--surface);
 }
 .provider-setting > summary strong {

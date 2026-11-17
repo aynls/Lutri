@@ -17,7 +17,3 @@
 .editable-select-trigger .select-value {
   display: none;
 }
-.editable-select > :focus-visible {
-  position: relative;
-  z-index: 1;
-}
