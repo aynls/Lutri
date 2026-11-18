@@ -117,7 +117,7 @@ npm run format:check
 
 Save your provider keys in Settings, then select a model and provider in the creation workspace. Each combination has its own fields, constraints, and request compiler. Writer uses a separate OpenAI-compatible model configuration. Enter the base endpoint, including a path such as `/v1` where needed, without `/chat/completions`.
 
-Start MCP in Settings, then copy its configuration into a client that supports Streamable HTTP. The server listens only on a loopback address. While MCP is running, local processes can call its tools directly. Agents can create independently of your drafts, search the complete gallery, and retrieve saved task results, including results outside the gallery. See the [MCP tool reference](doc/mcp.md) for parameters, request IDs, and workflows. Existing clients must refresh their tool list and update calls to the rewritten interface.
+Enable Streamable HTTP or stdio in Settings and copy the corresponding configuration into your client. Both transports require Lutri to be running and can be enabled independently. Streamable HTTP listens on a loopback address. stdio connects through local interprocess communication, and disabling it closes all stdio connections. Agents can create independently of your drafts, search the complete gallery, and retrieve saved task results, including results outside the gallery. See the [MCP tool reference](doc/mcp.md) for parameters, request IDs, and workflows.
 
 ### Local upscaling and platform builds
 

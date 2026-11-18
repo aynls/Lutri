@@ -15,6 +15,8 @@ pub mod upscale;
 
 use tauri::Manager;
 
+pub use mcp::stdio::run as run_mcp_stdio;
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
@@ -91,9 +93,12 @@ pub fn run() {
             desktop::desktop_configure,
             desktop::desktop_zoom,
             desktop::desktop_shutdown,
+            mcp::mcp_register,
             mcp::mcp_start,
             mcp::mcp_status,
             mcp::mcp_stop,
+            mcp::mcp_set_stdio_enabled,
+            mcp::mcp_stdio_config,
             mcp::mcp_reply,
         ])
         .build(tauri::generate_context!())

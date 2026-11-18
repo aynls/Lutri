@@ -2,7 +2,7 @@ import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { label, localize, localePreference, setLocale, type LocalePreference } from "../i18n";
 import { native, readRecords } from "./native";
-import { connection, refreshMcpConnection, startMcp, stopMcp } from "./mcp";
+import { getMcpStatus, initializeMcp, setMcpStdioEnabled, startMcpHttp, stopMcpHttp } from "./mcp";
 import {
   flushWrites,
   getState,
@@ -48,7 +48,7 @@ export async function initializeDesktop(onError: (error: unknown) => void) {
     void (async () => {
       try {
         await flushWrites();
-        if (connection) await stopMcp();
+        if (getMcpStatus().url) await stopMcpHttp();
       } finally {
         await native("desktop_shutdown");
       }
@@ -78,9 +78,15 @@ export async function initializeDesktop(onError: (error: unknown) => void) {
     ...desktopLabels(),
   }).catch(onError);
   await native("upscale_configure", { concurrency: preferences.upscale?.concurrency ?? 1 }).catch(onError);
-  await refreshMcpConnection().catch(onError);
-  if (connection || preferences.mcp?.autoStart)
-    await startMcp(connection ? Number(new URL(connection.url).port) : preferences.mcp!.port).catch(onError);
+  await initializeMcp()
+    .then(async () => {
+      const mcp = getState().preferences.mcp;
+      await Promise.all([
+        mcp?.autoStart && !getMcpStatus().url ? startMcpHttp(mcp.port).catch(onError) : undefined,
+        mcp?.stdioEnabled ? setMcpStdioEnabled(true).catch(onError) : undefined,
+      ]);
+    })
+    .catch(onError);
   const keyboard = (event: KeyboardEvent) => {
     if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing) return;
     if (!["+", "=", "-", "0"].includes(event.key)) return;

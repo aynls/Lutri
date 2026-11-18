@@ -6,9 +6,12 @@ Lutri 的本机 MCP 服务提供创作、图库资产检索和任务结果访问
 
 ## 连接
 
-在设置中启动 MCP，复制连接配置到支持 Streamable HTTP 的客户端。默认地址是 `http://127.0.0.1:39632/mcp`。服务只监听本机 IPv4 回环地址，校验 `Host` 和请求携带的 `Origin`。MCP 开启时，本机进程可直接连接并调用工具。
+在 Lutri 的 MCP 设置中启用所需的接入方式，再复制对应配置到客户端。两种接入方式可以同时开启，并共用工具、创作队列和图库。连接期间需保持 Lutri 运行，可使用托盘常驻。
 
-服务使用无会话的 JSON 响应，支持协议版本 `2025-06-18` 和 `2025-11-25`。每个 POST 请求须接受 `application/json` 与 `text/event-stream`；初始化后使用协商的 `MCP-Protocol-Version` 请求头。GET 返回 405。停用 MCP 不取消已持久化的创作任务。
+- **Streamable HTTP** 使用 URL 连接，默认地址为 `http://127.0.0.1:39632/mcp`。服务只监听本机 IPv4 回环地址，校验 `Host` 和请求携带的 `Origin`。服务返回无会话的 JSON 响应。每个 POST 请求须接受 `application/json` 与 `text/event-stream`，初始化后使用协商的 `MCP-Protocol-Version` 请求头。GET 返回 405。
+- **stdio** 使用客户端配置中的 `command` 和 `args` 启动 Lutri 的命令行入口，再通过本机进程间通信连接应用。stdio 默认关闭，并记住启用状态。关闭后现有 stdio 会话断开，新连接被拒绝。HTTP 有自己的启停控制。
+
+复制的配置分别使用 `lutri`（HTTP）和 `lutri-stdio`（stdio）作为服务器名。两个入口均支持协议版本 `2025-06-18` 和 `2025-11-25`。创作任务提交后由应用的队列管理，断开连接后继续执行。
 
 本次重写更改了工具及参数，旧客户端需要重新获取工具列表并调整调用。没有保留旧工具别名或旧参数适配。
 
@@ -129,4 +132,4 @@ Base64 来源使用 `{ "source": { "type": "dataUrl", "dataUrl": "data:image/png
 
 任务自身的供应商、下载或另存为错误位于查询结果中。查询成功与创作成功分别表达。`resume_task` 在任务已结束或已运行时返回 `accepted: false` 和原因；恢复失败可继续从任务状态读取。普通取消只影响排队请求，已经提交的请求继续获取原结果。
 
-协议依据：[MCP 工具规范](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)、[Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)。
+协议依据：[MCP 工具规范](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)、[MCP 传输规范](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)。

@@ -163,7 +163,8 @@ pub fn desktop_zoom(app: tauri::AppHandle, zoom: f64) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn desktop_shutdown(app: tauri::AppHandle) {
+pub async fn desktop_shutdown(app: tauri::AppHandle) {
+    crate::mcp::stop_stdio(&app).await;
     if let Some(scheduler) = app.try_state::<Scheduler>() {
         scheduler.shutdown();
     }

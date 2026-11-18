@@ -9,19 +9,16 @@ import { failure, McpError } from "./mcp/contracts";
 
 const tools = [...modelTools, ...submissionTools, ...taskTools, ...assetTools];
 const byName = new Map(tools.map((tool) => [tool.definition.name, tool]));
-type Connection = { url: string };
-export let connection: Connection | undefined;
+type McpStatus = { url: string | null; stdioRunning: boolean };
+type StdioConfig = { command: string; args: string[] };
+let status: McpStatus = { url: null, stdioRunning: false };
 const subscribers = new Set<() => void>();
-let unlistenRequests: UnlistenFn | undefined;
+let requestListener: Promise<UnlistenFn> | undefined;
 let statusListener: Promise<UnlistenFn> | undefined;
-let lifecycle: Promise<unknown> = Promise.resolve();
+let registration: Promise<void> | undefined;
+let statusRevision = 0;
 
-function setConnection(value: Connection | undefined) {
-  connection = value;
-  for (const subscriber of subscribers) subscriber();
-}
-
-export const getMcpConnection = () => connection;
+export const getMcpStatus = () => status;
 export function subscribeMcp(subscriber: () => void) {
   subscribers.add(subscriber);
   return () => {
@@ -29,63 +26,68 @@ export function subscribeMcp(subscriber: () => void) {
   };
 }
 
-export async function refreshMcpConnection() {
+export async function refreshMcpStatus() {
   statusListener ??= listen("mcp-status-changed", () => {
-    void refreshMcpConnection().catch(() => setConnection(undefined));
+    void refreshMcpStatus().catch(() => {});
   }).catch((error: unknown) => {
     statusListener = undefined;
     throw error;
   });
   await statusListener;
-  const { url } = await native<{ url: string | null }>("mcp_status");
-  setConnection(url ? { url } : undefined);
+  const revision = ++statusRevision;
+  const next = await native<McpStatus>("mcp_status");
+  if (revision !== statusRevision || (status.url === next.url && status.stdioRunning === next.stdioRunning)) return;
+  status = next;
+  for (const subscriber of subscribers) subscriber();
 }
 
-export function startMcp(port: number): Promise<Connection> {
-  const operation = lifecycle
-    .catch(() => {})
-    .then(async () => {
-      if (!getState().ready) throw new Error("Lutri is still loading.");
-      await refreshMcpConnection();
-      if (!unlistenRequests)
-        unlistenRequests = await listen<{ id: string; name: string; arguments: unknown }>(
-          "mcp-request",
-          async ({ payload }) => {
-            const tool = byName.get(payload.name);
-            const result = getState().ready
-              ? tool
-                ? await tool.call(payload.arguments)
-                : failure(new McpError("UNKNOWN_TOOL", `Unknown tool: ${payload.name}`))
-              : failure(new McpError("APPLICATION_NOT_READY", "Lutri is still loading.", undefined, true));
-            await native("mcp_reply", { id: payload.id, result }).catch(() => {});
-          },
-        );
-      try {
-        const started = await native<Connection>("mcp_start", { port, tools: tools.map((tool) => tool.definition) });
-        setConnection(started);
-        return started;
-      } catch (error) {
-        await refreshMcpConnection().catch(() => setConnection(undefined));
-        if (!connection) {
-          unlistenRequests?.();
-          unlistenRequests = undefined;
-        }
-        throw error;
-      }
+function registerMcpTools() {
+  requestListener ??= listen<{ id: string; name: string; arguments: unknown }>(
+    "mcp-request",
+    async ({ payload }) => {
+      const tool = byName.get(payload.name);
+      const result = getState().ready
+        ? tool
+          ? await tool.call(payload.arguments)
+          : failure(new McpError("UNKNOWN_TOOL", `Unknown tool: ${payload.name}`))
+        : failure(new McpError("APPLICATION_NOT_READY", "Lutri is still loading.", undefined, true));
+      await native("mcp_reply", { id: payload.id, result }).catch(() => {});
+    },
+  ).catch((error: unknown) => {
+    requestListener = undefined;
+    throw error;
+  });
+  registration ??= requestListener
+    .then(() => native<void>("mcp_register", { tools: tools.map((tool) => tool.definition) }))
+    .catch((error: unknown) => {
+      registration = undefined;
+      throw error;
     });
-  lifecycle = operation;
-  return operation;
+  return registration;
 }
 
-export function stopMcp(): Promise<void> {
-  const operation = lifecycle
-    .catch(() => {})
-    .then(async () => {
-      await native("mcp_stop");
-      unlistenRequests?.();
-      unlistenRequests = undefined;
-      setConnection(undefined);
-    });
-  lifecycle = operation;
-  return operation;
+export async function initializeMcp() {
+  await registerMcpTools();
+  await refreshMcpStatus();
+}
+
+export async function startMcpHttp(port: number) {
+  await registerMcpTools();
+  await native("mcp_start", { port });
+  await refreshMcpStatus();
+}
+
+export async function stopMcpHttp() {
+  await native("mcp_stop");
+  await refreshMcpStatus();
+}
+
+export async function setMcpStdioEnabled(enabled: boolean) {
+  if (enabled) await registerMcpTools();
+  await native("mcp_set_stdio_enabled", { enabled });
+  await refreshMcpStatus();
+}
+
+export function getMcpStdioConfig() {
+  return native<StdioConfig>("mcp_stdio_config");
 }

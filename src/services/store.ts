@@ -29,7 +29,7 @@ export interface Preferences {
   // null selects automatically; -1 uses CPU; nonnegative values select a device.
   upscale?: { concurrency: number; gpuIndex: number | null };
   generation?: { maxRequestCount: number };
-  mcp?: { port: number; autoStart: boolean };
+  mcp?: { port: number; autoStart: boolean; stdioEnabled?: boolean };
   outputs?: {
     directory?: string;
     generationAuto?: boolean;
