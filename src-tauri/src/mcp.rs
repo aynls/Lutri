@@ -1,7 +1,11 @@
 use axum::{
     body::Bytes,
-    extract::{DefaultBodyLimit, State},
-    http::{HeaderMap, StatusCode},
+    extract::{DefaultBodyLimit, Request, State},
+    http::{
+        header::{HOST, ORIGIN},
+        HeaderMap, StatusCode,
+    },
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::post,
     Json, Router,
@@ -23,43 +27,17 @@ struct Server {
     task: tauri::async_runtime::JoinHandle<()>,
 }
 
+#[derive(Default)]
 pub struct Bridge {
     pending: Mutex<HashMap<String, oneshot::Sender<Value>>>,
     tools: Mutex<Vec<Value>>,
     server: Mutex<Option<Server>>,
-    token: Mutex<String>,
-}
-
-fn new_token() -> String {
-    format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple())
-}
-
-impl Bridge {
-    pub fn new() -> Result<Self, String> {
-        let entry = keyring::Entry::new("app.lutri.studio", "mcp").map_err(|e| e.to_string())?;
-        let token = match entry.get_password() {
-            Ok(token) => token,
-            Err(keyring::Error::NoEntry) => {
-                let token = new_token();
-                entry.set_password(&token).map_err(|e| e.to_string())?;
-                token
-            }
-            Err(error) => return Err(error.to_string()),
-        };
-        Ok(Self {
-            pending: Mutex::new(HashMap::new()),
-            tools: Mutex::new(vec![]),
-            server: Mutex::new(None),
-            token: Mutex::new(token),
-        })
-    }
 }
 
 #[derive(Clone)]
 struct ServerState {
     app: tauri::AppHandle,
     bridge: Arc<Bridge>,
-    port: u16,
 }
 
 // Also remove pending senders when an HTTP client disconnects or the server stops.
@@ -79,22 +57,31 @@ fn rpc_error(id: Value, code: i32, message: &str) -> Response {
     Json(json!({"jsonrpc":"2.0", "id":id, "error":{"code":code,"message":message}})).into_response()
 }
 
-async fn handle(State(state): State<ServerState>, headers: HeaderMap, body: Bytes) -> Response {
-    let Ok(token) = state.bridge.token.lock().map(|token| token.clone()) else {
-        return StatusCode::SERVICE_UNAVAILABLE.into_response();
-    };
-    if headers.get("authorization").and_then(|value| value.to_str().ok()) != Some(format!("Bearer {token}").as_str()) {
-        return StatusCode::UNAUTHORIZED.into_response();
+async fn validate_local_request(State(port): State<u16>, request: Request, next: Next) -> Response {
+    let allowed_hosts = [format!("127.0.0.1:{port}"), format!("localhost:{port}")];
+    let is_local = |host: &str| allowed_hosts.iter().any(|allowed| host.eq_ignore_ascii_case(allowed));
+    let mut hosts = request.headers().get_all(HOST).iter();
+    let host = hosts.next().and_then(|value| value.to_str().ok());
+    if !host.is_some_and(is_local)
+        || hosts.next().is_some()
+        || request
+            .uri()
+            .authority()
+            .is_some_and(|authority| !is_local(authority.as_str()))
+    {
+        return StatusCode::FORBIDDEN.into_response();
     }
-    if let Some(origin) = headers.get("origin") {
-        let allowed = [
-            format!("http://127.0.0.1:{}", state.port),
-            format!("http://localhost:{}", state.port),
-        ];
-        if !allowed.iter().any(|value| origin.to_str().ok() == Some(value.as_str())) {
+    let mut origins = request.headers().get_all(ORIGIN).iter();
+    if let Some(origin) = origins.next() {
+        let origin_host = origin.to_str().ok().and_then(|origin| origin.strip_prefix("http://"));
+        if !origin_host.is_some_and(is_local) || origins.next().is_some() {
             return StatusCode::FORBIDDEN.into_response();
         }
     }
+    next.run(request).await
+}
+
+async fn handle(State(state): State<ServerState>, headers: HeaderMap, body: Bytes) -> Response {
     if let Some(version) = headers.get("mcp-protocol-version") {
         if !version
             .to_str()
@@ -248,9 +235,7 @@ pub async fn mcp_start(app: tauri::AppHandle, port: u16, tools: Vec<Value>) -> R
             return Err("Stop MCP before changing its port".into());
         }
         *bridge.tools.lock().map_err(|e| e.to_string())? = tools;
-        return Ok(
-            json!({"url":format!("http://127.0.0.1:{port}/mcp"),"token":bridge.token.lock().map_err(|e|e.to_string())?.clone()}),
-        );
+        return Ok(json!({"url":format!("http://127.0.0.1:{port}/mcp")}));
     }
     let listener = std::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port)).map_err(|e| e.to_string())?;
     listener.set_nonblocking(true).map_err(|e| e.to_string())?;
@@ -259,11 +244,11 @@ pub async fn mcp_start(app: tauri::AppHandle, port: u16, tools: Vec<Value>) -> R
     let state = ServerState {
         app: app.clone(),
         bridge: bridge.clone(),
-        port,
     };
     let router = Router::new()
         .route("/mcp", post(handle))
         .layer(DefaultBodyLimit::max(16 * 1024 * 1024))
+        .route_layer(middleware::from_fn_with_state(port, validate_local_request))
         .with_state(state);
     let server_id = uuid::Uuid::new_v4().to_string();
     let running_id = server_id.clone();
@@ -285,8 +270,7 @@ pub async fn mcp_start(app: tauri::AppHandle, port: u16, tools: Vec<Value>) -> R
         port,
         task,
     });
-    let token = bridge.token.lock().map_err(|e| e.to_string())?.clone();
-    Ok(json!({"url":format!("http://127.0.0.1:{port}/mcp"),"token":token}))
+    Ok(json!({"url":format!("http://127.0.0.1:{port}/mcp")}))
 }
 
 #[tauri::command]
@@ -297,7 +281,7 @@ pub fn mcp_status(bridge: tauri::State<Arc<Bridge>>) -> Result<Value, String> {
         .map_err(|e| e.to_string())?
         .as_ref()
         .map(|server| format!("http://127.0.0.1:{}/mcp", server.port));
-    Ok(json!({"url":url,"token":bridge.token.lock().map_err(|e|e.to_string())?.clone()}))
+    Ok(json!({"url":url}))
 }
 
 #[tauri::command]
@@ -316,21 +300,4 @@ pub fn mcp_reply(bridge: tauri::State<Arc<Bridge>>, id: String, result: Value) -
         let _ = sender.send(result);
     }
     Ok(())
-}
-
-#[tauri::command]
-pub fn mcp_get_token(bridge: tauri::State<Arc<Bridge>>) -> Result<String, String> {
-    Ok(bridge.token.lock().map_err(|e| e.to_string())?.clone())
-}
-
-#[tauri::command]
-pub fn mcp_rotate_token(app: tauri::AppHandle, bridge: tauri::State<Arc<Bridge>>) -> Result<String, String> {
-    let token = new_token();
-    keyring::Entry::new("app.lutri.studio", "mcp")
-        .map_err(|e| e.to_string())?
-        .set_password(&token)
-        .map_err(|e| e.to_string())?;
-    *bridge.token.lock().map_err(|e| e.to_string())? = token.clone();
-    let _ = app.emit_to("main", "mcp-status-changed", ());
-    Ok(token)
 }

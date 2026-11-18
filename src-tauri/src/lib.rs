@@ -29,7 +29,7 @@ pub fn run() {
                 app.asset_protocol_scope()
                     .allow_directory(app.state::<storage::Store>().library_root()?.join(directory), true)?;
             }
-            app.manage(std::sync::Arc::new(mcp::Bridge::new()?));
+            app.manage(std::sync::Arc::new(mcp::Bridge::default()));
             app.manage(upscale::Scheduler::default());
             desktop::setup(app)?;
             Ok(())
@@ -95,8 +95,6 @@ pub fn run() {
             mcp::mcp_status,
             mcp::mcp_stop,
             mcp::mcp_reply,
-            mcp::mcp_get_token,
-            mcp::mcp_rotate_token,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Lutri")

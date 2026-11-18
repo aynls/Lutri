@@ -9,7 +9,7 @@ import { failure, McpError } from "./mcp/contracts";
 
 const tools = [...modelTools, ...submissionTools, ...taskTools, ...assetTools];
 const byName = new Map(tools.map((tool) => [tool.definition.name, tool]));
-type Connection = { url: string; token: string };
+type Connection = { url: string };
 export let connection: Connection | undefined;
 const subscribers = new Set<() => void>();
 let unlistenRequests: UnlistenFn | undefined;
@@ -37,8 +37,8 @@ export async function refreshMcpConnection() {
     throw error;
   });
   await statusListener;
-  const status = await native<{ url: string | null; token: string }>("mcp_status");
-  setConnection(status.url ? { url: status.url, token: status.token } : undefined);
+  const { url } = await native<{ url: string | null }>("mcp_status");
+  setConnection(url ? { url } : undefined);
 }
 
 export function startMcp(port: number): Promise<Connection> {
@@ -88,8 +88,4 @@ export function stopMcp(): Promise<void> {
     });
   lifecycle = operation;
   return operation;
-}
-
-export function setConnectionToken(token: string) {
-  if (connection) setConnection({ ...connection, token });
 }

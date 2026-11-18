@@ -430,15 +430,11 @@
 }
 .mcp-connection {
   display: grid;
-  gap: 16px;
+  gap: 6px;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-}
-.mcp-connection-row {
-  display: grid;
-  gap: 6px;
   min-width: 0;
   color: var(--muted);
   font-size: calc(12px * var(--font-scale, 1));
@@ -458,9 +454,6 @@
 .mcp-connection-value button {
   flex-shrink: 0;
   padding: 5px;
-}
-.mcp-token-hidden {
-  letter-spacing: 0.08em;
 }
 @media (max-width: 900px) {
   .settings-page {

@@ -6,7 +6,7 @@ Lutri 的本机 MCP 服务提供创作、图库资产检索和任务结果访问
 
 ## 连接
 
-在设置中启动 MCP，复制连接配置到支持 Streamable HTTP 的客户端。默认地址是 `http://127.0.0.1:39632/mcp`，请求使用 `Authorization: Bearer TOKEN`；`TOKEN` 来自设置页。服务只监听本机 IPv4 地址。
+在设置中启动 MCP，复制连接配置到支持 Streamable HTTP 的客户端。默认地址是 `http://127.0.0.1:39632/mcp`。服务只监听本机 IPv4 回环地址，校验 `Host` 和请求携带的 `Origin`。MCP 开启时，本机进程可直接连接并调用工具。
 
 服务使用无会话的 JSON 响应，支持协议版本 `2025-06-18` 和 `2025-11-25`。每个 POST 请求须接受 `application/json` 与 `text/event-stream`；初始化后使用协商的 `MCP-Protocol-Version` 请求头。GET 返回 405。停用 MCP 不取消已持久化的创作任务。
 
