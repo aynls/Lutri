@@ -369,7 +369,6 @@ export function RegionCanvas({
             />
           )}
         </svg>
-        {!boxes.length && !preview && <span className="canvas-empty-hint">{t("drawRegionHint")}</span>}
         {background && missing && <span className="canvas-error">{t("missing")}</span>}
         {readout && (
           <output className="canvas-readout">

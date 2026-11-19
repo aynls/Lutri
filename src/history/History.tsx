@@ -335,7 +335,9 @@ export function History({
                       <strong>{combination.label}</strong>
                       <span className="muted">{providerNames[combination.provider]}</span>
                       {busy && <span className="spinner" />}
-                      <span className={`status-badge status-${task.status}`}>{t(task.status)}</span>
+                      {task.status !== "completed" && (
+                        <span className={`status-badge status-${task.status}`}>{t(task.status)}</span>
+                      )}
                     </div>
                     <p className="history-prompt" title={displayPrompt(task.draft)}>
                       {displayPrompt(task.draft)}
@@ -446,18 +448,15 @@ export function History({
           onClose={() => setExpanded(undefined)}
           className="request-dialog"
           footer={
-            <>
-              <button onClick={() => setExpanded(undefined)}>{t("close")}</button>
-              <button
-                className="primary-button"
-                onClick={() => {
-                  onRestore(detail.draft);
-                  setExpanded(undefined);
-                }}
-              >
-                {t("restore")}
-              </button>
-            </>
+            <button
+              className="primary-button"
+              onClick={() => {
+                onRestore(detail.draft);
+                setExpanded(undefined);
+              }}
+            >
+              {t("restore")}
+            </button>
           }
         >
           <RequestDetails task={detail} onView={onView} onError={onError} groupResults />

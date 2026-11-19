@@ -58,6 +58,7 @@ export function RequestDetails({
     };
   }, [assetKey, cached]);
   const combination = combinationById(task.draft.combinationId);
+  const saved = task.results.filter((result) => result.status === "saved").length;
   return (
     <div className="request-details">
       <section className="detail-prompt">
@@ -78,7 +79,10 @@ export function RequestDetails({
       </section>
       {!!task.results.length && (
         <section className="detail-results">
-          <h3>{t("results")}</h3>
+          <h3>
+            {t("results")}
+            {saved < task.results.length ? ` · ${saved}/${task.results.length}` : saved > 1 ? ` · ${saved}` : ""}
+          </h3>
           <div className="detail-images">
             {task.results.map((result, index) => {
               const entry = gallery.find((value) => value.asset.id === result.assetId);
@@ -165,10 +169,6 @@ export function RequestDetails({
           <dd>
             <code>{task.id}</code>
             <CopyButton value={task.id} onError={onError} />
-          </dd>
-          <dt>{t("results")}</dt>
-          <dd>
-            {task.results.filter((result) => result.status === "saved").length} / {task.results.length}
           </dd>
           {(task.providerTaskId ?? task.recovery?.remoteId) && (
             <>

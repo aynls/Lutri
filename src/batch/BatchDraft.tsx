@@ -54,9 +54,11 @@ export function BatchDraft({
     <section className="batch-draft" aria-label={b("draft")}>
       <header className="batch-draft-header">
         <h2>{b("draft")}</h2>
-        <span className="muted">
-          {creation.items.length} {b("items")} · {count} {b("requests")}
-        </span>
+        {creation.items.length > 0 && (
+          <span className="muted">
+            {creation.items.length} {b("items")} · {count} {b("requests")}
+          </span>
+        )}
       </header>
       {submitted && (
         <div className="batch-submitted" role="status">
@@ -68,7 +70,6 @@ export function BatchDraft({
         {!creation.items.length && (
           <div className="empty-state">
             <ListPlusIcon size={32} weight="thin" />
-            <h2>{b("empty")}</h2>
             <p>{b("emptyHint")}</p>
           </div>
         )}

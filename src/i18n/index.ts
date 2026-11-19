@@ -88,7 +88,6 @@ const messages = {
     "名称须唯一，且只含字母、数字或下划线。",
     "英数字・アンダースコアで重複しない名前を指定してください。",
   ],
-  drawRegionHint: ["Right-drag to draw a region", "右键拖动绘制区域", "右ドラッグで領域を描く"],
   canvasHelp: [
     "Right-drag to draw · Left-drag to edit · Scroll to zoom · Space to pan",
     "右键绘框 · 左键移动 / 缩放 · 滚轮缩放 · 空格平移",

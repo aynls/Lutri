@@ -19,7 +19,6 @@ const messages = {
   outputTokens: label("Output tokens", "输出 token", "出力トークン"),
   totalTokens: label("Total tokens", "总 token", "合計トークン"),
   seed: label("Returned seed", "实际 seed", "実際の seed"),
-  requestedSeed: label("Requested seed", "请求 seed", "指定 seed"),
   cost: label("Cost", "费用", "料金"),
   credits: label("Credits", "积分", "クレジット"),
   partialUsage: label("Partial usage", "部分用量", "一部の使用量"),

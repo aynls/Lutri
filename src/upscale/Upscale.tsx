@@ -14,7 +14,6 @@ import {
   StopIcon,
   ArrowsHorizontalIcon,
   DownloadSimpleIcon,
-  CheckIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import type { GalleryEntry, GenerationDraft } from "../domain/types";
@@ -418,10 +417,12 @@ export function Upscale({
               ? ` → ${job.input.asset.width * job.configuration.scale} × ${job.input.asset.height * job.configuration.scale}`
               : ""}
           </small>
-          <span className="upscale-job-status">
-            {statusText(job)}
-            {job.status === "generating" ? ` · ${job.progress}%` : ""}
-          </span>
+          {job.status !== "completed" && (
+            <span className="upscale-job-status">
+              {statusText(job)}
+              {job.status === "generating" ? ` · ${job.progress}%` : ""}
+            </span>
+          )}
         </>
       )}
       <div className="upscale-job-actions">
@@ -438,11 +439,6 @@ export function Upscale({
           >
             {t("useReference")}
           </button>
-        )}
-        {job.assetId && (
-          <span className="upscale-saved" title={t("saved")} aria-label={t("saved")}>
-            <CheckIcon size={14} aria-hidden="true" />
-          </span>
         )}
         {job.path && (!inViewer || job.exportError) && (
           <button
@@ -578,7 +574,7 @@ export function Upscale({
               )}
             </div>
           )}
-          {!batch && single && (
+          {!batch && single && single.status !== "completed" && (
             <div className="upscale-run-status" role="status">
               <div>
                 <span>{statusText(single)}</span>
