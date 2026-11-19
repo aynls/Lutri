@@ -31,7 +31,7 @@ export function Feed({
   onRestore,
   onError,
 }: {
-  onDetails: (taskId: string, trigger: HTMLButtonElement) => void;
+  onDetails: (taskId: string, restorePosition: () => void) => void;
   onView: (id: string, ids?: string[]) => void;
   onReference: (entry: GalleryEntry) => void;
   onRestore: (draft: GenerationDraft) => void;
@@ -127,7 +127,14 @@ export function Feed({
                     className="request-model"
                     title={c("requestDetails")}
                     aria-label={`${c("requestDetails")} · ${model.label}`}
-                    onClick={(event) => onDetails(id, event.currentTarget)}
+                    onClick={(event) => {
+                      const trigger = event.currentTarget;
+                      const scrollTop = container.current!.scrollTop;
+                      onDetails(id, () => {
+                        if (container.current) container.current.scrollTop = scrollTop;
+                        trigger.focus({ preventScroll: true });
+                      });
+                    }}
                   >
                     <ModelIcon family={model.family} size={16} />
                     <span>{model.label}</span>
