@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowClockwiseIcon,
   ArrowCounterClockwiseIcon,
@@ -8,18 +8,18 @@ import {
   DownloadSimpleIcon,
   PlusIcon,
 } from "@phosphor-icons/react";
-import type { GalleryEntry, GenerationDraft } from "../domain/types";
+import type { FeedSlot, GalleryEntry, GenerationDraft } from "../domain/types";
 import { displayPrompt } from "../domain/references";
 import { ModelIcon } from "../components/ModelIcon";
 import { t } from "../i18n";
 import { combinationById } from "../models";
 import { AssetImage } from "../gallery/AssetImage";
 import { BoardAction } from "../gallery/BoardAction";
-import { CopyButton } from "../components/CopyButton";
+import { outputFrame } from "./components/regionGeometry";
 import { LayerDelivery } from "../components/LayerDelivery";
 import { exportImages, favorite } from "../gallery/actions";
 import { execute } from "../services/generation";
-import { removeFeed, useApplication } from "../services/store";
+import { changeFeed, removeFeed, useApplication } from "../services/store";
 import { c } from "./messages";
 
 export function Feed({
@@ -35,13 +35,28 @@ export function Feed({
 }) {
   const { feed, tasks, gallery, boards, ready } = useApplication();
   const container = useRef<HTMLDivElement>(null);
-  const masonry = useRef<HTMLDivElement>(null);
+  const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
+  const groups = useMemo(() => {
+    const byRequest = new Map<string, FeedSlot[]>();
+    for (const slot of feed) {
+      const group = byRequest.get(slot.taskId);
+      if (group) group.push(slot);
+      else byRequest.set(slot.taskId, [slot]);
+    }
+    return Array.from(byRequest, ([id, slots]) => ({ id, slots: slots.sort((a, b) => a.resultIndex - b.resultIndex) }));
+  }, [feed]);
+  const viewerIds = groups.flatMap(({ id, slots }) =>
+    slots.flatMap((slot) => {
+      const assetId = taskMap.get(id)?.results[slot.resultIndex]?.assetId;
+      return assetId ? [assetId] : [];
+    }),
+  );
   const observed = useRef<Set<string> | undefined>(undefined);
   const [newResults, setNewResults] = useState<string[]>([]);
   useEffect(() => {
     if (!ready) return;
     const saved = feed.flatMap((slot) => {
-      const result = tasks.find((task) => task.id === slot.taskId)?.results[slot.resultIndex];
+      const result = taskMap.get(slot.taskId)?.results[slot.resultIndex];
       return result?.status === "saved" ? [result.id] : [];
     });
     if (observed.current) {
@@ -50,38 +65,8 @@ export function Feed({
         setNewResults((current) => [...new Set([...current, ...added])]);
     }
     observed.current = new Set(saved);
-  }, [feed, tasks, ready]);
-  const taskMap = useMemo(() => new Map(tasks.map((entry) => [entry.id, entry])), [tasks]);
+  }, [feed, taskMap, ready]);
   const assets = useMemo(() => new Map(gallery.map((entry) => [entry.asset.id, entry])), [gallery]);
-  useLayoutEffect(() => {
-    const grid = masonry.current;
-    const scroller = container.current;
-    if (!grid || !scroller) return;
-    const cards = Array.from(grid.children) as HTMLElement[];
-    const arrange = () => {
-      const width = grid.clientWidth;
-      if (!width) return;
-      const gap = 18;
-      const cardWidth = cards[0]?.offsetWidth ?? 256;
-      const columnCount = Math.max(1, Math.floor((width + gap) / (cardWidth + gap)));
-      const offset = (width - columnCount * cardWidth - (columnCount - 1) * gap) / 2;
-      const heights = Array<number>(columnCount).fill(0);
-      const cardHeights = cards.map((card) => card.offsetHeight);
-      // Rebalance positions under one parent so React keeps cards and loaded images mounted.
-      cards.forEach((card, index) => {
-        const column = heights.indexOf(Math.min(...heights));
-        card.style.left = `${offset + column * (cardWidth + gap)}px`;
-        card.style.top = `${heights[column]}px`;
-        heights[column] += cardHeights[index] + gap;
-      });
-      grid.style.height = `${Math.max(0, Math.max(...heights) - gap)}px`;
-    };
-    arrange();
-    const observer = new ResizeObserver(arrange);
-    observer.observe(scroller);
-    cards.forEach((card) => observer.observe(card, { box: "border-box" }));
-    return () => observer.disconnect();
-  }, [feed, taskMap, assets]);
   const attempt = (action: () => Promise<unknown>) => void action().catch(onError);
   return (
     <div
@@ -111,113 +96,115 @@ export function Feed({
           <p>{t("empty")}</p>
         </div>
       ) : (
-        <div className="feed-masonry" ref={masonry}>
-          {feed.map((slot) => {
-            const task = taskMap.get(slot.taskId);
+        <div className="request-feed">
+          {groups.map(({ id, slots }) => {
+            const task = taskMap.get(id);
             if (!task) return null;
-            const result = task.results[slot.resultIndex],
-              asset = result?.assetId ? assets.get(result.assetId) : undefined,
-              prompt = displayPrompt(task.draft);
+            const model = combinationById(task.draft.combinationId);
+            const frame = outputFrame(task.draft, gallery);
             const busy = ["queued", "submitting", "generating", "downloading"].includes(task.status);
-            const downloading =
-              !result?.assetId &&
-              result?.status !== "failed" &&
-              (result?.status === "downloading" || task.status === "downloading");
             return (
-              <article className={`result-card ${busy ? "is-busy" : ""}`} key={slot.id}>
-                <button
-                  className="card-remove"
-                  title={t("remove")}
-                  onClick={() => attempt(() => removeFeed([slot.id]))}
-                >
-                  <XIcon />
-                </button>
-                {asset ? (
-                  <div className="result-image">
-                    <button
-                      className="image-button"
-                      style={{ aspectRatio: `${asset.asset.width} / ${asset.asset.height}` }}
-                      onClick={() => {
-                        onView(
-                          asset.asset.id,
-                          feed.flatMap((slot) => {
-                            const id = taskMap.get(slot.taskId)?.results[slot.resultIndex]?.assetId;
-                            return id ? [id] : [];
-                          }),
-                        );
-                      }}
-                    >
-                      <AssetImage entry={asset} />
-                    </button>
-                    <div className="result-actions">
-                      <button title={t("restore")} aria-label={t("restore")} onClick={() => onRestore(task.draft)}>
-                        <ArrowCounterClockwiseIcon size={15} />
-                      </button>
-                      <button
-                        title={t("useReference")}
-                        aria-label={t("useReference")}
-                        onClick={() => onReference(asset)}
-                      >
-                        <PlusIcon size={15} />
-                      </button>
-                      <button
-                        title={t("favorites")}
-                        aria-label={t("favorites")}
-                        aria-pressed={asset.favorite}
-                        onClick={() => attempt(() => favorite(asset))}
-                      >
-                        <HeartIcon size={15} weight={asset.favorite ? "fill" : "regular"} />
-                      </button>
-                      <BoardAction key={asset.asset.id} entry={asset} boards={boards} />
-                      <button
-                        title={t("saveAs")}
-                        aria-label={t("saveAs")}
-                        onClick={() => attempt(() => exportImages([asset]))}
-                      >
-                        <DownloadSimpleIcon size={15} />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="result-placeholder">
-                    {busy ? <span className="spinner" /> : <ImageIcon size={28} />}
-                    {busy && downloading && <small className="task-timer">{t("downloading")}</small>}
-                    {!busy && task.status !== "completed" && task.status !== "cancelled" && (
-                      <button
-                        className="result-retry"
-                        title={t("retry")}
-                        onClick={() => attempt(() => execute(task.id))}
-                      >
-                        <ArrowClockwiseIcon />
-                        {t("retry")}
-                      </button>
-                    )}
-                    {(result?.error || task.error) && <p className="card-error">{result?.error ?? task.error}</p>}
-                  </div>
-                )}
-                <footer>
-                  <ModelIcon family={combinationById(task.draft.combinationId).family} size={15} />
-                  <span>{combinationById(task.draft.combinationId).label}</span>
-                  <span>
-                    {asset
-                      ? `${asset.asset.width} × ${asset.asset.height}`
-                      : String(slot.resultIndex + 1).padStart(2, "0")}
+              <article className="request-group" key={id}>
+                <header className="request-heading">
+                  <span className="request-model">
+                    <ModelIcon family={model.family} size={16} />
+                    {model.label}
                   </span>
-                </footer>
-                {result?.layerDelivery && <LayerDelivery task={task} result={result} onError={onError} />}
-                {prompt.trim() ? (
-                  <div className="result-prompt-wrap">
-                    <p className="result-prompt" tabIndex={0} aria-label={t("prompt")}>
-                      {prompt}
-                    </p>
-                    <CopyButton
-                      className="result-prompt-copy"
-                      value={prompt}
-                      title={t("copyPrompt")}
-                      onError={onError}
-                    />
-                  </div>
-                ) : null}
+                  <span className="request-status">{t(task.status)}</span>
+                  <p className="result-prompt">{displayPrompt(task.draft)}</p>
+                  <button title={t("restore")} onClick={() => onRestore(task.draft)}>
+                    <ArrowCounterClockwiseIcon />
+                  </button>
+                  <button
+                    title={c("removeGroup")}
+                    onClick={() => attempt(() => changeFeed((feed) => feed.filter((slot) => slot.taskId !== id)))}
+                  >
+                    <XIcon />
+                  </button>
+                </header>
+                <div className="request-images">
+                  {slots.map((slot) => {
+                    const result = task.results[slot.resultIndex];
+                    const asset = result?.assetId ? assets.get(result.assetId) : undefined;
+                    const { width, height } = asset?.asset ?? frame;
+                    return (
+                      <div
+                        key={slot.id}
+                        className="result-cell"
+                        style={{ aspectRatio: width > 0 && height > 0 ? width / height : 1 }}
+                      >
+                        <button
+                          className="card-remove"
+                          title={t("remove")}
+                          onClick={() => attempt(() => removeFeed([slot.id]))}
+                        >
+                          <XIcon />
+                        </button>
+                        {asset ? (
+                          <div className="result-image">
+                            <button className="image-button" onClick={() => onView(asset.asset.id, viewerIds)}>
+                              <AssetImage entry={asset} />
+                            </button>
+                            <div className="result-actions">
+                              <button
+                                title={t("useReference")}
+                                aria-label={t("useReference")}
+                                onClick={() => onReference(asset)}
+                              >
+                                <PlusIcon size={15} />
+                              </button>
+                              <button
+                                title={t("favorites")}
+                                aria-label={t("favorites")}
+                                aria-pressed={asset.favorite}
+                                onClick={() => attempt(() => favorite(asset))}
+                              >
+                                <HeartIcon size={15} weight={asset.favorite ? "fill" : "regular"} />
+                              </button>
+                              <BoardAction key={asset.asset.id} entry={asset} boards={boards} />
+                              <button
+                                title={t("saveAs")}
+                                aria-label={t("saveAs")}
+                                onClick={() => attempt(() => exportImages([asset]))}
+                              >
+                                <DownloadSimpleIcon size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="result-placeholder">
+                            {busy && result?.status !== "failed" ? (
+                              <span className="spinner" />
+                            ) : (
+                              <ImageIcon size={28} />
+                            )}
+                            {!busy && task.status !== "completed" && task.status !== "cancelled" && (
+                              <button
+                                className="result-retry"
+                                title={t("retry")}
+                                onClick={() => attempt(() => execute(task.id))}
+                              >
+                                <ArrowClockwiseIcon />
+                                {t("retry")}
+                              </button>
+                            )}
+                            {(result?.error || task.error) && (
+                              <p className="card-error">{result?.error ?? task.error}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {slots.map((slot) => {
+                  const result = task.results[slot.resultIndex];
+                  return (
+                    result?.layerDelivery && (
+                      <LayerDelivery key={slot.id} task={task} result={result} onError={onError} />
+                    )
+                  );
+                })}
               </article>
             );
           })}

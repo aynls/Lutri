@@ -409,29 +409,69 @@ small {
   min-width: 0;
   min-height: 0;
 }
-.result-card {
-  width: 256px;
-  max-width: 100%;
-  margin: 0;
+.request-feed {
+  display: grid;
+  gap: 16px;
+}
+.request-group {
+  min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--surface);
-  position: absolute;
+}
+.request-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.request-model {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.request-status {
+  color: var(--muted);
+}
+.result-prompt {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  animation: card-in 240ms ease-out;
-  transition:
-    transform 160ms ease,
-    box-shadow 160ms ease;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  color: var(--muted);
 }
-.result-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+.request-heading button {
+  flex: none;
+  padding: 5px;
 }
-@keyframes card-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
+.request-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+}
+.result-cell {
+  position: relative;
+  height: 160px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--bg);
+}
+.result-image,
+.result-image .image-button,
+.result-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .image-button {
   display: block;
@@ -463,12 +503,12 @@ img.asset-image.loaded {
   opacity: 0;
   transition: opacity 140ms ease;
 }
-.result-card:hover .card-remove,
+.result-cell:hover .card-remove,
 .card-remove:focus-visible {
   opacity: 1;
 }
 .result-placeholder {
-  min-height: 220px;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -476,17 +516,6 @@ img.asset-image.loaded {
   gap: 14px;
   color: var(--muted);
   padding: 20px;
-}
-.result-card footer {
-  padding: 11px 12px;
-  display: flex;
-  justify-content: space-between;
-  font-size: calc(11px * var(--font-scale, 1));
-  color: var(--muted);
-  gap: 10px;
-}
-.result-card footer span:first-child {
-  color: var(--text);
 }
 .card-error {
   font-size: calc(11px * var(--font-scale, 1));
@@ -1182,9 +1211,6 @@ img.asset-image.loaded {
 }
 
 /* Creation controls. */
-.feed-masonry {
-  position: relative;
-}
 .result-image {
   position: relative;
 }
@@ -1227,45 +1253,7 @@ img.asset-image.loaded {
 .result-actions button:hover {
   color: var(--accent);
 }
-.result-prompt {
-  width: fit-content;
-  max-width: 100%;
-  margin-inline: auto;
-  padding: 0 12px 8px;
-  max-height: 144px;
-  font-size: calc(11px * var(--font-scale, 1));
-  color: var(--muted);
-  overflow-y: auto;
-  scrollbar-gutter: stable both-edges;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-.result-prompt-wrap {
-  position: relative;
-  padding-bottom: 8px;
-}
-.result-prompt-copy {
-  position: absolute;
-  top: 0;
-  right: 10px;
-  padding: 3px;
-  font-size: calc(14px * var(--font-scale, 1));
-  color: var(--muted);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  opacity: 0;
-  transition: opacity 140ms ease;
-}
-.result-prompt-wrap:hover .result-prompt-copy,
-.result-prompt-wrap:has(:focus-visible) .result-prompt-copy {
-  opacity: 1;
-}
-.result-prompt-copy:hover {
-  color: var(--accent);
-}
-.result-card:has(:focus-visible) .card-remove {
+.result-cell:has(:focus-visible) .card-remove {
   opacity: 1;
 }
 .model-trigger {
