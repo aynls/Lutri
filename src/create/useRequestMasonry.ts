@@ -27,44 +27,16 @@ function arrangeImages(grid: HTMLElement, cells: HTMLElement[], width: number, r
   const columns = Math.ceil(reserved / Math.ceil(reserved / capacity));
   const tileWidth = columnWidth(width, columns, imageGap);
   const bottoms = Array<number>(columns).fill(0);
-  const counts = Array<number>(columns).fill(0);
-  const tiles = cells.map((cell) => {
+  for (const cell of cells) {
     const lane = shortestSpan(bottoms, 1);
-    const top = bottoms[lane];
-    const row = counts[lane]++;
-    bottoms[lane] += tileWidth / Number(cell.dataset.ratio) + imageGap;
-    return { cell, lane, top, row };
-  });
-
-  // Fit all lanes to the mean natural height. Share the adjustment among their
-  // previews so that a portrait at the end of one lane leaves no blank rectangle beside it.
-  const target = bottoms.reduce((sum, end) => sum + end, 0) / columns - imageGap;
-  const minHeight = Math.min(64, tileWidth / 2.5);
-  const tails: { cell: HTMLElement; top: number }[] = [];
-  let previousTop = 0;
-  let previousLane = -1;
-  for (const { cell, lane, top, row } of tiles) {
-    const gaps = (counts[lane] - 1) * imageGap;
-    const scale = (target - gaps) / (bottoms[lane] - imageGap - gaps);
-    const fittedTop = (top - row * imageGap) * scale + row * imageGap;
-    const tail = tails[lane];
-    // Retain top-to-bottom, left-to-right result order when neighboring lanes scale differently.
-    const y = Math.max(
-      fittedTop,
-      previousTop + (lane < previousLane ? 1 : 0),
-      tail ? tail.top + minHeight + imageGap : 0,
-    );
-    if (tail) tail.cell.style.height = `${y - tail.top - imageGap}px`;
+    const height = tileWidth / Number(cell.dataset.ratio);
     cell.style.width = `${tileWidth}px`;
+    cell.style.height = `${height}px`;
     cell.style.left = `${lane * (tileWidth + imageGap)}px`;
-    cell.style.top = `${y}px`;
-    tails[lane] = { cell, top: y };
-    previousTop = y;
-    previousLane = lane;
+    cell.style.top = `${bottoms[lane]}px`;
+    bottoms[lane] += height + imageGap;
   }
-  const height = Math.max(target, ...tails.map(({ top }) => top + minHeight));
-  for (const tail of tails) tail.cell.style.height = `${height - tail.top}px`;
-  grid.style.height = `${height}px`;
+  grid.style.height = `${Math.max(...bottoms) - imageGap}px`;
 }
 
 interface Placement {
