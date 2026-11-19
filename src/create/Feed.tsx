@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowClockwiseIcon,
   ArrowCounterClockwiseIcon,
@@ -22,16 +22,6 @@ import { changeFeed, removeFeed, useApplication } from "../services/store";
 import { c } from "./messages";
 import { useRequestMasonry } from "./useRequestMasonry";
 
-function ResultCell({ width, height, children }: { width: number; height: number; children: ReactNode }) {
-  // Reserve the first known frame for this keyed slot so an incoming asset cannot move its neighbors.
-  const [ratio] = useState(() => (width > 0 && height > 0 ? Math.max(0.5, Math.min(2.5, width / height)) : 1));
-  return (
-    <div className="result-cell" data-ratio={ratio}>
-      {children}
-    </div>
-  );
-}
-
 export function Feed({
   onView,
   onReference,
@@ -46,6 +36,7 @@ export function Feed({
   const { feed, tasks, gallery, boards, ready } = useApplication();
   const container = useRef<HTMLDivElement>(null);
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
+  const assets = useMemo(() => new Map(gallery.map((entry) => [entry.asset.id, entry])), [gallery]);
   const groups = useMemo(() => {
     const byRequest = new Map<string, FeedSlot[]>();
     for (const slot of feed) {
@@ -53,19 +44,27 @@ export function Feed({
       if (group) group.push(slot);
       else byRequest.set(slot.taskId, [slot]);
     }
-    return Array.from(byRequest, ([id, slots]) => ({ id, slots: slots.sort((a, b) => a.resultIndex - b.resultIndex) }));
-  }, [feed]);
+    return Array.from(byRequest).flatMap(([id, slots]) => {
+      const task = taskMap.get(id);
+      if (!task) return [];
+      const frame = outputFrame(task.draft, gallery);
+      const ordered = slots
+        .sort((a, b) => a.resultIndex - b.resultIndex)
+        .map((slot) => {
+          const result = task.results[slot.resultIndex];
+          const asset = result?.assetId ? assets.get(result.assetId) : undefined;
+          // The draft predicts the waiting frame. Saved dimensions determine the final tile.
+          const { width, height } = asset?.asset ?? frame;
+          return { id: slot.id, result, asset, ratio: width > 0 && height > 0 ? width / height : 1 };
+        });
+      return [{ task, slots: ordered }];
+    });
+  }, [feed, taskMap, gallery, assets]);
   const masonry = useRequestMasonry(
-    groups
-      .filter(({ id }) => taskMap.has(id))
-      .map(({ id, slots }) => `${id}:${slots.map((slot) => slot.id).join(",")}`)
-      .join("|"),
+    groups.map(({ task, slots }) => `${task.id}:${slots.map(({ id, ratio }) => `${id}@${ratio}`).join(",")}`).join("|"),
   );
-  const viewerIds = groups.flatMap(({ id, slots }) =>
-    slots.flatMap((slot) => {
-      const assetId = taskMap.get(id)?.results[slot.resultIndex]?.assetId;
-      return assetId ? [assetId] : [];
-    }),
+  const viewerIds = groups.flatMap(({ slots }) =>
+    slots.flatMap(({ result }) => (result?.assetId ? [result.assetId] : [])),
   );
   const observed = useRef<Set<string> | undefined>(undefined);
   const [newResults, setNewResults] = useState<string[]>([]);
@@ -82,7 +81,6 @@ export function Feed({
     }
     observed.current = new Set(saved);
   }, [feed, taskMap, ready]);
-  const assets = useMemo(() => new Map(gallery.map((entry) => [entry.asset.id, entry])), [gallery]);
   const attempt = (action: () => Promise<unknown>) => void action().catch(onError);
   return (
     <div
@@ -113,11 +111,9 @@ export function Feed({
         </div>
       ) : (
         <div className="request-feed" ref={masonry}>
-          {groups.map(({ id, slots }) => {
-            const task = taskMap.get(id);
-            if (!task) return null;
+          {groups.map(({ task, slots }) => {
+            const id = task.id;
             const model = combinationById(task.draft.combinationId);
-            const frame = outputFrame(task.draft, gallery);
             const busy = ["queued", "submitting", "generating", "downloading"].includes(task.status);
             return (
               <article className="request-group" key={id}>
@@ -141,76 +137,64 @@ export function Feed({
                   </button>
                 </header>
                 <div className="request-images">
-                  {slots.map((slot) => {
-                    const result = task.results[slot.resultIndex];
-                    const asset = result?.assetId ? assets.get(result.assetId) : undefined;
-                    const { width, height } = asset?.asset ?? frame;
-                    return (
-                      <ResultCell key={slot.id} width={width} height={height}>
-                        <button
-                          className="card-remove"
-                          title={t("remove")}
-                          onClick={() => attempt(() => removeFeed([slot.id]))}
-                        >
-                          <XIcon />
-                        </button>
-                        {asset ? (
-                          <div className="result-image">
-                            <button className="image-button" onClick={() => onView(asset.asset.id, viewerIds)}>
-                              <AssetImage entry={asset} />
+                  {slots.map(({ id: slotId, result, asset, ratio }) => (
+                    <div key={slotId} className="result-cell" data-ratio={ratio}>
+                      <button
+                        className="card-remove"
+                        title={t("remove")}
+                        onClick={() => attempt(() => removeFeed([slotId]))}
+                      >
+                        <XIcon />
+                      </button>
+                      {asset ? (
+                        <div className="result-image">
+                          <button className="image-button" onClick={() => onView(asset.asset.id, viewerIds)}>
+                            <AssetImage entry={asset} />
+                          </button>
+                          <div className="result-actions">
+                            <button
+                              className="result-reference"
+                              title={t("useReference")}
+                              aria-label={t("useReference")}
+                              onClick={() => onReference(asset)}
+                            >
+                              <PlusIcon size={15} />
                             </button>
-                            <div className="result-actions">
-                              <button
-                                className="result-reference"
-                                title={t("useReference")}
-                                aria-label={t("useReference")}
-                                onClick={() => onReference(asset)}
-                              >
-                                <PlusIcon size={15} />
-                              </button>
-                              <button
-                                title={t(asset.favorite ? "removeFavorite" : "favorites")}
-                                aria-label={t(asset.favorite ? "removeFavorite" : "favorites")}
-                                aria-pressed={asset.favorite}
-                                onClick={() => attempt(() => favorite(asset))}
-                              >
-                                <HeartIcon size={15} weight={asset.favorite ? "fill" : "regular"} />
-                              </button>
-                              <BoardAction key={asset.asset.id} entry={asset} boards={boards} />
-                            </div>
+                            <button
+                              title={t(asset.favorite ? "removeFavorite" : "favorites")}
+                              aria-label={t(asset.favorite ? "removeFavorite" : "favorites")}
+                              aria-pressed={asset.favorite}
+                              onClick={() => attempt(() => favorite(asset))}
+                            >
+                              <HeartIcon size={15} weight={asset.favorite ? "fill" : "regular"} />
+                            </button>
+                            <BoardAction key={asset.asset.id} entry={asset} boards={boards} />
                           </div>
-                        ) : (
-                          <div className="result-placeholder">
-                            {busy && result?.status !== "failed" ? (
-                              <span className="spinner" />
-                            ) : (
-                              <ImageIcon size={28} />
-                            )}
-                            {!busy && task.status !== "completed" && task.status !== "cancelled" && (
-                              <button
-                                className="result-retry"
-                                title={t("retry")}
-                                onClick={() => attempt(() => execute(task.id))}
-                              >
-                                <ArrowClockwiseIcon />
-                                {t("retry")}
-                              </button>
-                            )}
-                            {(result?.error || task.error) && (
-                              <p className="card-error">{result?.error ?? task.error}</p>
-                            )}
-                          </div>
-                        )}
-                      </ResultCell>
-                    );
-                  })}
+                        </div>
+                      ) : (
+                        <div className="result-placeholder">
+                          {busy && result?.status !== "failed" ? <span className="spinner" /> : <ImageIcon size={28} />}
+                          {!busy && task.status !== "completed" && task.status !== "cancelled" && (
+                            <button
+                              className="result-retry"
+                              title={t("retry")}
+                              onClick={() => attempt(() => execute(task.id))}
+                            >
+                              <ArrowClockwiseIcon />
+                              {t("retry")}
+                            </button>
+                          )}
+                          {(result?.error || task.error) && <p className="card-error">{result?.error ?? task.error}</p>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                {slots.map((slot) => {
-                  const result = task.results[slot.resultIndex];
-                  return result?.layerDelivery?.status === "failed" ? (
-                    <LayerDelivery key={slot.id} task={task} result={result} onError={onError} />
-                  ) : null;
-                })}
+                {slots.map(({ id: slotId, result }) =>
+                  result?.layerDelivery?.status === "failed" ? (
+                    <LayerDelivery key={slotId} task={task} result={result} onError={onError} />
+                  ) : null,
+                )}
               </article>
             );
           })}
