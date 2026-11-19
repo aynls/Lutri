@@ -255,7 +255,6 @@ const messages = {
   connected: ["Configured", "已配置", "設定済み"],
   notConnected: ["Not configured", "未配置", "未設定"],
   endpoint: ["Endpoint", "接口地址", "エンドポイント"],
-  deployment: ["Deployment", "部署名称", "デプロイ名"],
   system: ["System", "跟随系统", "システム"],
   cleanup: ["Automatic cleanup", "自动清理", "自動整理"],
   regions: ["Regions", "区域", "領域"],

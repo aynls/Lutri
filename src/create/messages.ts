@@ -82,7 +82,6 @@ const messages = {
   preset: label("Preset", "预设", "プリセット"),
   configured: label("Configured", "已配置", "設定済み"),
   needsKey: label("API key required", "需要 API 密钥", "API キーが必要です"),
-  needsConfiguration: label("Provider setup required", "需要配置供应商", "プロバイダーの設定が必要です"),
   configure: label("Configure", "配置", "設定"),
   files: label("Files", "文件", "ファイル"),
   library: label("Resources", "资源", "リソース"),

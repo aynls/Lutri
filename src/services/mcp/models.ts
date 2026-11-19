@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { combinations } from "../../models";
-import { initialDraft, maxRequestCount, modelConfiguration, referenceLimit, regionLimit } from "../../models/shared";
+import { initialDraft, maxRequestCount, referenceLimit, regionLimit } from "../../models/shared";
 import { batchRequestLimit } from "../../batch/capabilities";
 import { native } from "../native";
 import { getState } from "../store";
@@ -37,7 +37,6 @@ export const modelTools = [
           ),
         ),
       );
-      const { providers } = getState().preferences;
       const entries = candidates
         .map((entry) => ({
           combinationId: entry.id,
@@ -45,8 +44,7 @@ export const modelTools = [
           family: entry.family,
           model: entry.model,
           provider: entry.provider,
-          credentialConfigured:
-            !!readiness.get(entry.provider) && !!modelConfiguration(entry, providers[entry.provider]),
+          credentialConfigured: readiness.get(entry.provider) === true,
           modes: entry.batch ? ["regular", "batch"] : ["regular"],
           maxReferences: entry.maxReferences,
           supportsMask: !!entry.mask,
@@ -98,9 +96,7 @@ export const modelTools = [
         combinationId: combination.id,
         name: combination.label,
         provider: combination.provider,
-        credentialConfigured:
-          !!modelConfiguration(combination, preferences.providers[combination.provider]) &&
-          (await native<boolean>("credential_present", { provider: combination.provider })),
+        credentialConfigured: await native<boolean>("credential_present", { provider: combination.provider }),
         modes: combination.batch ? ["regular", "batch"] : ["regular"],
         parametersSchema: z.toJSONSchema(parametersSchema(combination)),
         defaults: initialDraft(combination).parameters,

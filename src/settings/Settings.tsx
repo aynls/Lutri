@@ -15,9 +15,8 @@ import { McpSettings } from "./McpSettings";
 import { LlmSettings } from "./LlmSettings";
 import { localePreference, t, useLocale, type LocalePreference } from "../i18n";
 import { lt } from "../i18n/library";
-import { combinations } from "../models";
-import { maxRequestCount, minimaxEndpoints, modelConfiguration, providerNames } from "../models/shared";
-import type { ProviderConfiguration, ProviderId } from "../models/types";
+import { maxRequestCount, minimaxEndpoints, providerNames } from "../models/shared";
+import type { ProviderId } from "../models/types";
 import { native } from "../services/native";
 import { getState, refreshUpscaleDevices, savePreferences, useApplication, type Preferences } from "../services/store";
 import { desktopLabels, selectLocale, setZoom } from "../services/desktop";
@@ -27,7 +26,6 @@ import { LocalResourceCleanup } from "./LocalResourceCleanup";
 import "./settings.css";
 
 type SettingsCategory = "general" | "providers" | "llm" | "storage" | "upscale" | "mcp";
-const foundryModels = combinations.filter((combination) => combination.provider === "azure");
 let providerWrites = Promise.resolve();
 
 function ProviderSettings({ provider, onError }: { provider: ProviderId; onError: (error: unknown) => void }) {
@@ -36,13 +34,9 @@ function ProviderSettings({ provider, onError }: { provider: ProviderId; onError
     [secret, setSecret] = useState(""),
     [busy, setBusy] = useState(false),
     [checked, setChecked] = useState(false);
-  const endpointRequired = ["azure", "ark", "byteplus"].includes(provider);
+  const endpointRequired = provider === "ark" || provider === "byteplus";
   const configuration = preferences.providers[provider];
-  const configured =
-    present &&
-    (provider === "azure"
-      ? foundryModels.some((model) => modelConfiguration(model, configuration))
-      : !endpointRequired || !!configuration?.endpoint?.trim());
+  const configured = present && (!endpointRequired || !!configuration?.endpoint?.trim());
   useEffect(() => {
     void native<boolean>("credential_present", { provider }).then(setPresent).catch(onError);
   }, [provider, onError]);
@@ -52,16 +46,14 @@ function ProviderSettings({ provider, onError }: { provider: ProviderId; onError
       .catch(onError)
       .finally(() => setBusy(false));
   };
-  const saveConfiguration = (update: (current: ProviderConfiguration) => ProviderConfiguration) => {
+  const saveEndpoint = (endpoint: string) => {
     setChecked(false);
     const write = providerWrites.then(async () => {
       const prefs = getState().preferences;
-      const current = prefs.providers[provider] ?? {};
-      const next = update(current);
-      if (next === current) return;
+      if (endpoint === (prefs.providers[provider]?.endpoint ?? "")) return;
       await savePreferences({
         ...prefs,
-        providers: { ...prefs.providers, [provider]: next },
+        providers: { ...prefs.providers, [provider]: { endpoint } },
       });
     });
     providerWrites = write.catch(onError);
@@ -83,7 +75,7 @@ function ProviderSettings({ provider, onError }: { provider: ProviderId; onError
               id="minimax-api-region"
               value={configuration?.endpoint ?? minimaxEndpoints.global}
               disabled={busy}
-              onValueChange={(endpoint) => saveConfiguration((current) => ({ ...current, endpoint }))}
+              onValueChange={saveEndpoint}
             >
               <option value={minimaxEndpoints.global}>{text("apiRegionGlobal")}</option>
               <option value={minimaxEndpoints.mainland}>{text("apiRegionMainland")}</option>
@@ -100,44 +92,15 @@ function ProviderSettings({ provider, onError }: { provider: ProviderId; onError
             onChange={(event) => setSecret(event.target.value)}
           />
         </label>
-        {["azure", "qwencloud", "ark", "byteplus"].includes(provider) && (
+        {(provider === "qwencloud" || endpointRequired) && (
           <label>
             {t("endpoint")}
             <input
               defaultValue={configuration?.endpoint ?? ""}
-              onBlur={(event) => {
-                const endpoint = event.target.value.trim();
-                saveConfiguration((current) =>
-                  endpoint === (current.endpoint ?? "") ? current : { ...current, endpoint },
-                );
-              }}
+              onBlur={(event) => saveEndpoint(event.target.value.trim())}
             />
           </label>
         )}
-        {provider === "azure" &&
-          foundryModels.map(({ model, label }) => (
-            <label key={model} htmlFor={`foundry-deployment-${model}`}>
-              {label} · {t("deployment")}
-              <input
-                id={`foundry-deployment-${model}`}
-                defaultValue={configuration?.deployments?.[model] ?? ""}
-                autoComplete="off"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                onBlur={(event) => {
-                  const deployment = event.target.value.trim();
-                  saveConfiguration((current) => {
-                    if (deployment === (current.deployments?.[model] ?? "")) return current;
-                    return {
-                      ...current,
-                      deployments: { ...current.deployments, [model]: deployment },
-                    };
-                  });
-                }}
-              />
-            </label>
-          ))}
         <div className="button-row">
           <button
             className="settings-primary-button"

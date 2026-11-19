@@ -33,7 +33,7 @@ import { missingPromptReferences } from "./domain/references";
 import { t } from "./i18n";
 import { validateDraft } from "./models/validateDraft";
 import { combinationById } from "./models";
-import { initialDraft, maxRequestCount, modelConfiguration, providerNames, referenceLimit } from "./models/shared";
+import { initialDraft, maxRequestCount, providerNames, referenceLimit } from "./models/shared";
 import { useApplication, loadApplication, saveDraft, removeFeed, getState, refreshGallery } from "./services/store";
 import { assetExists, imageUrl as assetImageUrl, importAsset, native } from "./services/native";
 import { ImageViewer } from "./gallery/ImageViewer";
@@ -589,13 +589,12 @@ export default function App() {
     : validateDraft(state.draft, maxRequestCount(state.preferences), validationTargets);
   if (!isBatch && state.preferences.outputs?.generationAuto && !state.preferences.outputs.directory?.trim())
     validation.push(t("saveDirectoryRequired"));
-  const configuration = modelConfiguration(combination, state.preferences.providers[combination.provider]);
-  const configured = credential && !!configuration;
   const promptEmpty =
     !state.draft.prompt.trim() &&
     !state.draft.parameters.layer_decomposition &&
     !state.draft.parameters.structured_prompt;
-  const canSubmit = state.ready && !submitting && !batchBusy && !modeBusy && (isBatch || !!configured) && !promptEmpty;
+  const canSubmit =
+    state.ready && !submitting && !batchBusy && !modeBusy && (isBatch || credential === true) && !promptEmpty;
   const queuedBatches = state.batches.filter(
     (batch) => !batch.cloud && state.tasks.some((task) => task.batchId === batch.id && task.status === "queued"),
   );
@@ -674,11 +673,9 @@ export default function App() {
                   value={combination}
                   onChange={(next) => void switchModel(next).catch(onError)}
                 />
-                {credential !== undefined && !configured && (
+                {credential === false && (
                   <div className="creation-credential" role="status">
-                    <span className={credential === false ? "error-text" : "muted"}>
-                      {c(credential ? "needsConfiguration" : "needsKey")}
-                    </span>
+                    <span className="error-text">{c("needsKey")}</span>
                     <button
                       onClick={() => {
                         sessionStorage.setItem("lutri.settings.provider", combination.provider);
@@ -804,7 +801,7 @@ export default function App() {
                     combination={combination}
                     batch={isBatch}
                     draft={state.draft}
-                    configuration={configuration ?? {}}
+                    configuration={state.preferences.providers[combination.provider] ?? {}}
                   />
                 </section>
               </div>

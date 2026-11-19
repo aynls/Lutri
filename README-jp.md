@@ -39,7 +39,7 @@ Lutri は、クリエイターのためのデスクトップ AI 画像生成ワ�
 
 以下のプロバイダーとルーティングサービスに対応しています。普段の使い方、必要なモデル、利用中のアカウントに合わせて選べます。
 
-**Black Forest Labs · OpenAI · Google · xAI · Meta · Microsoft Foundry · Recraft · Ideogram · QwenCloud · Volcengine · BytePlus · fal · OpenRouter · Runware · Comfy Router**
+**Black Forest Labs · OpenAI · Google · xAI · Meta · Recraft · Ideogram · QwenCloud · Volcengine · BytePlus · fal · OpenRouter · Runware · Comfy Router**
 
 ## プロンプト Writer ✒️
 

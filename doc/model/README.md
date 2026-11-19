@@ -7,7 +7,7 @@
 | 组合 | 参考生成的请求方式 |
 | --- | --- |
 | GPT Image 2.5 / 2.6 Flare、Sunburst × OpenAI | Images API；有图仍走 edits，提示词表达参考创作 |
-| Grok Imagine Image 2.0 × xAI；MAI Image 2.5 / 2.6 × Azure；Muse Image × Meta | 有图走 edits，提示词表达参考创作 |
+| Grok Imagine Image 2.0 × xAI、Muse Image × Meta | 有图走 edits，提示词表达参考创作 |
 | GPT Image 2.5 Flare / Sunburst、FLUX 3 Image / Klein、Nano Banana 2.1 / 2 Lite、Seedream 5 Pro / Flash / Lite、Qwen Image 3.0、Grok Imagine Image 2.0、MAI Image 2.5、Muse Image × fal | 有图走各自 edit 路径，提示词表达参考创作 |
 | Nano Banana 2 / Pro × fal | 基础生成路径，参考图依次放入 context 的 image 部分；编辑与 auto 保留原 edit 路径 |
 | Recraft V4.1 / Pro / Utility / Utility Pro × Recraft | generations 的 style_reference_urls；编辑走 imageToImage |

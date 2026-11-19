@@ -1,49 +1,12 @@
 # MAI Image API
 
-MAI-Image-2.5 和 MAI-Image-2.6 可通过 Microsoft Foundry 和 OpenRouter 调用；fal 提供 2.5。
+Lutri 通过 OpenRouter 接入 MAI Image 2.5 和 2.6，并通过 fal 接入 2.5。
 
 2.7 与 2.7 Flash 的参数见 [MAI Image 2.7 API](MAI-Image-2.7.md)。
 
-## Microsoft Foundry
-
-在 Foundry 部署模型后，将 `RESOURCE` 替换为资源名称，`DEPLOYMENT` 替换为该模型的部署名称。在 Lutri 的 Microsoft Foundry 设置中填写共用的资源端点和 API 密钥，并为每个要使用的模型填写对应的部署名称。
-
-```http
-POST https://RESOURCE.services.ai.azure.com/mai/v1/images/generations
-api-key: AZURE_API_KEY
-Content-Type: application/json
-```
-
-| 参数 | 类型 | 说明 |
-| --- | --- | --- |
-| `model` | string | 部署名称，不一定等于模型名称。 |
-| `prompt` | string | 文本提示词，最大上下文 32,000 tokens。 |
-| `width`, `height` | integer | 仅文字生成；每边至少 768 像素。2.5 的总像素最多 1,048,576，2.6 最多 2,359,296。 |
-| `auto_aspect_ratio` | boolean | 仅 2.6 系列，由模型选择比例。 |
-| `web_grounding` | boolean | 仅 2.6 系列，启用 Bing 搜索作为上下文。 |
-
-编辑端点为 `/mai/v1/images/edits`，以 multipart 表单传入 `image` 文件及 `model`、`prompt`；图片为 JPEG 或 PNG，最多五张，通过重复 `image` 字段发送。生成和编辑响应的 `data[].b64_json` 是 PNG 的 Base64 数据。认证也可使用 Microsoft Entra ID，令牌 scope 为 `https://cognitiveservices.azure.com/.default`。
-
-文字生成示例，`DEPLOYMENT_NAME` 是部署时自定义的名称：
-
-```bash
-curl -X POST "https://RESOURCE.services.ai.azure.com/mai/v1/images/generations" \
-  -H "api-key: $AZURE_API_KEY" -H 'Content-Type: application/json' \
-  -d '{"model":"DEPLOYMENT_NAME","prompt":"A lighthouse at dawn","width":1024,"height":1024}'
-```
-
-编辑示例，`image` 可以重复指定，生成端点的宽高字段不要用于编辑：
-
-```bash
-curl -X POST "https://RESOURCE.services.ai.azure.com/mai/v1/images/edits" \
-  -H "api-key: $AZURE_API_KEY" \
-  -F 'model=DEPLOYMENT_NAME' -F 'prompt=Add a blue hat' \
-  -F 'image=@first.png;type=image/png' -F 'image=@second.png;type=image/png'
-```
-
 ## OpenRouter
 
-模型 ID 为 `microsoft/mai-image-2.5` 和 `microsoft/mai-image-2.6`。使用 `POST https://openrouter.ai/api/v1/images`，通过 Bearer API Key 鉴权。`aspect_ratio` 可为 `auto`、`1:1`、`4:3`、`3:4`、`16:9`、`9:16`、`3:2`、`2:3`，`n` 固定为 1；2.5 最多 1 张参考图，2.6 最多 5 张。2.6 的 Azure 端点允许透传 `web_grounding`，2.5 不支持透传参数；两者均不支持流式。
+模型 ID 为 `microsoft/mai-image-2.5` 和 `microsoft/mai-image-2.6`。使用 `POST https://openrouter.ai/api/v1/images`，通过 Bearer API Key 鉴权。`aspect_ratio` 可为 `auto`、`1:1`、`4:3`、`3:4`、`16:9`、`9:16`、`3:2`、`2:3`，`n` 固定为 1。2.5 最多使用 1 张参考图，2.6 最多使用 5 张。OpenRouter 的 `provider.options.azure.web_grounding` 可为 2.6 启用联网搜索。两款模型均使用非流式响应。
 
 2.6 的请求示例：
 
@@ -67,7 +30,6 @@ curl -X POST 'https://queue.fal.run/microsoft/mai-image-2.5/edit' \
 
 ## 参考来源
 
-- [Microsoft Foundry：MAI 图像模型](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-mai)
 - [OpenRouter 图像生成](https://openrouter.ai/docs/guides/overview/multimodal/image-generation)
 - [OpenRouter：2.5 端点发现](https://openrouter.ai/api/v1/images/models/microsoft/mai-image-2.5/endpoints)、[2.6 端点发现](https://openrouter.ai/api/v1/images/models/microsoft/mai-image-2.6/endpoints)
 - [fal：MAI Image 2.5](https://fal.ai/models/microsoft/mai-image-2.5/api)

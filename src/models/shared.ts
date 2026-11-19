@@ -1,13 +1,6 @@
 import type { GenerationDraft, Json, Parameters } from "../domain/types";
 import { locale } from "../i18n";
-import type {
-  CompileContext,
-  CompiledRequest,
-  FieldDefinition,
-  ModelCombination,
-  ProviderConfiguration,
-  ProviderId,
-} from "./types";
+import type { CompiledRequest, FieldDefinition, ModelCombination, ProviderId } from "./types";
 
 export const defaultMaxRequestCount = 20;
 export function referenceLimit(combination: ModelCombination, draft: GenerationDraft): number {
@@ -40,7 +33,6 @@ export const providerNames: Record<ProviderId, string> = {
   byteplus: "BytePlus",
   minimax: "MiniMax",
   xai: "xAI",
-  azure: "Microsoft Foundry",
   meta: "Meta",
   recraft: "Recraft",
   ideogram: "Ideogram",
@@ -50,16 +42,6 @@ export const minimaxEndpoints = {
   global: "https://api.minimax.io",
   mainland: "https://api.minimax.cn",
 } as const;
-
-export function modelConfiguration(
-  combination: Pick<ModelCombination, "model" | "provider">,
-  provider?: ProviderConfiguration,
-): CompileContext["configuration"] | undefined {
-  if (combination.provider !== "azure") return { endpoint: provider?.endpoint };
-  const endpoint = provider?.endpoint?.trim();
-  const deployment = provider?.deployments?.[combination.model]?.trim();
-  return endpoint && deployment ? { endpoint, deployment } : undefined;
-}
 
 export function request(provider: ProviderId, url: string, body: Json): CompiledRequest {
   const [authHeader, authPrefix] =
@@ -71,9 +53,7 @@ export function request(provider: ProviderId, url: string, body: Json): Compiled
           ? ["x-goog-api-key", ""]
           : provider === "ideogram"
             ? ["Api-Key", ""]
-            : provider === "azure"
-              ? ["api-key", ""]
-              : ["Authorization", "Bearer "];
+            : ["Authorization", "Bearer "];
   return { provider, url, method: "POST", authHeader, authPrefix, body };
 }
 export function values(fields: FieldDefinition[], draft: GenerationDraft): Parameters {

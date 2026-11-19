@@ -39,7 +39,7 @@ Lutri 是一款面向创作者的桌面 AI 图像生成工作台。汇集丰富�
 
 支持以下供应商与路由服务，可以按自己的使用习惯、模型需求和账户配置选择：
 
-**Black Forest Labs · OpenAI · Google · xAI · Meta · Microsoft Foundry · Recraft · Ideogram · QwenCloud · Volcengine（火山引擎）· BytePlus · fal · OpenRouter · Runware · Comfy Router**
+**Black Forest Labs · OpenAI · Google · xAI · Meta · Recraft · Ideogram · QwenCloud · Volcengine（火山引擎）· BytePlus · fal · OpenRouter · Runware · Comfy Router**
 
 ## 提示词 Writer ✒️
 

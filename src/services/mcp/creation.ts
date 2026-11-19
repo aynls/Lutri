@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { GenerationDraft, Parameters } from "../../domain/types";
 import { combinationById } from "../../models";
-import { initialDraft, maxRequestCount, modelConfiguration } from "../../models/shared";
+import { initialDraft, maxRequestCount } from "../../models/shared";
 import { validateDraft } from "../../models/validateDraft";
 import { batchRequestLimit, validateBatchDraft } from "../../batch/capabilities";
 import { missingPromptReferences } from "../../domain/references";
@@ -192,11 +192,9 @@ export async function checkCreation(input: CreationInput, mode: ExecutionMode) {
   )
     issues.push("layerOutputDirectory must be an existing absolute folder.");
   const assets = await Promise.all(ids.map(async (id) => ({ assetId: id, available: await assetExists(id) })));
-  const combination = modelById(input.combinationId);
+  const { provider } = modelById(input.combinationId);
   const { preferences } = getState();
-  const credentialConfigured =
-    !!modelConfiguration(combination, preferences.providers[combination.provider]) &&
-    (await native<boolean>("credential_present", { provider: combination.provider }));
+  const credentialConfigured = await native<boolean>("credential_present", { provider });
   return {
     draft,
     issues,

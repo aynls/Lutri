@@ -14,7 +14,6 @@ export type ProviderId =
   | "byteplus"
   | "minimax"
   | "xai"
-  | "azure"
   | "meta"
   | "recraft"
   | "ideogram";
@@ -85,7 +84,6 @@ export interface CompiledRequest {
 
 export interface ProviderConfiguration {
   endpoint?: string;
-  deployments?: Record<string, string>;
 }
 
 export interface CompileContext {
@@ -94,7 +92,7 @@ export interface CompileContext {
   images: string[];
   mask?: string;
   taskId: string;
-  configuration: { endpoint?: string; deployment?: string };
+  configuration: ProviderConfiguration;
 }
 
 export interface ModelCombination {
