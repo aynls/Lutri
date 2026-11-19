@@ -32,7 +32,7 @@ import { missingPromptReferences } from "./domain/references";
 import { t } from "./i18n";
 import { validateDraft } from "./models/validateDraft";
 import { combinationById } from "./models";
-import { initialDraft, maxRequestCount, referenceLimit } from "./models/shared";
+import { initialDraft, maxRequestCount, modelConfiguration, referenceLimit } from "./models/shared";
 import { useApplication, loadApplication, saveDraft, removeFeed, getState, refreshGallery } from "./services/store";
 import { assetExists, imageUrl as assetImageUrl, importAsset, native } from "./services/native";
 import { ImageViewer } from "./gallery/ImageViewer";
@@ -563,10 +563,8 @@ export default function App() {
     : validateDraft(state.draft, maxRequestCount(state.preferences));
   if (!isBatch && state.preferences.outputs?.generationAuto && !state.preferences.outputs.directory?.trim())
     validation.push(t("saveDirectoryRequired"));
-  const configuration = state.preferences.providers[combination.provider];
-  const configured =
-    credential &&
-    (combination.provider !== "azure" || !!(configuration?.endpoint?.trim() && configuration?.deployment?.trim()));
+  const configuration = modelConfiguration(combination, state.preferences.providers[combination.provider]);
+  const configured = credential && !!configuration;
   const promptEmpty =
     !state.draft.prompt.trim() &&
     !state.draft.parameters.layer_decomposition &&
@@ -802,7 +800,7 @@ export default function App() {
                     combination={combination}
                     batch={isBatch}
                     draft={state.draft}
-                    configuration={state.preferences.providers[combination.provider] ?? {}}
+                    configuration={configuration ?? {}}
                   />
                 </section>
               </div>

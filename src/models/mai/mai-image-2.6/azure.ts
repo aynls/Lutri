@@ -1,7 +1,8 @@
 import { ParameterFields } from "../../../create/components/Fields";
 import { height, width, toggle } from "../../fields";
-import { dimensionErrors, request, validateFields, values } from "../../shared";
+import { dimensionErrors, validateFields, values } from "../../shared";
 import type { FieldDefinition, ModelCombination } from "../../types";
+import { maiAzureRequest } from "../azure";
 
 const fields: FieldDefinition[] = [
   { ...width(768, 3072), visible: (d) => !d.references.length && !d.parameters.auto_aspect_ratio },
@@ -30,23 +31,5 @@ export const maiImage26Azure: ModelCombination = {
   docs: ["doc/model/MAI/MAI-Image.md"],
   outputCount: (p) => Number(p.num_images ?? 1),
   validate: (draft) => [...validateFields(fields, draft), ...dimensionErrors(values(fields, draft), 0, 2359296)],
-  compile: (context) => {
-    const p = values(fields, context.draft);
-    if (!context.configuration.endpoint || !context.configuration.deployment)
-      throw new Error("Microsoft Foundry: endpoint + deployment");
-    const compiled = request(
-      "azure",
-      `${context.configuration.endpoint.replace(/\/$/, "")}/mai/v1/images/${context.images.length ? "edits" : "generations"}`,
-      { ...p, model: context.configuration.deployment, prompt: context.prompt },
-    );
-    if (context.images.length) {
-      delete compiled.body;
-      compiled.multipart = [
-        { name: "model", text: context.configuration.deployment },
-        { name: "prompt", text: context.prompt },
-        ...context.images.map((dataUrl) => ({ name: "image", dataUrl })),
-      ];
-    }
-    return compiled;
-  },
+  compile: (context) => maiAzureRequest(context, values(fields, context.draft)),
 };

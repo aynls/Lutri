@@ -13,6 +13,7 @@ import type {
 } from "../domain/types";
 import { combinationById, combinations } from "../models";
 import { initialDraft } from "../models/shared";
+import type { ProviderConfiguration } from "../models/types";
 import { commit, readRecords, native, type RecordChange } from "./native";
 import { storeParameterAssets, parameterAssetIds } from "./parameterAssets";
 import type { Parameters } from "../domain/types";
@@ -23,7 +24,7 @@ export interface Preferences {
   palette?: Palette;
   accent?: Accent;
   fontScale?: number;
-  providers: Record<string, { endpoint?: string; deployment?: string }>;
+  providers: Record<string, ProviderConfiguration>;
   localCleanup?: { enabled: boolean; retentionDays: number };
   desktop?: { background: boolean; launchAtLogin: boolean; zoom: number };
   // null selects automatically; -1 uses CPU; nonnegative values select a device.

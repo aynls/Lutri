@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { combinations } from "../../models";
-import { initialDraft, maxRequestCount, referenceLimit, regionLimit } from "../../models/shared";
+import { initialDraft, maxRequestCount, modelConfiguration, referenceLimit, regionLimit } from "../../models/shared";
 import { batchRequestLimit } from "../../batch/capabilities";
 import { native } from "../native";
 import { getState } from "../store";
@@ -37,20 +37,22 @@ export const modelTools = [
           ),
         ),
       );
+      const { providers } = getState().preferences;
       const entries = candidates
-        .filter((entry) => !input.configuredOnly || readiness.get(entry.provider))
         .map((entry) => ({
           combinationId: entry.id,
           name: entry.label,
           family: entry.family,
           model: entry.model,
           provider: entry.provider,
-          credentialConfigured: readiness.get(entry.provider),
+          credentialConfigured:
+            !!readiness.get(entry.provider) && !!modelConfiguration(entry, providers[entry.provider]),
           modes: entry.batch ? ["regular", "batch"] : ["regular"],
           maxReferences: entry.maxReferences,
           supportsMask: !!entry.mask,
           supportsRegions: !!entry.regions,
-        }));
+        }))
+        .filter((entry) => !input.configuredOnly || entry.credentialConfigured);
       const offset = input.offset ?? 0,
         limit = input.limit ?? 25;
       return success({
@@ -91,11 +93,14 @@ export const modelTools = [
                 )
                 .map(async ([path, read]) => ({ name: path.slice(1), content: await read() })),
             );
+      const { preferences } = getState();
       return success({
         combinationId: combination.id,
         name: combination.label,
         provider: combination.provider,
-        credentialConfigured: await native<boolean>("credential_present", { provider: combination.provider }),
+        credentialConfigured:
+          !!modelConfiguration(combination, preferences.providers[combination.provider]) &&
+          (await native<boolean>("credential_present", { provider: combination.provider })),
         modes: combination.batch ? ["regular", "batch"] : ["regular"],
         parametersSchema: z.toJSONSchema(parametersSchema(combination)),
         defaults: initialDraft(combination).parameters,
@@ -125,7 +130,7 @@ export const modelTools = [
           referenceSyntax:
             "[[ref:references[].id]]; assetId identifies the stored image, id identifies its role in this request.",
         },
-        requestLimit: input.mode === "batch" ? batchRequestLimit : maxRequestCount(getState().preferences),
+        requestLimit: input.mode === "batch" ? batchRequestLimit : maxRequestCount(preferences),
         batchUnsupportedParameters: unsupported,
         documentation: docs,
       });

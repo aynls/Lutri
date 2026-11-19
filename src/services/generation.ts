@@ -11,7 +11,7 @@ import { t } from "../i18n";
 import { compilePrompt } from "../domain/references";
 import { validateDraft } from "../models/validateDraft";
 import { combinationById } from "../models";
-import { maxRequestCount, values } from "../models/shared";
+import { maxRequestCount, modelConfiguration, values } from "../models/shared";
 import { HttpError, array, object, send } from "../providers/transport";
 import { imageResults, responseMetadata, type RemoteImage } from "../providers/results";
 import { poll, recoveryFrom } from "../providers/recovery";
@@ -101,6 +101,8 @@ async function createBatch(
   await validateLayerDirectory(draft);
   if (!(await native<boolean>("credential_present", { provider: combination.provider })))
     throw new Error(`${combination.provider}: API key`);
+  if (!modelConfiguration(combination, getState().preferences.providers[combination.provider]))
+    throw new Error(c("needsConfiguration"));
   draft.parameters = (await storeParameterAssets(draft.parameters)) as Parameters;
   await native("assets_publish", {
     ids: [...draft.references.map((reference) => reference.assetId), ...parameterAssetIds(draft.parameters)],
@@ -495,7 +497,7 @@ async function runTask(id: string, initial = false) {
         images: prepared.images,
         mask: prepared.mask,
         taskId: task.id,
-        configuration: getState().preferences.providers[combination.provider] ?? {},
+        configuration: modelConfiguration(combination, getState().preferences.providers[combination.provider]) ?? {},
       });
       task.compiledPrompt = submittedPrompt(compiled);
       task.submittedAt = Date.now();

@@ -81,6 +81,11 @@ export interface CompiledRequest {
   multipart?: { name: string; text?: string; dataUrl?: string; fileName?: string }[];
 }
 
+export interface ProviderConfiguration {
+  endpoint?: string;
+  deployments?: Record<string, string>;
+}
+
 export interface CompileContext {
   draft: GenerationDraft;
   prompt: string;

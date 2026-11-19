@@ -2,9 +2,11 @@
 
 MAI-Image-2.5 和 MAI-Image-2.6 可通过 Microsoft Foundry 和 OpenRouter 调用；fal 提供 2.5。
 
+2.7 与 2.7 Flash 的参数见 [MAI Image 2.7 API](MAI-Image-2.7.md)。
+
 ## Microsoft Foundry
 
-在 Foundry 部署模型后，将 `RESOURCE` 替换为资源名称，`DEPLOYMENT` 替换为部署名称。该接口为预览版。
+在 Foundry 部署模型后，将 `RESOURCE` 替换为资源名称，`DEPLOYMENT` 替换为该模型的部署名称。在 Lutri 的 Microsoft Foundry 设置中填写共用的资源端点和 API 密钥，并为每个要使用的模型填写对应的部署名称。
 
 ```http
 POST https://RESOURCE.services.ai.azure.com/mai/v1/images/generations

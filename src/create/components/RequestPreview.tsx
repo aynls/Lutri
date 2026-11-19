@@ -1,7 +1,7 @@
 import type { GenerationDraft, Json } from "../../domain/types";
 import { compilePrompt } from "../../domain/references";
 import { t } from "../../i18n";
-import type { ModelCombination } from "../../models/types";
+import type { CompileContext, ModelCombination } from "../../models/types";
 import { getState } from "../../services/store";
 import { preparedDimensions } from "../prepareInputs";
 import { RememberedDetails } from "./RememberedDetails";
@@ -16,7 +16,7 @@ export function RequestPreview({
 }: {
   combination: ModelCombination;
   draft: GenerationDraft;
-  configuration: { endpoint?: string; deployment?: string };
+  configuration: CompileContext["configuration"];
   batch?: boolean;
 }) {
   let url = "",
