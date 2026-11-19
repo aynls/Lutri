@@ -54,7 +54,7 @@ export const combination: ModelCombination = {
     { id: "advanced", fields: ["enable_safety_checker"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Seedream/seedream-5/"],
+  documentationPath: "doc/model/Seedream/seedream-5/Seedream-5-Runware.md",
   outputCount: (p) => Number(p.n ?? p.num_images ?? p.numberResults ?? 1),
   initialRecovery: (id) => ({ remoteId: id }),
   validate: (draft) => {

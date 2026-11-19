@@ -51,7 +51,7 @@ export const combination: ModelCombination = {
     { id: "advanced", fields: ["negative_prompt", "enable_safety_checker"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Qwen/qwen-image/"],
+  documentationPath: "doc/model/Qwen/qwen-image/Qwen-Image-QwenCloud.md",
   outputCount: (p) => Number(p.n ?? p.num_images ?? p.numberResults ?? 1),
   initialRecovery: undefined,
   validate: (draft) => {

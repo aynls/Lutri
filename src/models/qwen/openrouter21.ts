@@ -27,7 +27,7 @@ export function qwenImage21OpenRouter(tier: "pro" | "turbo"): ModelCombination {
       { id: "generation", fields: ["seed", "n"] },
     ],
     Form: ParameterFields,
-    docs: ["doc/model/Qwen/qwen-image/Qwen-Image-OpenRouter.md"],
+    documentationPath: "doc/model/Qwen/qwen-image/Qwen-Image-OpenRouter.md",
     outputCount: (p) => Number(p.n ?? 1),
     validate: (draft) => validateFields(fields, draft),
     compile: (context) => openRouter(`qwen/${model}`, values(fields, context.draft), context),

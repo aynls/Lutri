@@ -12,7 +12,7 @@ export const flashV2 = {
   maxReferences: 0,
   promptLimit: { min: 1, max: 10000 },
   Form: ParameterFields,
-  docs: ["doc/model/Recraft/Recraft-V4.1-Flash-V2.md"],
+  documentationPath: "doc/model/Recraft/Recraft-V4.1-Flash-V2.md",
 };
 
 export const colorFields = [

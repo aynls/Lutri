@@ -52,7 +52,7 @@ export const ideogram45Runware: ModelCombination = {
     },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Ideogram/Ideogram-4.md"],
+  documentationPath: "doc/model/Ideogram/Ideogram-4.md",
   outputCount: (p) => Number(p.num_images ?? p.numberResults ?? 1),
   initialRecovery: (id) => ({ remoteId: id }),
   validate: (draft) => {

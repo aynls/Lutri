@@ -63,7 +63,7 @@ export function seedream55ArkApi(provider: "ark" | "byteplus", model: string, en
       { id: "output", fields: ["output_format", "watermark", "response_format"], collapsed: true },
     ],
     Form: ParameterFields,
-    docs: ["doc/model/Seedream/seedream-5.5/Ark.md"],
+    documentationPath: "doc/model/Seedream/seedream-5.5/Ark.md",
     outputCount: () => 1,
     validate: (draft) => {
       const errors = validateFields(fields, draft);

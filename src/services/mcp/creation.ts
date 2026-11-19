@@ -41,7 +41,7 @@ export const creationSchema = z.strictObject({
     .min(1)
     .optional()
     .describe(
-      "Number of independent requests. Distinct from the model's per-request image count. Limits are returned by get_model.",
+      "Number of independent requests. Distinct from the model's per-request image count. Use validate_creation to check the limit.",
     ),
   references: z
     .array(
@@ -73,7 +73,7 @@ export const creationSchema = z.strictObject({
   mask: z
     .strictObject({ assetId: identifier, referenceId: identifier })
     .optional()
-    .describe("Mask asset and the reference id it applies to. Mask semantics are returned by get_model."),
+    .describe("Mask asset and the reference id it applies to. Use list_models to check mask support."),
   inputPreparation: z
     .strictObject({ maxEdge: z.number().int().min(256).max(8192) })
     .optional()
@@ -107,11 +107,13 @@ function fieldSchema(field: FieldDefinition): z.ZodType {
   return z
     .union([schema, z.null(), z.literal("")])
     .optional()
-    .describe(field.label.en);
+    .meta({ description: field.label.en, default: field.default });
 }
 
-export function parametersSchema(combination: ModelCombination) {
-  return z.strictObject(Object.fromEntries(combination.fields.map((field) => [field.key, fieldSchema(field)])));
+export function parametersSchema(combination: ModelCombination, mode: ExecutionMode = "regular") {
+  const unsupported = mode === "batch" ? (combination.batch?.unsupportedFields ?? []) : [];
+  const fields = combination.fields.filter((field) => !unsupported.includes(field.key));
+  return z.strictObject(Object.fromEntries(fields.map((field) => [field.key, fieldSchema(field)])));
 }
 
 export function modelById(id: string) {

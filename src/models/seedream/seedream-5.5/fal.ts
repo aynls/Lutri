@@ -56,7 +56,7 @@ export const combination: ModelCombination = {
     { id: "advanced", fields: ["enable_safety_checker"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Seedream/seedream-5.5/fal.md"],
+  documentationPath: "doc/model/Seedream/seedream-5.5/fal.md",
   outputCount: (p) => (p.layer_decomposition ? 1 : Number(p.num_images ?? 1)),
   validate: (draft) => {
     const errors = validateFields(fields, draft);

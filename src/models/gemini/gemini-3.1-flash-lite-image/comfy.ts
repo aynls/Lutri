@@ -30,7 +30,7 @@ export const combination: ModelCombination = {
     { id: "advanced", fields: ["uploadImagesToStorage"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Gemini/Nano-Banana-2-Lite-Comfy.md"],
+  documentationPath: "doc/model/Gemini/Nano-Banana-2-Lite-Comfy.md",
   outputCount: () => 1,
   validate: (draft) => validateFields(fields, draft),
   compile: (context) => {

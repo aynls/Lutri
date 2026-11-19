@@ -52,7 +52,7 @@ export const combination: ModelCombination = {
     { id: "advanced", fields: ["safety_tolerance", "system_prompt"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Gemini/Nano-Banana-API.md"],
+  documentationPath: "doc/model/Gemini/Nano-Banana-API.md",
   outputCount: (p) => (typeof p.num_images === "number" ? p.num_images : 1),
   validate: (draft) => [
     ...validateFields(fields, draft),

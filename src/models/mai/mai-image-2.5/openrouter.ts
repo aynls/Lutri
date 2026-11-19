@@ -21,7 +21,7 @@ export const maiImage25OpenRouter: ModelCombination = {
     { id: "output", fields: ["output_format", "sync_mode"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/MAI/MAI-Image.md"],
+  documentationPath: "doc/model/MAI/MAI-Image.md",
   outputCount: (p) => Number(p.num_images ?? 1),
   validate: (draft) => [...validateFields(fields, draft), ...dimensionErrors(values(fields, draft), 0, 1048576)],
   compile: (context) => {

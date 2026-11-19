@@ -55,7 +55,7 @@ export const recraftV41ProVectorRecraft: ModelCombination = {
     { id: "output", fields: ["response_format"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Recraft/Recraft-Vector.md"],
+  documentationPath: "doc/model/Recraft/Recraft-Vector.md",
   outputCount: (p) => Number(p.n ?? 1),
   validate: (draft) => [
     ...validateFields(fields, draft),

@@ -53,7 +53,7 @@ export const combination: ModelCombination = {
     { id: "output", fields: ["output_format", "watermark", "response_format"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Seedream/seedream-5.5/Comfy.md"],
+  documentationPath: "doc/model/Seedream/seedream-5.5/Comfy.md",
   outputCount: () => 1,
   validate: (draft) => {
     const errors = validateFields(fields, draft);

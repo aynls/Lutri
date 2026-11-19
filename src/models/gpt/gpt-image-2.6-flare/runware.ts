@@ -36,7 +36,7 @@ export const gptImage26FlareRunware: ModelCombination = {
   primaryReference: true,
   groups: groups26,
   Form: ParameterFields,
-  docs: ["doc/model/GPT/gpt-image-2.6/gpt-image-2.6-Runware.md"],
+  documentationPath: "doc/model/GPT/gpt-image-2.6/gpt-image-2.6-Runware.md",
   outputCount: (p) => Number(p.numberResults ?? 1),
   initialRecovery: (id) => ({ remoteId: id }),
   validate: (draft) => {

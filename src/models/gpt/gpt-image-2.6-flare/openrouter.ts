@@ -30,7 +30,7 @@ export const gptImage26FlareOpenRouter: ModelCombination = {
   primaryReference: true,
   groups: groups26,
   Form: ParameterFields,
-  docs: ["doc/model/GPT/gpt-image-2.6/gpt-image-2.6-OpenRouter.md"],
+  documentationPath: "doc/model/GPT/gpt-image-2.6/gpt-image-2.6-OpenRouter.md",
   outputCount: (p) => Number(p.n ?? 1),
   validate: (draft) => {
     const errors = validateFields(fields, draft);

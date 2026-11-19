@@ -53,7 +53,7 @@ export const combination: ModelCombination = {
     { id: "output", fields: ["outputFormat"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Seedream/seedream-5.5/Runware.md"],
+  documentationPath: "doc/model/Seedream/seedream-5.5/Runware.md",
   outputCount: (p) => (p.layer_decomposition ? 1 : Number(p.numberResults ?? 1)),
   initialRecovery: (id) => ({ remoteId: id }),
   validate: (draft) => {

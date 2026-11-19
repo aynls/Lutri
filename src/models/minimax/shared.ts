@@ -18,7 +18,7 @@ export function minimax(
     maxReferences: 16,
     promptLimit: { min: 1, max: 32000 },
     Form: ParameterFields,
-    docs: ["doc/model/MiniMax/H3-Image.md"],
+    documentationPath: "doc/model/MiniMax/H3-Image.md",
     groups: [
       { id: "frame", fields: ["width", "height", "size", "resolution", "aspect_ratio", "area"] },
       { id: "generation", fields: ["numberResults", "num_images", "n"] },

@@ -63,7 +63,7 @@ export const ideogram45Comfy: ModelCombination = {
     },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Ideogram/Ideogram-4.md"],
+  documentationPath: "doc/model/Ideogram/Ideogram-4.md",
   outputCount: (p) => Number(p.num_images ?? p.numberResults ?? 1),
   validate: (draft) => {
     const errors = validateFields(fields, draft);

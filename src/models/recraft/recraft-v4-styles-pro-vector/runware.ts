@@ -40,7 +40,7 @@ export const recraftV4StylesProVectorRunware: ModelCombination = {
     { id: "style", fields: ["style_id", "style_match", "colors", "background_color"] },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Recraft/Recraft-Vector.md"],
+  documentationPath: "doc/model/Recraft/Recraft-Vector.md",
   outputCount: () => 1,
   initialRecovery: (id) => ({ remoteId: id }),
   validate: (draft) => [

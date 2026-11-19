@@ -33,7 +33,7 @@ export const recraftV4StylesProFal: ModelCombination = {
     { id: "advanced", fields: ["enable_safety_checker"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Recraft/Recraft-V4.md"],
+  documentationPath: "doc/model/Recraft/Recraft-V4.md",
   outputCount: (p) => Number(p.n ?? p.numberResults ?? 1),
   validate: (draft) => {
     const errors = validateFields(fields, draft);

@@ -53,7 +53,7 @@ export function recraftComfy({ model, label }: Pick<ModelCombination, "model" | 
         { id: "output", fields: ["response_format"], collapsed: true },
       ],
       Form: ParameterFields,
-      docs: ["doc/model/Recraft/Recraft-Comfy.md"],
+      documentationPath: "doc/model/Recraft/Recraft-Comfy.md",
       outputCount: (p) => (typeof p.n === "number" ? p.n : 1),
       validate: (draft) => {
         const { style_id } = draft.parameters;

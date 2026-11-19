@@ -35,7 +35,7 @@ export const combination: ModelCombination = {
     { id: "advanced", fields: ["safety_tolerance", "enable_safety_checker", "version", "user"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/FLUX/flux-3-image-klein/"],
+  documentationPath: "doc/model/FLUX/flux-3-image-klein/flux-3-Image-Klein-Runware.md",
   outputCount: (p) => Number(p.num_images ?? p.numberResults ?? 1),
   initialRecovery: (taskId) => ({ remoteId: taskId }),
   validate: (draft) => {

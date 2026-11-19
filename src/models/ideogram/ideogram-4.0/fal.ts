@@ -44,7 +44,7 @@ export const ideogram40Fal: ModelCombination = {
     { id: "advanced", fields: ["acceleration", "enable_safety_checker"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Ideogram/Ideogram-4.md"],
+  documentationPath: "doc/model/Ideogram/Ideogram-4.md",
   outputCount: (p) => (typeof p.num_images === "number" ? p.num_images : 1),
   validate: (draft) => {
     const errors = validateFields(fields, draft);

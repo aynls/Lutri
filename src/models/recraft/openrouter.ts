@@ -28,7 +28,7 @@ export function recraftOpenRouter({ model, label }: Pick<ModelCombination, "mode
       { id: "generation", fields: ["n"] },
     ],
     Form: ParameterFields,
-    docs: ["doc/model/Recraft/Recraft-OpenRouter.md"],
+    documentationPath: "doc/model/Recraft/Recraft-OpenRouter.md",
     outputCount: (p) => Number(p.n ?? 1),
     validate: (draft) => {
       const errors = validateFields(fields, draft);

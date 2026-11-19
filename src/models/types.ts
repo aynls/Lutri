@@ -117,7 +117,7 @@ export interface ModelCombination {
   promptLimit?: { min?: number; max: number };
   inputPolicy?: InputPolicy | ((draft: GenerationDraft) => InputPolicy);
   Form: ComponentType<FormProps>;
-  docs: string[];
+  documentationPath: string;
   validate: (draft: GenerationDraft) => ModelIssue[];
   compile: (context: CompileContext) => CompiledRequest;
   initialRecovery?: (taskId: string) => Recovery;

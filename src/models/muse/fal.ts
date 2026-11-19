@@ -35,7 +35,7 @@ export const museImageFal: ModelCombination = {
     { id: "advanced", fields: ["moderation"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Muse/Muse-Image.md"],
+  documentationPath: "doc/model/Muse/Muse-Image.md",
   outputCount: (p) => Number(p.n ?? p.num_images ?? p.numberResults ?? 1),
   validate: (draft) => validateFields(fields, draft),
   compile: (context) => {

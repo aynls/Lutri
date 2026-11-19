@@ -19,6 +19,6 @@ export const maiImage27Defaults = {
   creationControl: "prompt",
   maxReferences: 5,
   Form: ParameterFields,
-  docs: ["doc/model/MAI/MAI-Image-2.7.md"],
+  documentationPath: "doc/model/MAI/MAI-Image-2.7.md",
   outputCount: () => 1,
 } satisfies Partial<ModelCombination>;

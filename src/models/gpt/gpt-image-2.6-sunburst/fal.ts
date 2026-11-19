@@ -37,7 +37,7 @@ export const gptImage26SunburstFal: ModelCombination = {
   primaryReference: true,
   groups: groups26,
   Form: ParameterFields,
-  docs: ["doc/model/GPT/gpt-image-2.6/gpt-image-2.6-fal.md"],
+  documentationPath: "doc/model/GPT/gpt-image-2.6/gpt-image-2.6-fal.md",
   outputCount: (p) => Number(p.num_images ?? 1),
   validate: (draft) => {
     const errors = validateFields(fields, draft);

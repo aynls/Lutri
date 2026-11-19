@@ -27,7 +27,7 @@ export const gptImage25SunburstOpenRouter: ModelCombination = {
   primaryReference: true,
   groups,
   Form: ParameterFields,
-  docs: ["doc/model/GPT/gpt-image-2.5/gpt-image-2.5-openrouter.md"],
+  documentationPath: "doc/model/GPT/gpt-image-2.5/gpt-image-2.5-OpenRouter.md",
   outputCount: (p) => Number(p.n ?? p.num_images ?? p.numberResults ?? 1),
   validate: (draft) => {
     const errors = validateFields(fields, draft);

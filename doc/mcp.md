@@ -20,7 +20,7 @@ Lutri 的本机 MCP 服务提供创作、图库资产检索和任务结果访问
 | 工具                | 用途                                                                                                         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `list_models`       | 分页列出模型与供应商组合，支持 `query`、`provider`、`mode`、`configuredOnly` 筛选。                          |
-| `get_model`         | 返回单个组合的参数 schema、默认值、输入限制、提示词限制及文档；可提供 `input` 计算当前有效字段。             |
+| `get_model`         | 返回单个组合的参数 schema。传入 `includeDocumentation: true` 可附带该组合绑定的一份文档。                    |
 | `validate_creation` | 检查创作参数、素材是否存在、供应商密钥是否已配置及输出目录，不向供应商提交请求。                             |
 | `generate`          | 提交普通创作，返回批次与任务 ID，不等待生图完成。                                                            |
 | `submit_batch`      | 提交供应商原生云端批处理，支持多个创作条目；本地准备完成后返回 ID，上传、提交和获取结果在后台执行。          |
@@ -60,7 +60,9 @@ Lutri 的本机 MCP 服务提供创作、图库资产检索和任务结果访问
 
 `requestCount` 表示独立供应商请求的次数；`n`、`num_images` 等模型参数表示每次请求生成的图片数，两者不自动转换。普通创作的次数上限来自应用设置；MCP 云端批处理总计不超过 50,000 次请求。
 
-`parameters` 中提供的字段覆盖模型默认值。JSON 参数、字段之间的依赖及图片输入约束仍由相应模型组合校验。`get_model.input` 使用与 `creation` 相同的字段，但不包含 `combinationId`；返回的 `fields[].active` 描述该输入下的可用字段。`includeDocumentation: false` 可省略模型文档内容。
+调用 `get_model` 时传入 `combinationId`。`mode` 默认为 `regular`，传入 `batch` 时，返回的 schema 省略批处理禁用的参数。`data.parametersSchema` 描述 `creation.parameters` 的字段、类型、取值范围和 Lutri 已配置的默认值。提交请求时，`parameters` 中提供的字段覆盖模型默认值。调用 `validate_creation` 检查具体请求的字段依赖和输入约束。
+
+`includeDocumentation` 默认为 `false`。传入 `true` 时，如果组合绑定的文档可用，响应会附带 `data.documentation`。其中 `name` 是文档路径，`content` 是 Markdown 正文。
 
 ### 参考图、区域与蒙版
 
@@ -70,7 +72,7 @@ Lutri 的本机 MCP 服务提供创作、图库资产检索和任务结果访问
 
 区域包含 `id`、`description`，以及可选的 `operation`、`referenceId`、`source`、`target`。`operation` 为 `place`、`move`、`anchor` 或 `remove`。矩形格式为 `[top, left, bottom, right]`，坐标归一化为 0–1000，必须满足上小于下、左小于右。来源区域必须绑定参考身份；每个区域必须具有目标区域，或同时具有来源区域与参考身份。
 
-蒙版使用 `{ "assetId": "MASK_ASSET_ID", "referenceId": "REFERENCE_ID" }`。具体蒙版语义、区域支持方式和数量限制来自 `get_model`。服务会检查编辑原图、区域和蒙版的引用关系。`inputPreparation.maxEdge` 只缩放请求副本，不改写资产原图。
+蒙版使用 `{ "assetId": "MASK_ASSET_ID", "referenceId": "REFERENCE_ID" }`。通过 `list_models` 查看组合是否支持蒙版和区域。`validate_creation` 检查数量限制以及编辑原图、区域和蒙版的引用关系。`inputPreparation.maxEdge` 只缩放请求副本，不改写资产原图。
 
 ### 输出
 

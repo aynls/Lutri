@@ -37,7 +37,7 @@ export const gptImage26FlareComfy: ModelCombination = {
   primaryReference: true,
   groups,
   Form: ParameterFields,
-  docs: ["doc/model/GPT/gpt-image-2.6/gpt-image-2.6-Comfy.md"],
+  documentationPath: "doc/model/GPT/gpt-image-2.6/gpt-image-2.6-Comfy.md",
   outputCount: (p) => Number(p.n ?? 1),
   validate: (draft) => {
     const errors = validateFields(fields, draft);

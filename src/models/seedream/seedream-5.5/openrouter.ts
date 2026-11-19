@@ -83,7 +83,7 @@ export const combination: ModelCombination = {
     { id: "output", fields: ["output_format"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Seedream/seedream-5.5/OpenRouter.md"],
+  documentationPath: "doc/model/Seedream/seedream-5.5/OpenRouter.md",
   outputCount: () => 1,
   validate: (draft) => {
     const errors = validateFields(fields, draft);

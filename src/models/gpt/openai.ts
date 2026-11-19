@@ -40,7 +40,7 @@ export function openAICombination(model: string, label: string, version26: boole
       maskBytes: 4 * 1024 * 1024,
       mediaTypes: ["image/png", "image/jpeg", "image/webp"],
     },
-    docs: ["doc/model/GPT/gpt-image-OpenAI.md"],
+    documentationPath: "doc/model/GPT/gpt-image-OpenAI.md",
     outputCount: (p) => Number(p.n ?? 1),
     validate: (draft) => {
       const errors = validateFields(fields, draft);

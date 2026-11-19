@@ -36,7 +36,7 @@ export const combination: ModelCombination = {
     { id: "advanced", fields: ["safety_tolerance", "enable_safety_checker", "version", "user"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/FLUX/flux-3-image/"],
+  documentationPath: "doc/model/FLUX/flux-3-image/flux-3-Image-fal.md",
   outputCount: (p) => Number(p.num_images ?? p.numberResults ?? 1),
   initialRecovery: undefined,
   validate: (draft) => {

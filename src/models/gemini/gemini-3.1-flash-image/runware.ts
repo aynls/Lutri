@@ -50,7 +50,7 @@ export const combination: ModelCombination = {
     },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Gemini/Nano-Banana-API.md"],
+  documentationPath: "doc/model/Gemini/Nano-Banana-API.md",
   outputCount: (p) => Number(p.num_images ?? p.numberResults ?? 1),
   initialRecovery: (id) => ({ remoteId: id }),
   validate: (draft) => {

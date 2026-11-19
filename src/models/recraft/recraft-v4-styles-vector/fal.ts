@@ -32,7 +32,7 @@ export const recraftV4StylesVectorFal: ModelCombination = {
     { id: "advanced", fields: ["enable_safety_checker"], collapsed: true },
   ],
   Form: ParameterFields,
-  docs: ["doc/model/Recraft/Recraft-Vector.md"],
+  documentationPath: "doc/model/Recraft/Recraft-Vector.md",
   outputCount: () => 1,
   validate: (draft) => [
     ...validateFields(fields, draft),
