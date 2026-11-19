@@ -5,7 +5,6 @@ import {
   ImageIcon,
   XIcon,
   HeartIcon,
-  DownloadSimpleIcon,
   PlusIcon,
 } from "@phosphor-icons/react";
 import type { FeedSlot, GalleryEntry, GenerationDraft } from "../domain/types";
@@ -16,8 +15,7 @@ import { combinationById } from "../models";
 import { AssetImage } from "../gallery/AssetImage";
 import { BoardAction } from "../gallery/BoardAction";
 import { outputFrame } from "./components/regionGeometry";
-import { LayerDelivery } from "../components/LayerDelivery";
-import { exportImages, favorite } from "../gallery/actions";
+import { favorite } from "../gallery/actions";
 import { execute } from "../services/generation";
 import { changeFeed, removeFeed, useApplication } from "../services/store";
 import { c } from "./messages";
@@ -147,6 +145,7 @@ export function Feed({
                             </button>
                             <div className="result-actions">
                               <button
+                                className="result-reference"
                                 title={t("useReference")}
                                 aria-label={t("useReference")}
                                 onClick={() => onReference(asset)}
@@ -154,21 +153,14 @@ export function Feed({
                                 <PlusIcon size={15} />
                               </button>
                               <button
-                                title={t("favorites")}
-                                aria-label={t("favorites")}
+                                title={t(asset.favorite ? "removeFavorite" : "favorites")}
+                                aria-label={t(asset.favorite ? "removeFavorite" : "favorites")}
                                 aria-pressed={asset.favorite}
                                 onClick={() => attempt(() => favorite(asset))}
                               >
                                 <HeartIcon size={15} weight={asset.favorite ? "fill" : "regular"} />
                               </button>
                               <BoardAction key={asset.asset.id} entry={asset} boards={boards} />
-                              <button
-                                title={t("saveAs")}
-                                aria-label={t("saveAs")}
-                                onClick={() => attempt(() => exportImages([asset]))}
-                              >
-                                <DownloadSimpleIcon size={15} />
-                              </button>
                             </div>
                           </div>
                         ) : (
@@ -197,14 +189,6 @@ export function Feed({
                     );
                   })}
                 </div>
-                {slots.map((slot) => {
-                  const result = task.results[slot.resultIndex];
-                  return (
-                    result?.layerDelivery && (
-                      <LayerDelivery key={slot.id} task={task} result={result} onError={onError} />
-                    )
-                  );
-                })}
               </article>
             );
           })}

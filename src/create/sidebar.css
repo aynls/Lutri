@@ -346,9 +346,6 @@
     transform: translateY(-4px);
   }
 }
-.result-actions {
-  flex-wrap: wrap;
-}
 @container (max-width: 320px) {
   .creation-panel .field:not(.field-json) {
     display: flex;
