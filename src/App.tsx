@@ -65,7 +65,6 @@ import { Gallery } from "./gallery/Gallery";
 import { History } from "./history/History";
 import { RequestDetails } from "./history/RequestDetails";
 import { taskUsesAsset, type RelatedHistoryScope } from "./history/related";
-import { taskText } from "./i18n/tasks";
 import { Settings } from "./settings/Settings";
 import { Writers } from "./writers/Writers";
 import { Upscale } from "./upscale/Upscale";
@@ -970,44 +969,22 @@ export default function App() {
           />
         </div>
         <div className="tasks-host" hidden={page !== "history"}>
-          <div className="task-tabs">
-            <div className="segmented-control" aria-label={t("history")}>
-              {(["regular", "batch"] as const).map((tab) => (
-                <button key={tab} aria-pressed={taskTab === tab} onClick={() => setTaskTab(tab)}>
-                  {b(tab)}
-                </button>
-              ))}
-            </div>
-            {related && (
-              <div className="related-scope">
-                <span>
-                  {taskText("relatedImage")} · <code>{related.assetId}</code>
-                </span>
-                <button
-                  title={taskText("exitRelated")}
-                  aria-label={taskText("exitRelated")}
-                  onClick={() => {
-                    setTaskTab(related.returnTab);
-                    setRelated(undefined);
-                  }}
-                >
-                  <XIcon size={16} />
-                </button>
-                <button
-                  onClick={() => {
-                    setTaskTab(related.returnTab);
-                    setPage(related.returnPage);
-                    setRelated(undefined);
-                  }}
-                >
-                  {taskText("backToSource")}
-                </button>
-              </div>
-            )}
-          </div>
           <div className="task-view" hidden={taskTab !== "regular"}>
             <History
+              tab={taskTab}
+              onTab={setTaskTab}
               related={related}
+              onExitRelated={() => {
+                if (!related) return;
+                setTaskTab(related.returnTab);
+                setRelated(undefined);
+              }}
+              onBack={() => {
+                if (!related) return;
+                setTaskTab(related.returnTab);
+                setPage(related.returnPage);
+                setRelated(undefined);
+              }}
               onError={onError}
               onRestore={(draft) => void restore(draft).catch(onError)}
               onView={view}
@@ -1015,7 +992,20 @@ export default function App() {
           </div>
           <div className="task-view" hidden={taskTab !== "batch"}>
             <BatchHistory
+              tab={taskTab}
+              onTab={setTaskTab}
               related={related}
+              onExitRelated={() => {
+                if (!related) return;
+                setTaskTab(related.returnTab);
+                setRelated(undefined);
+              }}
+              onBack={() => {
+                if (!related) return;
+                setTaskTab(related.returnTab);
+                setPage(related.returnPage);
+                setRelated(undefined);
+              }}
               onError={onError}
               onView={view}
               onRestore={(draft) => void restore(draft, "batch").catch(onError)}

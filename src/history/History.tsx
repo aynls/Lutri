@@ -10,7 +10,7 @@ import {
   PlayIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import type { GalleryEntry, GenerationDraft, GenerationTask } from "../domain/types";
+import type { CreationMode, GalleryEntry, GenerationDraft, GenerationTask } from "../domain/types";
 import { displayPrompt } from "../domain/references";
 import { ModelIcon } from "../components/ModelIcon";
 import { t } from "../i18n";
@@ -27,16 +27,25 @@ import { taskText } from "../i18n/tasks";
 import { BatchUsage, TaskUsage } from "./TaskUsage";
 import { native } from "../services/native";
 import { b } from "../batch/messages";
+import { HistoryMode } from "./HistoryMode";
 import { taskUsesAsset, type RelatedHistoryScope } from "./related";
 
 const active = new Set(["queued", "submitting", "generating", "downloading"]);
 export function History({
+  tab,
+  onTab,
   related,
+  onExitRelated,
+  onBack,
   onRestore,
   onView,
   onError,
 }: {
+  tab: CreationMode;
+  onTab: (tab: CreationMode) => void;
   related?: RelatedHistoryScope;
+  onExitRelated: () => void;
+  onBack: () => void;
   onRestore: (draft: GenerationDraft) => void;
   onView: (id: string, ids?: string[]) => void;
   onError: (error: unknown) => void;
@@ -173,100 +182,99 @@ export function History({
   return (
     <div className="history-workspace">
       <div className="content-toolbar history-toolbar">
-        <div className="search-input">
-          <MagnifyingGlassIcon />
-          <input
-            value={related?.assetId ?? search}
-            readOnly={!!related}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            placeholder={t("searchHistory")}
-            aria-label={t("searchHistory")}
-          />
-        </div>
-        <Select
-          aria-label={t("allStatuses")}
-          value={related ? "all" : status}
-          disabled={!!related}
-          onValueChange={(nextValue) => {
-            setStatus(nextValue);
-            setPage(1);
-          }}
-        >
-          <option value="all">{t("allStatuses")}</option>
-          <option value="active">{t("activeTasks")}</option>
-          <option value="completed">{t("completed")}</option>
-          <option value="failed">{t("failed")}</option>
-          <option value="cancelled">{taskText("cancelled")}</option>
-        </Select>
-        <Select
-          aria-label={t("model")}
-          value={related ? "all" : model}
-          disabled={!!related}
-          onValueChange={(nextValue) => {
-            setModel(nextValue);
-            setPage(1);
-          }}
-        >
-          <option value="all">{t("model")}</option>
-          {models.map((id) => (
-            <option key={id} value={id}>
-              {
-                combinationById(
-                  tasks.find((task) => combinationById(task.draft.combinationId).model === id)!.draft.combinationId,
-                ).label
-              }
-            </option>
-          ))}
-        </Select>
-        <Select
-          aria-label={t("provider")}
-          value={related ? "all" : provider}
-          disabled={!!related}
-          onValueChange={(value) => {
-            setProvider(value);
-            setPage(1);
-          }}
-        >
-          <option value="all">{t("provider")}</option>
-          {[
-            ...new Set(
-              tasks
-                .filter((task) => !task.cloudGroupId && !task.historyDeletedAt)
-                .map((task) => combinationById(task.draft.combinationId).provider),
-            ),
-          ].map((id) => (
-            <option key={id} value={id}>
-              {providerNames[id]}
-            </option>
-          ))}
-        </Select>
-        <input
-          className="history-filter-date"
-          type="date"
-          aria-label={b("since")}
-          title={b("since")}
-          value={related ? "" : since}
-          disabled={!!related}
-          onChange={(event) => {
-            setSince(event.target.value);
-            setPage(1);
-          }}
-        />
-        <input
-          className="history-filter-date"
-          type="date"
-          aria-label={b("until")}
-          title={b("until")}
-          value={related ? "" : until}
-          disabled={!!related}
-          onChange={(event) => {
-            setUntil(event.target.value);
-            setPage(1);
-          }}
-        />
+        <HistoryMode tab={tab} onTab={onTab} related={related} onExitRelated={onExitRelated} onBack={onBack} />
+        {!related && (
+          <>
+            <div className="search-input">
+              <MagnifyingGlassIcon />
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder={t("searchHistory")}
+                aria-label={t("searchHistory")}
+              />
+            </div>
+            <Select
+              aria-label={t("allStatuses")}
+              value={status}
+              onValueChange={(nextValue) => {
+                setStatus(nextValue);
+                setPage(1);
+              }}
+            >
+              <option value="all">{t("allStatuses")}</option>
+              <option value="active">{t("activeTasks")}</option>
+              <option value="completed">{t("completed")}</option>
+              <option value="failed">{t("failed")}</option>
+              <option value="cancelled">{taskText("cancelled")}</option>
+            </Select>
+            <Select
+              aria-label={t("model")}
+              value={model}
+              onValueChange={(nextValue) => {
+                setModel(nextValue);
+                setPage(1);
+              }}
+            >
+              <option value="all">{t("model")}</option>
+              {models.map((id) => (
+                <option key={id} value={id}>
+                  {
+                    combinationById(
+                      tasks.find((task) => combinationById(task.draft.combinationId).model === id)!.draft.combinationId,
+                    ).label
+                  }
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label={t("provider")}
+              value={provider}
+              onValueChange={(value) => {
+                setProvider(value);
+                setPage(1);
+              }}
+            >
+              <option value="all">{t("provider")}</option>
+              {[
+                ...new Set(
+                  tasks
+                    .filter((task) => !task.cloudGroupId && !task.historyDeletedAt)
+                    .map((task) => combinationById(task.draft.combinationId).provider),
+                ),
+              ].map((id) => (
+                <option key={id} value={id}>
+                  {providerNames[id]}
+                </option>
+              ))}
+            </Select>
+            <input
+              className="history-filter-date"
+              type="date"
+              aria-label={b("since")}
+              title={b("since")}
+              value={since}
+              onChange={(event) => {
+                setSince(event.target.value);
+                setPage(1);
+              }}
+            />
+            <input
+              className="history-filter-date"
+              type="date"
+              aria-label={b("until")}
+              title={b("until")}
+              value={until}
+              onChange={(event) => {
+                setUntil(event.target.value);
+                setPage(1);
+              }}
+            />
+          </>
+        )}
         <button onClick={() => setSelected(selection.length === visible.size ? [] : [...visible])}>
           {selection.length ? `${taskText("selecting")} ${selection.length}` : t("selectAll")}
         </button>

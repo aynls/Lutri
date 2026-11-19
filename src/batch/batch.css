@@ -1,8 +1,3 @@
-.task-tabs {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
 .batch-draft {
   flex: 1;
   min-width: 0;
@@ -160,15 +155,6 @@
 .batch-edit-cancel {
   width: 100%;
   font-size: calc(12px * var(--font-scale, 1));
-}
-.task-tabs {
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-  flex-shrink: 0;
-}
-.task-tabs .segmented-control {
-  min-width: 210px;
 }
 .tasks-host {
   display: flex;

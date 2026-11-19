@@ -6,7 +6,7 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
 } from "@phosphor-icons/react";
-import type { GalleryEntry, GenerationDraft, GenerationTask } from "../domain/types";
+import type { CreationMode, GalleryEntry, GenerationDraft, GenerationTask } from "../domain/types";
 import { displayPrompt } from "../domain/references";
 import { Dialog } from "../components/Dialog";
 import { Select } from "../components/Select";
@@ -21,16 +21,25 @@ import { native } from "../services/native";
 import { b } from "./messages";
 import { cloudSummary, failedDrafts } from "./service";
 import { parameterAssetIds } from "../services/parameterAssets";
+import { HistoryMode } from "../history/HistoryMode";
 import { taskUsesAsset, type RelatedHistoryScope } from "../history/related";
 
 export function BatchHistory({
+  tab,
+  onTab,
   related,
+  onExitRelated,
+  onBack,
   onError,
   onView,
   onRestore,
   onRequeue,
 }: {
+  tab: CreationMode;
+  onTab: (tab: CreationMode) => void;
   related?: RelatedHistoryScope;
+  onExitRelated: () => void;
+  onBack: () => void;
   onError: (error: unknown) => void;
   onView: (id: string, ids?: string[]) => void;
   onRestore: (draft: GenerationDraft) => void;
@@ -158,87 +167,86 @@ export function BatchHistory({
   return (
     <div className="history-workspace">
       <div className="content-toolbar history-toolbar">
-        <div className="search-input">
-          <MagnifyingGlassIcon />
-          <input
-            aria-label={t("searchHistory")}
-            placeholder={t("searchHistory")}
-            value={related?.assetId ?? query}
-            readOnly={!!related}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
-        <Select
-          aria-label={t("allStatuses")}
-          value={related ? "all" : status}
-          disabled={!!related}
-          onValueChange={(value) => {
-            setStatus(value);
-            setPage(1);
-          }}
-        >
-          <option value="all">{t("allStatuses")}</option>
-          <option value="active">{t("activeTasks")}</option>
-          <option value="error">{b("error")}</option>
-          <option value="completed">{t("completed")}</option>
-          <option value="cancelled">{b("cancelled")}</option>
-        </Select>
-        <Select
-          aria-label={t("model")}
-          value={related ? "all" : model}
-          disabled={!!related}
-          onValueChange={(value) => {
-            setModel(value);
-            setPage(1);
-          }}
-        >
-          <option value="all">{t("model")}</option>
-          {models.map(([id, name]) => (
-            <option key={id} value={id}>
-              {name}
-            </option>
-          ))}
-        </Select>
-        <Select
-          aria-label={t("provider")}
-          value={related ? "all" : provider}
-          disabled={!!related}
-          onValueChange={(value) => {
-            setProvider(value);
-            setPage(1);
-          }}
-        >
-          <option value="all">{t("provider")}</option>
-          <option value="google">Google</option>
-          <option value="openai">OpenAI</option>
-        </Select>
-        <input
-          className="history-filter-date"
-          type="date"
-          aria-label={b("since")}
-          title={b("since")}
-          value={related ? "" : since}
-          disabled={!!related}
-          onChange={(event) => {
-            setSince(event.target.value);
-            setPage(1);
-          }}
-        />
-        <input
-          className="history-filter-date"
-          type="date"
-          aria-label={b("until")}
-          title={b("until")}
-          value={related ? "" : until}
-          disabled={!!related}
-          onChange={(event) => {
-            setUntil(event.target.value);
-            setPage(1);
-          }}
-        />
+        <HistoryMode tab={tab} onTab={onTab} related={related} onExitRelated={onExitRelated} onBack={onBack} />
+        {!related && (
+          <>
+            <div className="search-input">
+              <MagnifyingGlassIcon />
+              <input
+                aria-label={t("searchHistory")}
+                placeholder={t("searchHistory")}
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <Select
+              aria-label={t("allStatuses")}
+              value={status}
+              onValueChange={(value) => {
+                setStatus(value);
+                setPage(1);
+              }}
+            >
+              <option value="all">{t("allStatuses")}</option>
+              <option value="active">{t("activeTasks")}</option>
+              <option value="error">{b("error")}</option>
+              <option value="completed">{t("completed")}</option>
+              <option value="cancelled">{b("cancelled")}</option>
+            </Select>
+            <Select
+              aria-label={t("model")}
+              value={model}
+              onValueChange={(value) => {
+                setModel(value);
+                setPage(1);
+              }}
+            >
+              <option value="all">{t("model")}</option>
+              {models.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label={t("provider")}
+              value={provider}
+              onValueChange={(value) => {
+                setProvider(value);
+                setPage(1);
+              }}
+            >
+              <option value="all">{t("provider")}</option>
+              <option value="google">Google</option>
+              <option value="openai">OpenAI</option>
+            </Select>
+            <input
+              className="history-filter-date"
+              type="date"
+              aria-label={b("since")}
+              title={b("since")}
+              value={since}
+              onChange={(event) => {
+                setSince(event.target.value);
+                setPage(1);
+              }}
+            />
+            <input
+              className="history-filter-date"
+              type="date"
+              aria-label={b("until")}
+              title={b("until")}
+              value={until}
+              onChange={(event) => {
+                setUntil(event.target.value);
+                setPage(1);
+              }}
+            />
+          </>
+        )}
       </div>
       <div className="history-scroll">
         {!shown.length && (
