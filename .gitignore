@@ -28,3 +28,6 @@ src-tauri/gen/
 *.njsproj
 *.sln
 *.sw?
+
+# verify-lutri run artifacts
+.agents/skills/verify-lutri/evidence/

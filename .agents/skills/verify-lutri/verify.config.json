@@ -1,0 +1,8 @@
+{
+  "productName": "Lutri Verify",
+  "identifier": "app.lutri.studio.verify",
+  "build": {
+    "devUrl": "http://localhost:14720",
+    "beforeDevCommand": "npm run dev -- --port 14720 --strictPort"
+  }
+}
