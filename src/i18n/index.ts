@@ -155,6 +155,7 @@ const messages = {
   results: ["Results", "生成结果", "生成結果"],
   activeTasks: ["Active", "进行中", "実行中"],
   allStatuses: ["All statuses", "全部状态", "すべての状態"],
+  status: ["Status", "状态", "状態"],
   searchHistory: ["Search prompt or asset ID", "搜索提示词或资产 ID", "プロンプト・アセット ID を検索"],
   request: ["Request", "请求", "リクエスト"],
   dropImages: ["Drop images to import", "拖入图片以添加", "画像をドロップして追加"],

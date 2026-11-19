@@ -1,6 +1,10 @@
 import { label, localize } from "../i18n";
 
 const messages = {
+  requestDetails: label("Request details", "请求详情", "リクエストの詳細"),
+  expandPrompt: label("Expand prompt", "展开提示词", "プロンプトを展開"),
+  collapsePrompt: label("Collapse prompt", "收起提示词", "プロンプトを折りたたむ"),
+  createdAt: label("Created", "创建时间", "作成日時"),
   removeGroup: label("Remove group", "移除整组", "グループを取り除く"),
   layerDirectory: label("Composite PNG and PSD folder", "合成图和 PSD 保存目录", "合成画像と PSD の保存先"),
   layerDirectoryRequired: label(
