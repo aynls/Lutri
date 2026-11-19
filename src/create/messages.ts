@@ -136,7 +136,6 @@ const messages = {
   queued: label("queued", "个排队请求", "件の待機リクエスト"),
   stopQueued: label("Stop queued requests", "停止排队请求", "待機中のリクエストを停止"),
   sent: label("Submitted", "已提交", "送信済み"),
-  creationSettings: label("Creation settings", "创作设置", "作成設定"),
   generationResults: label("Generation results", "生成结果", "生成結果"),
   resetCreation: label("Reset", "重置", "リセット"),
   resetCreationConfirm: label(

@@ -185,6 +185,26 @@ small {
 .creation-section-header button > svg {
   flex-shrink: 0;
 }
+.panel-switch {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.panel-switch .segmented-control {
+  flex: 1;
+  min-width: 0;
+}
+.panel-switch .segmented-control button {
+  padding-block: 4px;
+}
+.panel-switch > button {
+  flex-shrink: 0;
+}
 .creation-scroll {
   overflow: auto;
   padding: 20px;

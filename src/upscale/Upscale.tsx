@@ -497,132 +497,136 @@ export function Upscale({
   return (
     <div className="upscale-workspace">
       <ResizablePanel className="upscale-panel" storageKey="lutri.upscale.panel" initialWidth={300}>
-        <div className="segmented-control">
-          <button disabled={busy} aria-pressed={!batch} onClick={() => setBatch(false)}>
-            {t("single")}
-          </button>
-          <button disabled={busy} aria-pressed={batch} onClick={() => setBatch(true)}>
-            {t("batch")}
-          </button>
-        </div>
-        <UpscaleModelSelector
-          models={models}
-          value={model}
-          disabled={busy}
-          onChange={(id) => changeConfiguration(id, scale)}
-        />
-        <label>
-          {t("upscaleScale")}
-          <div className="segmented-control">
-            {(activeModel?.scales ?? []).map((value) => (
-              <button
-                key={value}
-                disabled={busy}
-                aria-pressed={scale === value}
-                onClick={() => changeConfiguration(model, value)}
-              >
-                {value}×
-              </button>
-            ))}
+        <header className="panel-switch">
+          <div className="segmented-control" role="group" aria-label={t("upscale")}>
+            <button disabled={busy} aria-pressed={!batch} onClick={() => setBatch(false)}>
+              {t("single")}
+            </button>
+            <button disabled={busy} aria-pressed={batch} onClick={() => setBatch(true)}>
+              {t("batch")}
+            </button>
           </div>
-        </label>
-        {availableNoise.length > 0 && (
+        </header>
+        <div className="upscale-body">
+          <UpscaleModelSelector
+            models={models}
+            value={model}
+            disabled={busy}
+            onChange={(id) => changeConfiguration(id, scale)}
+          />
           <label>
-            {t("upscaleDenoise")}
-            <Select value={noise} disabled={busy} onValueChange={(nextValue) => setNoise(nextValue as Noise)}>
-              {availableNoise.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {localize(option.label)}
-                </option>
+            {t("upscaleScale")}
+            <div className="segmented-control">
+              {(activeModel?.scales ?? []).map((value) => (
+                <button
+                  key={value}
+                  disabled={busy}
+                  aria-pressed={scale === value}
+                  onClick={() => changeConfiguration(model, value)}
+                >
+                  {value}×
+                </button>
+              ))}
+            </div>
+          </label>
+          {availableNoise.length > 0 && (
+            <label>
+              {t("upscaleDenoise")}
+              <Select value={noise} disabled={busy} onValueChange={(nextValue) => setNoise(nextValue as Noise)}>
+                {availableNoise.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {localize(option.label)}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          )}
+          <label>
+            {t("upscaleTile")}
+            <Select value={tile} disabled={busy} onValueChange={(nextValue) => setTile(Number(nextValue))}>
+              {[32, 64, 128, 256, 512].map((value) => (
+                <option key={value}>{value}</option>
               ))}
             </Select>
           </label>
-        )}
-        <label>
-          {t("upscaleTile")}
-          <Select value={tile} disabled={busy} onValueChange={(nextValue) => setTile(Number(nextValue))}>
-            {[32, 64, 128, 256, 512].map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </Select>
-        </label>
-        <div className="button-row">
-          <button disabled={busy} onClick={() => void chooseImages().then(add).catch(onError)}>
-            <PlusIcon />
-            {t("import")}
-          </button>
-          <button disabled={busy} onClick={() => setPicker(true)}>
-            {t("gallery")}
-          </button>
-        </div>
-        <div className="upscale-submit">
-          {batch && (
-            <div className="upscale-queue">
-              <small>
-                {t("pendingJobs")} · {pending}
-              </small>
-              {doneCount > 0 && (
-                <button
-                  className="queue-clear"
-                  disabled={busy || jobs.some((job) => job.exporting || job.referencing || job.deleting)}
-                  onClick={() =>
-                    void remove(jobs.filter((job) => job.status === "completed").map((job) => job.id)).catch(onError)
-                  }
-                >
-                  {t("clearCompleted")} · {doneCount}
-                </button>
-              )}
-            </div>
-          )}
-          {!batch && single && single.status !== "completed" && (
-            <div className="upscale-run-status" role="status">
-              <div>
-                <span>{statusText(single)}</span>
-                {single.status === "generating" && <span>{single.progress}%</span>}
+          <div className="button-row">
+            <button disabled={busy} onClick={() => void chooseImages().then(add).catch(onError)}>
+              <PlusIcon />
+              {t("import")}
+            </button>
+            <button disabled={busy} onClick={() => setPicker(true)}>
+              {t("gallery")}
+            </button>
+          </div>
+          <div className="upscale-submit">
+            {batch && (
+              <div className="upscale-queue">
+                <small>
+                  {t("pendingJobs")} · {pending}
+                </small>
+                {doneCount > 0 && (
+                  <button
+                    className="queue-clear"
+                    disabled={busy || jobs.some((job) => job.exporting || job.referencing || job.deleting)}
+                    onClick={() =>
+                      void remove(jobs.filter((job) => job.status === "completed").map((job) => job.id)).catch(onError)
+                    }
+                  >
+                    {t("clearCompleted")} · {doneCount}
+                  </button>
+                )}
               </div>
-              {["queued", "generating"].includes(single.status) && (
-                <progress
-                  max={100}
-                  value={single.status === "generating" ? single.progress : undefined}
-                  aria-label={t("processing")}
-                />
-              )}
-              {single.error && <p className="error-text">{single.error}</p>}
-            </div>
-          )}
-          <OutputControls kind="upscaleAuto" disabled={busy} onError={onError} />
-          {busy && !batch && single && ["queued", "generating"].includes(single.status) ? (
-            <button onClick={() => void cancelUpscale(single.id).catch(onError)}>
-              <StopIcon aria-hidden="true" />
-              {t("cancel")}
-            </button>
-          ) : busy ? (
-            <button
-              disabled={pausing}
-              onClick={() => {
-                setPausing(true);
-                void Promise.all(
-                  workspaceJobs()
-                    .filter((job) => job.status === "queued")
-                    .map((job) => cancelUpscale(job.id)),
-                )
-                  .catch(onError)
-                  .finally(() => setPausing(false));
-              }}
-            >
-              <PauseIcon />
-              {settingsText("stopQueued")}
-            </button>
-          ) : (
-            <button
-              className="primary-button"
-              disabled={!model || (batch ? !pending : !input || !!single?.deleting) || missingDestination}
-              onClick={() => void run().catch(onError)}
-            >
-              <PlayIcon weight="fill" />
-              {t(batch || !single ? "startUpscale" : single.status === "completed" ? "runAgain" : "retryUpscale")}
-            </button>
-          )}
+            )}
+            {!batch && single && single.status !== "completed" && (
+              <div className="upscale-run-status" role="status">
+                <div>
+                  <span>{statusText(single)}</span>
+                  {single.status === "generating" && <span>{single.progress}%</span>}
+                </div>
+                {["queued", "generating"].includes(single.status) && (
+                  <progress
+                    max={100}
+                    value={single.status === "generating" ? single.progress : undefined}
+                    aria-label={t("processing")}
+                  />
+                )}
+                {single.error && <p className="error-text">{single.error}</p>}
+              </div>
+            )}
+            <OutputControls kind="upscaleAuto" disabled={busy} onError={onError} />
+            {busy && !batch && single && ["queued", "generating"].includes(single.status) ? (
+              <button onClick={() => void cancelUpscale(single.id).catch(onError)}>
+                <StopIcon aria-hidden="true" />
+                {t("cancel")}
+              </button>
+            ) : busy ? (
+              <button
+                disabled={pausing}
+                onClick={() => {
+                  setPausing(true);
+                  void Promise.all(
+                    workspaceJobs()
+                      .filter((job) => job.status === "queued")
+                      .map((job) => cancelUpscale(job.id)),
+                  )
+                    .catch(onError)
+                    .finally(() => setPausing(false));
+                }}
+              >
+                <PauseIcon />
+                {settingsText("stopQueued")}
+              </button>
+            ) : (
+              <button
+                className="primary-button"
+                disabled={!model || (batch ? !pending : !input || !!single?.deleting) || missingDestination}
+                onClick={() => void run().catch(onError)}
+              >
+                <PlayIcon weight="fill" />
+                {t(batch || !single ? "startUpscale" : single.status === "completed" ? "runAgain" : "retryUpscale")}
+              </button>
+            )}
+          </div>
         </div>
       </ResizablePanel>
       <div className="upscale-results" ref={resultsContainer}>

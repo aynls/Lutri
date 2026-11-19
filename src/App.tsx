@@ -641,8 +641,19 @@ export default function App() {
             }}
           >
             <ResizablePanel className="creation-panel" storageKey="lutri.creation.panel">
-              <header className="creation-section-header">
-                <h2>{c("creationSettings")}</h2>
+              <header className="creation-section-header panel-switch">
+                <div className="segmented-control" role="group" aria-label={t("creation")}>
+                  {(["regular", "batch"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      aria-pressed={state.creation.mode === mode}
+                      disabled={modeBusy || batchBusy || submitting}
+                      onClick={() => void changeMode(mode).catch(onError)}
+                    >
+                      {b(mode)}
+                    </button>
+                  ))}
+                </div>
                 <button
                   disabled={!state.ready || modeBusy || batchBusy || submitting || !hasDraftEdits(state.draft)}
                   onClick={() => void resetCreation().catch(onError)}
@@ -658,18 +669,6 @@ export default function App() {
                   scrollPositions.current.set(state.draft.combinationId, event.currentTarget.scrollTop)
                 }
               >
-                <div className="segmented-control" role="group" aria-label={t("creation")}>
-                  {(["regular", "batch"] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      aria-pressed={state.creation.mode === mode}
-                      disabled={modeBusy || batchBusy || submitting}
-                      onClick={() => void changeMode(mode).catch(onError)}
-                    >
-                      {b(mode)}
-                    </button>
-                  ))}
-                </div>
                 <ModelSelector
                   key={state.creation.mode}
                   available={isBatch ? batchCombinations : undefined}

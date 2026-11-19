@@ -1,9 +1,19 @@
 .upscale-panel {
-  padding: 20px;
-  gap: 22px;
+  padding: 0;
+  gap: 0;
+  min-height: 0;
   overflow: visible;
 }
-.upscale-panel > label {
+.upscale-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.upscale-body > label {
   font-size: calc(13px * var(--font-scale, 1));
 }
 .upscale-model-select {
