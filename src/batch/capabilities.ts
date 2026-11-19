@@ -23,9 +23,9 @@ export function batchForm(combination: ModelCombination): ModelCombination {
   };
 }
 
-export function validateBatchDraft(draft: GenerationDraft, requirePrompt = true) {
+export function validateBatchDraft(draft: GenerationDraft, requirePrompt = true, targets?: Map<string, string>) {
   const combination = combinationById(draft.combinationId);
-  const errors = validateDraft(draft, batchRequestLimit);
+  const errors = validateDraft(draft, batchRequestLimit, targets);
   if (!combination.batch) errors.push(b("unsupported"));
   if (requirePrompt && !draft.prompt.trim()) errors.push(b("promptRequired"));
   for (const key of combination.batch?.unsupportedFields ?? []) {

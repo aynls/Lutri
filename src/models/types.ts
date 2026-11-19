@@ -41,6 +41,8 @@ export interface FieldDefinition {
   visible?: (draft: GenerationDraft) => boolean;
 }
 
+export type ModelIssue = string | { field: string; message: string };
+
 export interface ParameterGroup {
   id: "frame" | "generation" | "style" | "output" | "advanced";
   fields: readonly string[];
@@ -118,7 +120,7 @@ export interface ModelCombination {
   inputPolicy?: InputPolicy | ((draft: GenerationDraft) => InputPolicy);
   Form: ComponentType<FormProps>;
   docs: string[];
-  validate: (draft: GenerationDraft) => string[];
+  validate: (draft: GenerationDraft) => ModelIssue[];
   compile: (context: CompileContext) => CompiledRequest;
   initialRecovery?: (taskId: string) => Recovery;
   outputCount: (parameters: Parameters) => number;

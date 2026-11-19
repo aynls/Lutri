@@ -49,7 +49,7 @@ export function References({
           </small>
         </span>
         <details className="reference-source-menu action-menu">
-          <summary aria-label={t("add")}>
+          <summary data-field="references" data-label={t("references")} aria-label={t("add")}>
             <PlusIcon />
           </summary>
           <div>

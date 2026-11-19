@@ -2,7 +2,7 @@ import { label, localize } from "../../../i18n";
 import { adv, format, resolution, select, toggle } from "../../fields";
 import { fal, imageSize } from "../../requests";
 import { validateFields, values } from "../../shared";
-import type { FieldDefinition, ModelCombination } from "../../types";
+import type { FieldDefinition, ModelIssue, ModelCombination } from "../../types";
 import { background, maiImage27Defaults, maxPixels, minEdge } from "./shared";
 
 const presets = {
@@ -54,13 +54,14 @@ export function maiImage27Fal(model: string, label: string, path: string): Model
       { id: "output", fields: ["output_format", "sync_mode"], collapsed: true },
     ],
     validate: (draft) => {
-      const errors = validateFields(fields, draft);
+      const errors: ModelIssue[] = validateFields(fields, draft);
       const parameters = draft.parameters;
       if (parameters.image_size === "custom") {
         const dimensions = { image_size: parameters.size };
         imageSize(dimensions);
         const parsed = dimensions.image_size;
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) errors.push(localize(sizeRequired));
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+          errors.push({ field: "size", message: localize(sizeRequired) });
         else {
           const { width, height } = parsed;
           if (
@@ -70,11 +71,11 @@ export function maiImage27Fal(model: string, label: string, path: string): Model
             height < minEdge ||
             width * height > maxPixels
           )
-            errors.push(localize(sizeLimits));
+            errors.push({ field: "size", message: localize(sizeLimits) });
         }
       }
       if (parameters.background === "transparent" && parameters.output_format === "jpeg")
-        errors.push(localize(transparentFormat));
+        errors.push({ field: "output_format", message: localize(transparentFormat) });
       return errors;
     },
     compile: (context) => {

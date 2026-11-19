@@ -55,7 +55,12 @@ export function RequestPreview({
     error = String(exception);
   }
   return (
-    <RememberedDetails name={`${combination.id}.preview`} title={t("requestPreview")} className="request-preview">
+    <RememberedDetails
+      key={combination.id}
+      name={`${combination.id}.preview`}
+      title={t("requestPreview")}
+      className="request-preview"
+    >
       {error ? (
         <p className="muted">{error}</p>
       ) : (

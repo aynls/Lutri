@@ -39,6 +39,7 @@ import { ImageViewer } from "./gallery/ImageViewer";
 import { AssetImage } from "./gallery/AssetImage";
 import { cancelBatchQueued, resumeTasks, submitBatch } from "./services/generation";
 import { Feed } from "./create/Feed";
+import { focusCreationIssue, revealControl } from "./create/focusCreationIssue";
 import { PromptField } from "./create/components/PromptField";
 import { References, type ReferenceSource } from "./create/components/References";
 import { c } from "./create/messages";
@@ -502,15 +503,17 @@ export default function App() {
   };
   const submit = async () => {
     if (submittingRef.current || !canSubmit) return;
+    if (validation.length) {
+      focusIssue(validation[0]);
+      return;
+    }
     submittingRef.current = true;
     setSubmitting(true);
     try {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       const invalid = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(".creation-panel :invalid");
       if (invalid) {
-        for (let parent = invalid.parentElement; parent; parent = parent.parentElement)
-          if (parent instanceof HTMLDetailsElement) parent.open = true;
-        invalid.focus();
+        revealControl(invalid);
         invalid.reportValidity();
         return;
       }
@@ -520,7 +523,11 @@ export default function App() {
         setSent(true);
         return;
       }
-      if (validateDraft(submittedDraft, maxRequestCount(getState().preferences)).length) return;
+      const [issue] = validateDraft(submittedDraft, maxRequestCount(getState().preferences));
+      if (issue) {
+        focusIssue(issue);
+        return;
+      }
       const missing = await Promise.all(
         submittedDraft.references.map(async (ref) => ({ ref, exists: await assetExists(ref.assetId) })),
       );
@@ -558,9 +565,11 @@ export default function App() {
   const maskReferenceEntry = maskReference
     ? state.gallery.find((entry) => entry.asset.id === maskReference.assetId)
     : undefined;
+  const validationTargets = new Map<string, string>();
+  const focusIssue = (issue: string) => focusCreationIssue(issue, validationTargets.get(issue));
   const validation = isBatch
-    ? validateBatchDraft(state.draft, false)
-    : validateDraft(state.draft, maxRequestCount(state.preferences));
+    ? validateBatchDraft(state.draft, false, validationTargets)
+    : validateDraft(state.draft, maxRequestCount(state.preferences), validationTargets);
   if (!isBatch && state.preferences.outputs?.generationAuto && !state.preferences.outputs.directory?.trim())
     validation.push(t("saveDirectoryRequired"));
   const configuration = modelConfiguration(combination, state.preferences.providers[combination.provider]);
@@ -569,29 +578,10 @@ export default function App() {
     !state.draft.prompt.trim() &&
     !state.draft.parameters.layer_decomposition &&
     !state.draft.parameters.structured_prompt;
-  const canSubmit =
-    state.ready &&
-    !submitting &&
-    !batchBusy &&
-    !modeBusy &&
-    (isBatch || !!configured) &&
-    !validation.length &&
-    !promptEmpty;
+  const canSubmit = state.ready && !submitting && !batchBusy && !modeBusy && (isBatch || !!configured) && !promptEmpty;
   const queuedBatches = state.batches.filter(
     (batch) => !batch.cloud && state.tasks.some((task) => task.batchId === batch.id && task.status === "queued"),
   );
-  const focusIssue = (issue: string) => {
-    const field = Array.from(document.querySelectorAll<HTMLElement>(".creation-panel [data-field]")).find(
-      (field) =>
-        issue.toLowerCase().includes(field.dataset.field!.toLowerCase()) ||
-        issue.includes(field.querySelector("label")?.textContent ?? "\0"),
-    );
-    if (!field) return;
-    for (let parent = field.parentElement; parent; parent = parent.parentElement)
-      if (parent instanceof HTMLDetailsElement) parent.open = true;
-    field.scrollIntoView({ block: "center", behavior: "instant" });
-    field.querySelector<HTMLElement>('input:not([type="hidden"]), .select-trigger, textarea, button')?.focus();
-  };
   return (
     <div className="app-shell">
       <nav className="navigation">
@@ -670,21 +660,21 @@ export default function App() {
                   value={combination}
                   onChange={(next) => void switchModel(next).catch(onError)}
                 />
-                <div className="creation-credential" role="status">
-                  <span className={credential === false ? "error-text" : "muted"}>
-                    {credential === undefined
-                      ? "…"
-                      : c(configured ? "configured" : credential ? "needsConfiguration" : "needsKey")}
-                  </span>
-                  <button
-                    onClick={() => {
-                      sessionStorage.setItem("lutri.settings.provider", combination.provider);
-                      setPage("settings");
-                    }}
-                  >
-                    {c("configure")}
-                  </button>
-                </div>
+                {credential !== undefined && !configured && (
+                  <div className="creation-credential" role="status">
+                    <span className={credential === false ? "error-text" : "muted"}>
+                      {c(credential ? "needsConfiguration" : "needsKey")}
+                    </span>
+                    <button
+                      onClick={() => {
+                        sessionStorage.setItem("lutri.settings.provider", combination.provider);
+                        setPage("settings");
+                      }}
+                    >
+                      {c("configure")}
+                    </button>
+                  </div>
+                )}
                 <CreationControl combination={combination} draft={state.draft} onChange={changeDraft} />
                 {isBatch && state.draft.mask && !combination.mask && (
                   <div className="batch-item-errors">
@@ -789,7 +779,7 @@ export default function App() {
                     </button>
                   </div>
                   <Form
-                    key={`${state.creation.mode}:${state.creation.editing?.id ?? "new"}:${parameterReset}`}
+                    key={`${combination.id}:${state.creation.mode}:${state.creation.editing?.id ?? "new"}:${parameterReset}`}
                     combination={combination}
                     draft={state.draft}
                     onChange={changeDraft}
@@ -822,15 +812,16 @@ export default function App() {
                 )}
                 {!isBatch && <OutputControls kind="generationAuto" disabled={submitting} onError={onError} />}
                 <div className="generate-submit-row">
-                  <input
-                    type="number"
-                    aria-label={t("requestCount")}
-                    title={t("requestCount")}
-                    min={1}
-                    max={isBatch ? batchRequestLimit : maxRequestCount(state.preferences)}
-                    value={state.draft.requestCount}
-                    onChange={(e) => changeDraft({ ...state.draft, requestCount: Number(e.target.value) })}
-                  />
+                  <label className="request-count" data-field="requestCount" data-label={t("requestCount")}>
+                    <span>{t("requestCount")}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={isBatch ? batchRequestLimit : maxRequestCount(state.preferences)}
+                      value={state.draft.requestCount}
+                      onChange={(e) => changeDraft({ ...state.draft, requestCount: Number(e.target.value) })}
+                    />
+                  </label>
                   <button className="primary-button" disabled={!canSubmit} onClick={() => void submit().catch(onError)}>
                     <span className="generate-button-label">
                       <SparkleIcon weight="fill" />

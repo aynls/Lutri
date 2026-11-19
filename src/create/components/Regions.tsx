@@ -18,7 +18,7 @@ export function Regions({ draft, onChange }: { draft: GenerationDraft; onChange:
           {draft.regions.length} {t("regions")}
         </small>
       </div>
-      <button className="layout-launch" onClick={() => setOpen(true)}>
+      <button className="layout-launch" data-field="regions" data-label={t("regions")} onClick={() => setOpen(true)}>
         <span className="layout-miniature" style={{ aspectRatio: `${frame.width}/${frame.height}` }}>
           {draft.regions.map((region, index) => {
             const box = region.target;

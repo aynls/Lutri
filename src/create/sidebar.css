@@ -255,7 +255,13 @@
   align-items: end;
   gap: 10px;
 }
-.generate-submit-row > input {
+.generate-submit-row .request-count {
+  display: grid;
+  gap: 2px;
+  justify-content: stretch;
+  font-size: calc(11px * var(--font-scale, 1));
+}
+.request-count input {
   width: 100%;
   min-width: 0;
   min-height: 42px;

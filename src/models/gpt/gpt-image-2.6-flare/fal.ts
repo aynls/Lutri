@@ -45,8 +45,7 @@ export const gptImage26FlareFal: ModelCombination = {
     errors.push(...sizeErrors(draft));
     if (draft.parameters.background === "transparent" && draft.parameters.output_format === "jpeg")
       errors.push("transparent: PNG / WebP");
-    errors.push(...validateFalSvg(draft));
-    return errors;
+    return [...errors, ...validateFalSvg(draft)];
   },
   compile: (context) => {
     const p = values(fields, context.draft);

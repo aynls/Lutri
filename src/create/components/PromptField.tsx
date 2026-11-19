@@ -99,6 +99,8 @@ export function PromptField({
       </div>
       <div
         className="prompt-editor"
+        data-field="prompt"
+        data-label={c("promptLimit")}
         data-placeholder={t("promptPlaceholder")}
         ref={input}
         contentEditable
