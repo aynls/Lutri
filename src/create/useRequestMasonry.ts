@@ -7,20 +7,6 @@ function columnWidth(width: number, columns: number, gap: number) {
   return (width - (columns - 1) * gap) / columns;
 }
 
-// Among adjacent lanes, use the first span with the lowest available top.
-function shortestSpan(bottoms: number[], span: number) {
-  let best = 0;
-  let lowest = Infinity;
-  for (let start = 0; start <= bottoms.length - span; start++) {
-    const top = Math.max(...bottoms.slice(start, start + span));
-    if (top < lowest) {
-      best = start;
-      lowest = top;
-    }
-  }
-  return best;
-}
-
 function arrangeImages(grid: HTMLElement, cells: HTMLElement[], width: number, reserved: number) {
   const capacity = Math.max(1, Math.floor((width + imageGap) / (150 + imageGap)));
   // Avoid a four-plus-two split when three equal-width columns can hold six images.
@@ -28,7 +14,7 @@ function arrangeImages(grid: HTMLElement, cells: HTMLElement[], width: number, r
   const tileWidth = columnWidth(width, columns, imageGap);
   const bottoms = Array<number>(columns).fill(0);
   for (const cell of cells) {
-    const lane = shortestSpan(bottoms, 1);
+    const lane = bottoms.indexOf(Math.min(...bottoms));
     const height = tileWidth / Number(cell.dataset.ratio);
     cell.style.width = `${tileWidth}px`;
     cell.style.height = `${height}px`;
@@ -39,21 +25,97 @@ function arrangeImages(grid: HTMLElement, cells: HTMLElement[], width: number, r
   grid.style.height = `${Math.max(...bottoms) - imageGap}px`;
 }
 
-interface Placement {
+interface RequestGroup {
+  card: HTMLElement;
+  images: HTMLElement;
+  cells: HTMLElement[];
+}
+
+interface Reservation {
   card: HTMLElement;
   count: number;
   reserved: number;
-  lane: number;
   span: number;
+}
+
+interface Sizing {
+  capacity: number;
+  columns: number;
+  laneWidth: number;
+  reservations: Reservation[];
+}
+
+function sizeGroups(groups: RequestGroup[], width: number, last: Sizing | undefined): Sizing {
+  const capacity = Math.max(1, Math.floor((width + groupGap) / (248 + groupGap)));
+  const maxSpan = Math.max(1, capacity - (groups.length > 1 ? 1 : 0));
+  // Late results can add tiles to a card without increasing its reserved width.
+  const reuse =
+    last?.capacity === capacity &&
+    last.reservations.length === groups.length &&
+    groups.every(
+      ({ card, cells }, i) => card === last.reservations[i].card && cells.length >= last.reservations[i].count,
+    );
+  let remaining = capacity;
+  const reservations = groups.map(({ card, cells }, i) => {
+    const span = reuse ? last.reservations[i].span : Math.min(maxSpan, Math.ceil(Math.sqrt(cells.length)), remaining);
+    remaining = remaining - span || capacity;
+    return { card, span, count: cells.length, reserved: reuse ? last.reservations[i].reserved : cells.length };
+  });
+  const columns = Math.min(
+    capacity,
+    reservations.reduce((sum, { span }) => sum + span, 0),
+  );
+  const availableLane = columnWidth(width, columns, groupGap);
+  const laneWidth = columns < capacity ? Math.min(380, availableLane) : availableLane;
+  for (const { card, span } of reservations) card.style.width = `${span * laneWidth + (span - 1) * groupGap}px`;
+  const widths = groups.map(({ images }) => images.getBoundingClientRect().width);
+  groups.forEach(({ images, cells }, i) => arrangeImages(images, cells, widths[i], reservations[i].reserved));
+  return { capacity, columns, laneWidth, reservations };
+}
+
+interface Slot {
+  lane: number;
+  top: number;
+}
+
+interface Footprint extends Slot {
+  span: number;
+  end: number; // Includes the gap below the card.
+}
+
+function packGroups(columns: number, spans: number[], heights: number[], anchor?: { index: number; slot: Slot }) {
+  // Keep footprints sorted by top so each candidate span can scan for its first fitting gap.
+  const placed: Footprint[] = [];
+  if (anchor) {
+    const { index, slot } = anchor;
+    placed.push({ ...slot, span: spans[index], end: slot.top + heights[index] + groupGap });
+  }
+  return spans.map((span, i): Slot => {
+    if (i === anchor?.index) return anchor.slot;
+    const height = heights[i] + groupGap;
+    let best: Slot = { lane: 0, top: Infinity };
+    for (let lane = 0; lane + span <= columns && best.top > 0; lane++) {
+      let top = 0;
+      for (const box of placed) {
+        if (top >= best.top || top + height <= box.top) break;
+        if (lane < box.lane + box.span && box.lane < lane + span) top = Math.max(top, box.end);
+      }
+      if (top < best.top) best = { lane, top };
+    }
+    const insertionIndex = placed.findIndex(({ top }) => top > best.top);
+    placed.splice(insertionIndex < 0 ? placed.length : insertionIndex, 0, { ...best, span, end: best.top + height });
+    return best;
+  });
 }
 
 export function useRequestMasonry(structure: string) {
   const host = useRef<HTMLDivElement>(null);
-  const previous = useRef<{ columns: number; placements: Placement[] }>(undefined);
+  const previousSizing = useRef<Sizing>(undefined);
   useLayoutEffect(() => {
     const grid = host.current;
-    if (!grid) {
-      previous.current = undefined;
+    if (!grid?.children.length) {
+      previousSizing.current = undefined;
+      grid?.style.removeProperty("height");
       return;
     }
     const groups = Array.from(grid.children, (child) => {
@@ -61,58 +123,47 @@ export function useRequestMasonry(structure: string) {
       const images = card.querySelector<HTMLElement>(".request-images")!;
       return { card, images, cells: Array.from(images.children) as HTMLElement[] };
     });
+    let layoutWidth = 0;
+    let sizing: Sizing | undefined;
+    let heights: number[] = [];
+    let slots: Slot[] = [];
     const arrange = () => {
       const width = grid.clientWidth;
-      if (!width || !groups.length) return;
-      const columns = Math.max(1, Math.floor((width + groupGap) / (248 + groupGap)));
-      const desired = groups.map(({ cells }) => Math.ceil(Math.sqrt(cells.length)));
-      const maxSpan = Math.max(1, columns - (groups.length > 1 ? 1 : 0));
-      const last = previous.current;
-      // Late/extra results and delivery diagnostics may grow a group. Keep existing
-      // groups in their lanes until the user removes items or the column count changes.
-      const reuse =
-        last?.columns === columns &&
-        last.placements.length === groups.length &&
-        groups.every(
-          ({ card, cells }, i) => card === last.placements[i].card && cells.length >= last.placements[i].count,
-        );
-      let remaining = columns;
-      const placements = groups.map(({ card, cells }, i) => {
-        const span = reuse ? last.placements[i].span : Math.min(maxSpan, desired[i], remaining);
-        remaining = remaining - span || columns;
-        return {
-          card,
-          span,
-          count: cells.length,
-          reserved: reuse ? last.placements[i].reserved : cells.length,
-          lane: reuse ? last.placements[i].lane : 0,
-        };
-      });
-      const occupied = Math.min(
+      if (!width) return;
+      const sameWidth = layoutWidth === width;
+      if (!sizing || !sameWidth) {
+        sizing = sizeGroups(groups, width, previousSizing.current);
+        previousSizing.current = sizing;
+      }
+
+      const nextHeights = groups.map(({ card }) => card.getBoundingClientRect().height);
+      const resizedIndex = sameWidth ? nextHeights.findIndex((height, i) => height !== heights[i]) : -1;
+      if (sameWidth && resizedIndex < 0) return;
+
+      // Keep a growing card in place when the other card sizes are stable.
+      const anchor =
+        resizedIndex >= 0 &&
+        nextHeights[resizedIndex] > heights[resizedIndex] &&
+        nextHeights.every((height, i) => i === resizedIndex || height === heights[i])
+          ? { index: resizedIndex, slot: slots[resizedIndex] }
+          : undefined;
+      const { columns, laneWidth, reservations } = sizing;
+      slots = packGroups(
         columns,
-        placements.reduce((sum, { span }) => sum + span, 0),
+        reservations.map(({ span }) => span),
+        nextHeights,
+        anchor,
       );
-      const availableLane = columnWidth(width, occupied, groupGap);
-      const laneWidth = occupied < columns ? Math.min(380, availableLane) : availableLane;
-      for (const { card, span } of placements) card.style.width = `${span * laneWidth + (span - 1) * groupGap}px`;
-      // Size both levels before measuring headers, translated text and delivery errors.
-      const widths = groups.map(({ images }) => images.getBoundingClientRect().width);
-      groups.forEach(({ images, cells }, i) => arrangeImages(images, cells, widths[i], placements[i].reserved));
-      const heights = groups.map(({ card }) => card.getBoundingClientRect().height);
-      const bottoms = Array<number>(occupied).fill(0);
-      let previousTop = 0;
-      placements.forEach((placement, i) => {
-        const { card, span } = placement;
-        if (!reuse) placement.lane = shortestSpan(bottoms, span);
-        const lane = placement.lane;
-        const top = Math.max(previousTop, ...bottoms.slice(lane, lane + span));
+      let height = 0;
+      groups.forEach(({ card }, i) => {
+        const { lane, top } = slots[i];
         card.style.left = `${lane * (laneWidth + groupGap)}px`;
         card.style.top = `${top}px`;
-        bottoms.fill(top + heights[i] + groupGap, lane, lane + span);
-        previousTop = top;
+        height = Math.max(height, top + nextHeights[i]);
       });
-      grid.style.height = `${Math.max(...bottoms) - groupGap}px`;
-      previous.current = { columns, placements };
+      grid.style.height = `${height}px`;
+      layoutWidth = width;
+      heights = nextHeights;
     };
     arrange();
     const observer = new ResizeObserver(arrange);
