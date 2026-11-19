@@ -1,8 +1,10 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { CaretDownIcon, CaretUpIcon } from "@phosphor-icons/react";
+import { CopyButton } from "../components/CopyButton";
+import { t } from "../i18n";
 import { c } from "./messages";
 
-export function RequestCaption({ prompt }: { prompt: string }) {
+export function RequestCaption({ prompt, onError }: { prompt: string; onError: (error: unknown) => void }) {
   const ref = useRef<HTMLParagraphElement>(null);
   const id = useId();
   const [expanded, setExpanded] = useState(false);
@@ -19,9 +21,12 @@ export function RequestCaption({ prompt }: { prompt: string }) {
   const label = c(expanded ? "collapsePrompt" : "expandPrompt");
   return (
     <div className="request-caption">
-      <p id={id} ref={ref} className={expanded ? "expanded" : undefined}>
-        {prompt}
-      </p>
+      <div className="request-caption-text">
+        <p id={id} ref={ref} className={expanded ? "expanded" : undefined}>
+          {prompt}
+        </p>
+        <CopyButton className="request-caption-copy" value={prompt} title={t("copyPrompt")} onError={onError} />
+      </div>
       {(expanded || overflows) && (
         <button
           title={label}

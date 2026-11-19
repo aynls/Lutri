@@ -210,7 +210,7 @@ export function Feed({
                     <LayerDelivery key={slotId} task={task} result={result} onError={onError} />
                   ) : null,
                 )}
-                {prompt && <RequestCaption prompt={prompt} />}
+                {prompt && <RequestCaption prompt={prompt} onError={onError} />}
               </article>
             );
           })}

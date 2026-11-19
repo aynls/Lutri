@@ -471,14 +471,41 @@ small {
   font-size: calc(13px * var(--font-scale, 1));
   line-height: 1.55;
 }
+.request-caption-text {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
 .request-caption button {
   flex: none;
   padding: 3px;
   color: var(--muted);
 }
+.request-caption .request-caption-copy {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 4px;
+  font-size: calc(15px * var(--font-scale, 1));
+  color: var(--muted);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+.request-caption:hover .request-caption-copy,
+.request-caption:has(:focus-visible) .request-caption-copy {
+  opacity: 1;
+  pointer-events: auto;
+}
+.request-caption .request-caption-copy:hover {
+  color: var(--accent);
+  background: var(--glass-bg);
+}
 .request-caption p {
-  flex: 1;
-  min-width: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -1273,7 +1300,8 @@ img.asset-image.loaded {
   color: var(--accent);
 }
 @media (hover: hover) {
-  .result-cell:not(:hover):not(:focus-within) .result-actions button:not(.result-reference, [aria-pressed="true"]) {
+  .result-cell:not(:hover):not(:focus-within) .card-remove,
+  .result-cell:not(:hover):not(:focus-within) .result-actions button:not([aria-pressed="true"]) {
     opacity: 0;
     pointer-events: none;
   }
