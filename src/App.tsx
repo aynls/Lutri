@@ -124,7 +124,7 @@ export default function App() {
   const [batchBusy, setBatchBusy] = useState(false);
   const [taskTab, setTaskTab] = useState<CreationMode>("regular");
   const [requestId, setRequestId] = useState<string>();
-  const requestTrigger = useRef<HTMLButtonElement>(null);
+  const restoreFeedPosition = useRef<() => void>(undefined);
   const [viewer, setViewer] = useState<{ assetId: string; ids: string[] }>();
   const [page, setPage] = useState<Page>("creation"),
     [error, setError] = useState(""),
@@ -135,7 +135,7 @@ export default function App() {
   const selectedRequest = page === "request" ? state.tasks.find((task) => task.id === requestId) : undefined;
   const backToResults = () => {
     setPage("creation");
-    requestAnimationFrame(() => requestTrigger.current?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => restoreFeedPosition.current?.());
   };
   useEffect(() => {
     if (page === "request" && !selectedRequest) setPage("creation");
@@ -917,8 +917,8 @@ export default function App() {
                   </div>
                 </header>
                 <Feed
-                  onDetails={(id, trigger) => {
-                    requestTrigger.current = trigger;
+                  onDetails={(id, restorePosition) => {
+                    restoreFeedPosition.current = restorePosition;
                     setRequestId(id);
                     setPage("request");
                   }}
