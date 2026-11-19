@@ -205,8 +205,13 @@ export function loadApplication(): Promise<void> {
     committedRelated = new Set(relatedIds);
     await native("staging_purge", { keep: relatedIds });
     const createdAt = new Map(tasks.map((task) => [task.id, task.createdAt]));
+    const requestOrder = new Map(batches.flatMap((batch) => batch.taskIds.map((id, index) => [id, index] as const)));
     feed.sort(
-      (a, b) => (createdAt.get(b.taskId) ?? 0) - (createdAt.get(a.taskId) ?? 0) || a.resultIndex - b.resultIndex,
+      (a, b) =>
+        (createdAt.get(b.taskId) ?? 0) - (createdAt.get(a.taskId) ?? 0) ||
+        (requestOrder.get(a.taskId) ?? 0) - (requestOrder.get(b.taskId) ?? 0) ||
+        a.taskId.localeCompare(b.taskId) ||
+        a.resultIndex - b.resultIndex,
     );
     updateState({
       gallery: backfilled,

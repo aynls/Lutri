@@ -228,8 +228,7 @@ export async function receive(
         // Keep cards attached to the same successful result when an anonymous error
         // disappears from a newer snapshot. Shift only unfilled placeholders.
         const indices = new Map(task.results.map((result) => [result.id, result.index]));
-        const retained = feed.flatMap((slot) => {
-          if (slot.taskId !== task.id) return [slot];
+        const retained = current.flatMap((slot) => {
           const previous = previousResults[slot.resultIndex];
           const index = previous ? indices.get(previous.id) : slot.resultIndex - removedCount;
           if (index === undefined || (complete && index >= task.results.length)) return [];
@@ -238,7 +237,13 @@ export async function receive(
         const extra = task.results
           .filter((result) => result.index > publishedThrough)
           .map((result) => ({ id: crypto.randomUUID(), taskId: task.id, resultIndex: result.index }));
-        return [...extra, ...retained];
+        const first = feed.indexOf(current[0]);
+        return [
+          ...feed.slice(0, first),
+          ...retained,
+          ...extra,
+          ...feed.slice(first).filter((slot) => slot.taskId !== task.id),
+        ];
       },
       [],
       task,

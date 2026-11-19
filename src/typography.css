@@ -259,21 +259,6 @@ button:disabled {
   padding: 14px 22px 18px;
   gap: 12px;
 }
-.result-card {
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
-}
-.result-card footer {
-  align-items: center;
-  gap: 7px;
-}
-.result-card footer > span:first-of-type {
-  flex: 1;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .gallery-card footer span {
   font-size: calc(13px * var(--font-scale, 1));
 }

@@ -1,6 +1,7 @@
 import { label, localize } from "../i18n";
 
 const messages = {
+  removeGroup: label("Remove group", "移除整组", "グループを取り除く"),
   layerDirectory: label("Composite PNG and PSD folder", "合成图和 PSD 保存目录", "合成画像と PSD の保存先"),
   layerDirectoryRequired: label(
     "Choose a folder for the composite PNG and PSD",
