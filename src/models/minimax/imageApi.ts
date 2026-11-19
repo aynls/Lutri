@@ -4,7 +4,7 @@ import type { GenerationDraft } from "../../domain/types";
 import { label, localize } from "../../i18n";
 import { commonRatios, count, format, number, select, text, toggle } from "../fields";
 import { dimensionErrors, validateFields, values } from "../shared";
-import type { CompileContext, FieldDefinition, ModelCombination } from "../types";
+import type { CompileContext, FieldDefinition, ModelIssue, ModelCombination } from "../types";
 
 const automaticSize = ({ parameters }: GenerationDraft) => !parameters.size || parameters.size === "auto";
 const aspectRatio = label("Aspect ratio", "宽高比", "アスペクト比");
@@ -42,9 +42,9 @@ const fields: FieldDefinition[] = [
   },
 ];
 
-function validate(draft: GenerationDraft): string[] {
+function validate(draft: GenerationDraft): ModelIssue[] {
   const p = values(fields, draft);
-  const errors = validateFields(fields, draft);
+  const errors: ModelIssue[] = validateFields(fields, draft);
   const promptLength = [...compilePrompt(draft, draft.references).trim()].length;
   if (promptLength < 1 || promptLength > 32000) errors.push(`${c("promptLimit")}: 1–32000`);
 
@@ -65,7 +65,7 @@ function validate(draft: GenerationDraft): string[] {
     )
       errors.push(`${localize(aspectRatio)}: 1:3–3:1 (1–300)`);
   } else if (p.enable_prompt_expansion === false) {
-    errors.push(localize(fixedFrameRequired));
+    errors.push({ field: "aspect_ratio", message: localize(fixedFrameRequired) });
   }
   return errors;
 }

@@ -70,7 +70,9 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
         )
           return false;
         const errors = combination.validate({ ...draft, parameters: parametersFor(w, h) });
-        return !errors.some((error) => /width|height|size|ratio|×/i.test(error));
+        return !errors.some((error) =>
+          /width|height|size|ratio|×/i.test(typeof error === "string" ? error : error.field),
+        );
       })
     : [];
   const current =
@@ -100,7 +102,7 @@ export function FrameFields(props: FormProps & { fields: FieldDefinition[] }) {
   return (
     <div className="frame-controls">
       {custom && (
-        <label className="field frame-presets" htmlFor={id}>
+        <label className="field frame-presets" data-field="framePreset" htmlFor={id}>
           <span>{c("preset")}</span>
           <Select
             id={id}

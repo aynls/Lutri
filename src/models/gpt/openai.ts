@@ -59,8 +59,7 @@ export function openAICombination(model: string, label: string, version26: boole
       }
       if (draft.parameters.background === "transparent" && draft.parameters.output_format === "jpeg")
         errors.push("transparent: PNG / WebP");
-      if (version26) errors.push(...validateOpenAISvg(draft));
-      return errors;
+      return version26 ? [...errors, ...validateOpenAISvg(draft)] : errors;
     },
     compile: (context) => {
       const p = values(fields, context.draft);

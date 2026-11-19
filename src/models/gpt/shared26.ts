@@ -1,7 +1,7 @@
 import type { GenerationDraft } from "../../domain/types";
 import { localize, label } from "../../i18n";
 import { select, text } from "../fields";
-import type { FieldDefinition, ParameterGroup } from "../types";
+import type { FieldDefinition, ModelIssue, ParameterGroup } from "../types";
 import { groups } from "./shared";
 
 export const complexity = (key = "complexity") =>
@@ -28,16 +28,22 @@ export const falSvgModel: FieldDefinition = {
   visible: (draft) => draft.parameters.output_format === "svg" && !draft.references.length,
 };
 
-function svgInputErrors(draft: GenerationDraft, singleImageKey?: string): string[] {
-  const errors: string[] = [];
+function svgInputErrors(draft: GenerationDraft, singleImageKey?: string): ModelIssue[] {
+  const errors: ModelIssue[] = [];
   if (draft.references.length || draft.mask)
-    errors.push(localize(label("SVG requires text-only input", "SVG 仅支持文字输入", "SVG はテキスト入力のみ対応")));
+    errors.push({
+      field: "references",
+      message: localize(label("SVG requires text-only input", "SVG 仅支持文字输入", "SVG はテキスト入力のみ対応")),
+    });
   if (singleImageKey && Number(draft.parameters[singleImageKey] ?? 1) !== 1)
-    errors.push(localize(label("SVG: one image per request", "SVG：单次生成 1 张", "SVG：リクエストごとに 1 枚")));
+    errors.push({
+      field: singleImageKey,
+      message: localize(label("SVG: one image per request", "SVG：单次生成 1 张", "SVG：リクエストごとに 1 枚")),
+    });
   return errors;
 }
 
-export function validateFalSvg(draft: GenerationDraft): string[] {
+export function validateFalSvg(draft: GenerationDraft): ModelIssue[] {
   return draft.parameters.output_format === "svg" ? svgInputErrors(draft, "num_images") : [];
 }
 
@@ -64,23 +70,27 @@ export const openAISvgFields: FieldDefinition[] = [
   },
 ];
 
-export function validateOpenAISvg(draft: GenerationDraft): string[] {
+export function validateOpenAISvg(draft: GenerationDraft): ModelIssue[] {
   if (!isOpenAISvg(draft)) return [];
   const errors = svgInputErrors(draft, "n");
   const model = draft.parameters.svg_model;
   const hasModel = typeof model === "string" && model.trim().length > 0;
   if ((typeof model === "string" && model.length > 0 && !hasModel) || (draft.parameters.svg_thinking && !hasModel))
-    errors.push(localize(label("Choose an SVG author", "请指定 SVG 转写模型", "SVG 作成モデルを指定してください")));
+    errors.push({
+      field: "svg_model",
+      message: localize(label("Choose an SVG author", "请指定 SVG 转写模型", "SVG 作成モデルを指定してください")),
+    });
   if (draft.parameters.background === "transparent")
-    errors.push(
-      localize(
+    errors.push({
+      field: "background",
+      message: localize(
         label(
           "Transparent background requires PNG or WebP",
           "透明背景需使用 PNG 或 WebP",
           "透明背景には PNG または WebP が必要です",
         ),
       ),
-    );
+    });
   return errors;
 }
 
@@ -111,7 +121,7 @@ export const runwareSvgFields: FieldDefinition[] = [
   },
 ];
 
-export function validateRunwareSvg(draft: GenerationDraft): string[] {
+export function validateRunwareSvg(draft: GenerationDraft): ModelIssue[] {
   if (!isRunwareSvg(draft)) return [];
   const errors = svgInputErrors(draft);
   const model = draft.parameters.svg_model || "openai:gpt@5.4-mini";
@@ -120,10 +130,11 @@ export function validateRunwareSvg(draft: GenerationDraft): string[] {
     (effort === "none" && model === "openai:gpt@6-astra") ||
     (effort === "max" && ["openai:gpt@5.4-mini", "openai:gpt@5.4", "openai:gpt@5.5"].includes(String(model)))
   )
-    errors.push(
-      localize(
+    errors.push({
+      field: "svg_thinking",
+      message: localize(
         label("Unsupported SVG reasoning level", "SVG 模型不支持此推理强度", "SVG モデルが対応しない推論強度です"),
       ),
-    );
+    });
   return errors;
 }

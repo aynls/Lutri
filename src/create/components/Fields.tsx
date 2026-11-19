@@ -74,6 +74,7 @@ export function ParameterField({
     <div
       className={`field field-${fieldKind}${errors.length ? " has-error" : ""}`}
       data-field={field.key}
+      data-label={localize(field.label)}
       role="group"
       aria-invalid={!!errors.length || undefined}
       aria-describedby={errors.length ? `${id}-error` : undefined}
@@ -185,12 +186,14 @@ export function ParameterField({
 
 export function ParameterFields(props: FormProps) {
   const visible = props.combination.fields.filter((field) => !field.visible || field.visible(props.draft));
-  const groups = props.combination.groups ?? [{ id: "generation" as const, fields: visible.map((field) => field.key) }];
+  const groups = props.combination.groups ?? [];
   const assigned = new Set(groups.flatMap((group) => [...group.fields]));
-  const remaining = visible.filter((field) => !assigned.has(field.key));
-  const allGroups = remaining.length
-    ? [...groups, { id: "advanced" as const, collapsed: true, fields: remaining.map((field) => field.key) }]
-    : groups;
+  const remaining = visible.filter((field) => !assigned.has(field.key)).map((field) => field.key);
+  const allGroups = groups.map((group) =>
+    group.id === "advanced" ? { ...group, fields: [...group.fields, ...remaining] } : group,
+  );
+  if (remaining.length && !groups.some((group) => group.id === "advanced"))
+    allGroups.push({ id: "advanced", collapsed: true, fields: remaining });
   const render = (field: FieldDefinition) => (
     <Fragment key={`${props.combination.id}:${field.key}`}>
       <ParameterField field={field} draft={props.draft} onChange={props.onChange} />

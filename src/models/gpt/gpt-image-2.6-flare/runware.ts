@@ -51,8 +51,7 @@ export const gptImage26FlareRunware: ModelCombination = {
         draft.parameters.output_format === "jpeg")
     )
       errors.push("transparent: PNG / WebP");
-    errors.push(...validateRunwareSvg(draft));
-    return errors;
+    return [...errors, ...validateRunwareSvg(draft)];
   },
   compile: (context) => {
     const p = values(fields, context.draft);

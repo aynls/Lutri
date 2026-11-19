@@ -5,9 +5,16 @@ import { c } from "../create/messages";
 import { orderedCreationDraft, validateCreation } from "./creation";
 import { referenceLimit, regionLimit } from "./shared";
 
-export function validateDraft(draft: GenerationDraft, maxRequests: number): string[] {
+export function validateDraft(draft: GenerationDraft, maxRequests: number, targets?: Map<string, string>): string[] {
   const combination = combinationById(draft.combinationId);
-  const errors = [...validateCreation(draft, combination), ...combination.validate(draft)];
+  const errors = [...validateCreation(draft, combination)];
+  for (const issue of combination.validate(draft)) {
+    if (typeof issue === "string") errors.push(issue);
+    else {
+      targets?.set(issue.message, issue.field);
+      errors.push(issue.message);
+    }
+  }
   if (
     draft.parameters.layer_decomposition === true &&
     (typeof draft.layerOutputDirectory !== "string" || !draft.layerOutputDirectory.trim())
