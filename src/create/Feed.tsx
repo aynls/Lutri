@@ -9,6 +9,7 @@ import {
 } from "@phosphor-icons/react";
 import type { FeedSlot, GalleryEntry, GenerationDraft } from "../domain/types";
 import { displayPrompt } from "../domain/references";
+import { LayerDelivery } from "../components/LayerDelivery";
 import { ModelIcon } from "../components/ModelIcon";
 import { t } from "../i18n";
 import { combinationById } from "../models";
@@ -189,6 +190,12 @@ export function Feed({
                     );
                   })}
                 </div>
+                {slots.map((slot) => {
+                  const result = task.results[slot.resultIndex];
+                  return result?.layerDelivery?.status === "failed" ? (
+                    <LayerDelivery key={slot.id} task={task} result={result} onError={onError} />
+                  ) : null;
+                })}
               </article>
             );
           })}
