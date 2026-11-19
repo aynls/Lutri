@@ -4,6 +4,11 @@ const messages = {
   regular: ["Regular", "常规", "通常"],
   edit: ["Edit", "编辑", "編集"],
   copy: ["Duplicate", "复制", "複製"],
+  switchedCombination: [
+    "Batch switched to {combination}",
+    "批处理已切换至 {combination}",
+    "バッチ用に {combination} に切り替えました",
+  ],
   batch: ["Batch", "批处理", "バッチ"],
   draft: ["Batch draft", "批处理草稿", "バッチの下書き"],
   add: ["Add to batch", "加入清单", "リストに追加"],

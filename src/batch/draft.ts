@@ -33,6 +33,7 @@ export async function switchCreationMode(mode: CreationMode) {
     next = transferDraft(draft, target, creation.batch?.combinationId === target.id ? creation.batch : undefined);
   }
   await saveCreation(next, { ...creation, mode, [creation.mode]: structuredClone(draft) });
+  if (mode === "batch" && next.combinationId !== draft.combinationId) return combinationById(next.combinationId);
 }
 
 export async function addBatchItem() {

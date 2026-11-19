@@ -32,7 +32,7 @@ import { missingPromptReferences } from "./domain/references";
 import { t } from "./i18n";
 import { validateDraft } from "./models/validateDraft";
 import { combinationById } from "./models";
-import { initialDraft, maxRequestCount, modelConfiguration, referenceLimit } from "./models/shared";
+import { initialDraft, maxRequestCount, modelConfiguration, providerNames, referenceLimit } from "./models/shared";
 import { useApplication, loadApplication, saveDraft, removeFeed, getState, refreshGallery } from "./services/store";
 import { assetExists, imageUrl as assetImageUrl, importAsset, native } from "./services/native";
 import { ImageViewer } from "./gallery/ImageViewer";
@@ -113,6 +113,12 @@ export default function App() {
   const state = useApplication();
   const isBatch = state.creation.mode === "batch";
   const [modeBusy, setModeBusy] = useState(false);
+  const [batchNotice, setBatchNotice] = useState<ModelCombination>();
+  useEffect(() => {
+    if (!batchNotice) return;
+    const timer = window.setTimeout(() => setBatchNotice(undefined), 2000);
+    return () => window.clearTimeout(timer);
+  }, [batchNotice]);
   const [batchBusy, setBatchBusy] = useState(false);
   const [taskTab, setTaskTab] = useState<CreationMode>("regular");
   const [viewer, setViewer] = useState<{ assetId: string; ids: string[] }>();
@@ -145,10 +151,10 @@ export default function App() {
   const onError = useCallback((value: unknown) => setError(String(value)), []);
   const changeDraft = (draft: GenerationDraft) => void saveDraft(draft).catch(onError);
   const changeMode = async (mode: CreationMode) => {
-    if (modeBusy || batchBusy) return;
+    if (modeBusy || batchBusy || mode === getState().creation.mode) return;
     setModeBusy(true);
     try {
-      await switchCreationMode(mode);
+      setBatchNotice(await switchCreationMode(mode));
     } finally {
       setModeBusy(false);
     }
@@ -993,6 +999,14 @@ export default function App() {
           />
         </div>
       </main>
+      {batchNotice && !error && (
+        <div className="batch-notice" role="status">
+          {b("switchedCombination").replace(
+            "{combination}",
+            `${batchNotice.label} · ${providerNames[batchNotice.provider]}`,
+          )}
+        </div>
+      )}
       {error
         ? createPortal(
             <div className="error-banner" role="alert">
