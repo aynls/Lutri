@@ -500,12 +500,6 @@ img.asset-image.loaded {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   padding: 4px;
-  opacity: 0;
-  transition: opacity 140ms ease;
-}
-.result-cell:hover .card-remove,
-.card-remove:focus-visible {
-  opacity: 1;
 }
 .result-placeholder {
   height: 100%;
@@ -1216,45 +1210,32 @@ img.asset-image.loaded {
 }
 .result-actions {
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 8px;
+  left: 6px;
+  bottom: 6px;
   display: flex;
   align-items: center;
-  justify-content: center;
   flex-wrap: wrap;
-  width: max-content;
-  max-width: 80%;
-  gap: 2px;
-  padding: 3px;
+  max-width: calc(100% - 12px);
+  gap: 3px;
+  pointer-events: none;
+}
+.result-actions button {
+  pointer-events: auto;
+  padding: 5px;
+  font-size: 15px;
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   border: 1px solid var(--line);
-  border-radius: 7px;
-  box-shadow: var(--shadow-md);
-  opacity: 0;
-  transition: opacity 140ms ease;
 }
-.result-image:hover .result-actions,
-.result-image:has(:focus-visible) .result-actions {
-  opacity: 1;
-}
-@media (hover: none) {
-  .result-actions {
-    opacity: 1;
-  }
-}
-.result-actions button {
-  padding: 5px;
-  font-size: 15px;
-  color: var(--muted);
-  flex-shrink: 0;
-}
+.result-actions button[aria-pressed="true"],
 .result-actions button:hover {
   color: var(--accent);
 }
-.result-cell:has(:focus-visible) .card-remove {
-  opacity: 1;
+@media (hover: hover) {
+  .result-cell:not(:hover):not(:focus-within) .result-actions button:not(.result-reference, [aria-pressed="true"]) {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 .model-trigger {
   width: 100%;
