@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowClockwiseIcon,
   ArrowCounterClockwiseIcon,
+  CaretRightIcon,
   ImageIcon,
   XIcon,
   HeartIcon,
@@ -21,13 +22,16 @@ import { execute } from "../services/generation";
 import { changeFeed, removeFeed, useApplication } from "../services/store";
 import { c } from "./messages";
 import { useRequestMasonry } from "./useRequestMasonry";
+import { RequestCaption } from "./RequestCaption";
 
 export function Feed({
+  onDetails,
   onView,
   onReference,
   onRestore,
   onError,
 }: {
+  onDetails: (taskId: string, trigger: HTMLButtonElement) => void;
   onView: (id: string, ids?: string[]) => void;
   onReference: (entry: GalleryEntry) => void;
   onRestore: (draft: GenerationDraft) => void;
@@ -114,18 +118,21 @@ export function Feed({
           {groups.map(({ task, slots }) => {
             const id = task.id;
             const model = combinationById(task.draft.combinationId);
+            const prompt = displayPrompt(task.draft);
             const busy = ["queued", "submitting", "generating", "downloading"].includes(task.status);
             return (
               <article className="request-group" key={id}>
                 <header className="request-heading">
-                  <span className="request-model">
+                  <button
+                    className="request-model"
+                    title={c("requestDetails")}
+                    aria-label={`${c("requestDetails")} · ${model.label}`}
+                    onClick={(event) => onDetails(id, event.currentTarget)}
+                  >
                     <ModelIcon family={model.family} size={16} />
-                    <span title={model.label}>{model.label}</span>
-                  </span>
-                  <span className="request-status" title={t(task.status)}>
-                    {t(task.status)}
-                  </span>
-                  <p className="result-prompt">{displayPrompt(task.draft)}</p>
+                    <span>{model.label}</span>
+                    <CaretRightIcon size={13} />
+                  </button>
                   <button title={t("restore")} onClick={() => onRestore(task.draft)}>
                     <ArrowCounterClockwiseIcon />
                   </button>
@@ -136,6 +143,7 @@ export function Feed({
                     <XIcon />
                   </button>
                 </header>
+                {task.status !== "completed" && <p className="request-status">{t(task.status)}</p>}
                 <div className="request-images">
                   {slots.map(({ id: slotId, result, asset, ratio }) => (
                     <div key={slotId} className="result-cell" data-ratio={ratio}>
@@ -195,6 +203,7 @@ export function Feed({
                     <LayerDelivery key={slotId} task={task} result={result} onError={onError} />
                   ) : null,
                 )}
+                {prompt && <RequestCaption prompt={prompt} />}
               </article>
             );
           })}

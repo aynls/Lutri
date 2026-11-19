@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import {
   ApertureIcon,
   ArrowCounterClockwiseIcon,
+  ArrowLeftIcon,
   ArrowUpRightIcon,
   ClockCounterClockwiseIcon,
   CaretRightIcon,
@@ -62,6 +63,7 @@ import { SavedStyles } from "./create/components/SavedStyles";
 import { Regions } from "./create/components/Regions";
 import { Gallery } from "./gallery/Gallery";
 import { History } from "./history/History";
+import { RequestDetails } from "./history/RequestDetails";
 import { taskUsesAsset, type RelatedHistoryScope } from "./history/related";
 import { taskText } from "./i18n/tasks";
 import { Settings } from "./settings/Settings";
@@ -80,7 +82,7 @@ import "./create/sidebar.css";
 import "./typography.css";
 import "./batch/batch.css";
 
-type Page = "creation" | "upscale" | "gallery" | "history" | "settings";
+type Page = "creation" | "request" | "upscale" | "gallery" | "history" | "settings";
 const navigation = [
   { id: "creation", icon: ApertureIcon },
   { id: "upscale", icon: ArrowUpRightIcon },
@@ -121,6 +123,8 @@ export default function App() {
   }, [batchNotice]);
   const [batchBusy, setBatchBusy] = useState(false);
   const [taskTab, setTaskTab] = useState<CreationMode>("regular");
+  const [requestId, setRequestId] = useState<string>();
+  const requestTrigger = useRef<HTMLButtonElement>(null);
   const [viewer, setViewer] = useState<{ assetId: string; ids: string[] }>();
   const [page, setPage] = useState<Page>("creation"),
     [error, setError] = useState(""),
@@ -128,6 +132,14 @@ export default function App() {
     [writers, setWriters] = useState(false),
     [maskEditor, setMaskEditor] = useState(false);
   const [related, setRelated] = useState<RelatedHistoryScope & { returnPage: Page; returnTab: CreationMode }>();
+  const selectedRequest = page === "request" ? state.tasks.find((task) => task.id === requestId) : undefined;
+  const backToResults = () => {
+    setPage("creation");
+    requestAnimationFrame(() => requestTrigger.current?.focus({ preventScroll: true }));
+  };
+  useEffect(() => {
+    if (page === "request" && !selectedRequest) setPage("creation");
+  }, [page, selectedRequest]);
   const lastNonHistory = useRef<Page>("creation");
   useEffect(() => {
     if (page !== "history") lastNonHistory.current = page;
@@ -599,8 +611,8 @@ export default function App() {
             <button
               title={id === "gallery" ? t("resources") : t(id)}
               key={id}
-              aria-current={page === id ? "page" : undefined}
-              className={page === id ? "active" : ""}
+              aria-current={(page === "request" ? "creation" : page) === id ? "page" : undefined}
+              className={(page === "request" ? "creation" : page) === id ? "active" : ""}
               onClick={() => setPage(id)}
             >
               <Icon size={20} />
@@ -905,6 +917,11 @@ export default function App() {
                   </div>
                 </header>
                 <Feed
+                  onDetails={(id, trigger) => {
+                    requestTrigger.current = trigger;
+                    setRequestId(id);
+                    setPage("request");
+                  }}
                   onView={view}
                   onReference={addReference}
                   onRestore={(draft) => void restore(draft).catch(onError)}
@@ -914,6 +931,29 @@ export default function App() {
             )}
           </div>
         </div>
+        {selectedRequest && (
+          <section className="request-page" aria-label={c("requestDetails")}>
+            <header className="creation-section-header">
+              <button autoFocus onClick={backToResults}>
+                <ArrowLeftIcon />
+                {c("generationResults")}
+              </button>
+              <button onClick={() => void restore(selectedRequest.draft).catch(onError)}>
+                <ArrowCounterClockwiseIcon />
+                {t("restore")}
+              </button>
+            </header>
+            <div className="request-page-scroll">
+              <RequestDetails
+                key={selectedRequest.id}
+                task={selectedRequest}
+                onView={view}
+                onError={onError}
+                groupResults
+              />
+            </div>
+          </section>
+        )}
         <div className="gallery-host" hidden={page !== "gallery"}>
           <Gallery
             onView={view}
