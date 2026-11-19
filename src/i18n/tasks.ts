@@ -14,6 +14,8 @@ const messages = {
   deletable: label("Can delete", "可删除", "削除可能"),
   skipped: label("Skipped", "跳过", "対象外"),
   providerTask: label("Provider task ID", "供应商任务 ID", "プロバイダーのタスク ID"),
+  copyRequestId: label("Copy request ID", "复制请求 ID", "リクエスト ID をコピー"),
+  copyProviderTaskId: label("Copy provider task ID", "复制供应商任务 ID", "プロバイダーのタスク ID をコピー"),
   usage: label("Usage", "用量", "使用量"),
   inputTokens: label("Input tokens", "输入 token", "入力トークン"),
   outputTokens: label("Output tokens", "输出 token", "出力トークン"),
