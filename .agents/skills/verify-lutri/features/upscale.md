@@ -20,10 +20,10 @@ Preconditions:
 - Doctor reports the verify instance and English UI.
 - No upscale job is running. A fresh launch satisfies this.
 
-- **Open upscale.** Choose `Upscale`. Run `node .agents/skills/verify-lutri/harness.js click --role button --name "Upscale"` and `node .agents/skills/verify-lutri/harness.js state --heading Upscale`. The heading is `Upscale`.
+- **Open upscale.** Choose `Upscale`. Run `node .agents/skills/verify-lutri/harness.js click --role button --name "Upscale"` and `node .agents/skills/verify-lutri/harness.js state --heading Upscale`. The current page is `Upscale`.
 - **Wait for the model list.** Run `node .agents/skills/verify-lutri/harness.js snapshot --path .agents/skills/verify-lutri/evidence/upscale/ready.aria.txt --contains "Real-ESRGAN General" --contains 'button "Single" pressed=true' --contains 'button "4×" pressed=true' --contains "Drop images to import"`. The snapshot contains `Real-ESRGAN General`, a pressed `Single` button, a pressed `4×` button, and `Drop images to import`. If the model name is still `—`, the model list did not load. Stop and report that failure.
 - **Switch to batch.** Choose `Batch`. Run `node .agents/skills/verify-lutri/harness.js click --role button --name "Batch"` and `node .agents/skills/verify-lutri/harness.js snapshot --path .agents/skills/verify-lutri/evidence/upscale/batch.aria.txt --contains 'button "Batch" pressed=true' --contains "Drop images to import"`. The `Batch` button is pressed and the drop area remains empty.
-- **Return to one image.** Choose `Single`. Run `node .agents/skills/verify-lutri/harness.js click --role button --name "Single"` and `node .agents/skills/verify-lutri/harness.js screenshot --path .agents/skills/verify-lutri/evidence/upscale/single.png`. The image shows Lutri, the Upscale heading, and `Drop images to import`.
+- **Return to one image.** Choose `Single`. Run `node .agents/skills/verify-lutri/harness.js click --role button --name "Single"` and `node .agents/skills/verify-lutri/harness.js screenshot --path .agents/skills/verify-lutri/evidence/upscale/single.png`. The image shows Lutri, the active Upscale button, and `Drop images to import`.
 
 ## Gotchas
 

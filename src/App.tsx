@@ -587,13 +587,13 @@ export default function App() {
       <nav className="navigation">
         <div className="brand">
           <BrandMark />
-          <span>Lutri</span>
         </div>
         <div className="navigation-pages">
           {navigation.map(({ id, icon: Icon }) => (
             <button
               title={id === "gallery" ? t("resources") : t(id)}
               key={id}
+              aria-current={page === id ? "page" : undefined}
               className={page === id ? "active" : ""}
               onClick={() => setPage(id)}
             >
@@ -603,6 +603,7 @@ export default function App() {
         </div>
         <button
           title={t("settings")}
+          aria-current={page === "settings" ? "page" : undefined}
           className={page === "settings" ? "active" : ""}
           onClick={() => setPage("settings")}
         >
@@ -610,9 +611,6 @@ export default function App() {
         </button>
       </nav>
       <main className="workspace">
-        <header className="workspace-header">
-          <h1>{page === "gallery" ? t("resources") : t(page)}</h1>
-        </header>
         <div className={page === "creation" ? "creation-host" : "creation-host workspace-hidden"}>
           <div
             className="creation-workspace"

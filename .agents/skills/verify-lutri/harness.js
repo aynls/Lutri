@@ -246,7 +246,7 @@ const probeExpression = `(() => {
     title: document.title,
     url: location.href,
     lang: document.documentElement.lang,
-    heading: document.querySelector("h1")?.textContent ?? "",
+    heading: document.querySelector('.navigation [aria-current="page"]')?.title ?? "",
     palette: document.documentElement.dataset.palette ?? "",
     accent: document.documentElement.dataset.accent ?? "",
     settingsCategory: activeCategory?.id.replace("settings-nav-", "") ?? "",
