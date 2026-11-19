@@ -396,10 +396,11 @@ small {
   min-height: 0;
 }
 .request-feed {
-  display: grid;
-  gap: 16px;
+  position: relative;
 }
 .request-group {
+  position: absolute;
+  container-type: inline-size;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -419,6 +420,12 @@ small {
   gap: 6px;
   min-width: 0;
 }
+.request-model > span,
+.request-status {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .request-status {
   color: var(--muted);
 }
@@ -437,15 +444,24 @@ small {
   flex: none;
   padding: 5px;
 }
+@container (max-width: 480px) {
+  .request-heading {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr) auto auto;
+    gap: 2px 6px;
+    padding: 6px 8px;
+  }
+  .result-prompt {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
 .request-images {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px;
+  position: relative;
+  margin: 6px;
 }
 .result-cell {
-  position: relative;
-  height: 160px;
+  position: absolute;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
@@ -457,7 +473,7 @@ small {
 .result-image img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
 .image-button {
   display: block;
