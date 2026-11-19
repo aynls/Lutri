@@ -42,7 +42,7 @@ Run doctor before driving whenever the UI looks wrong. It exits 0 only when all 
 - port 9333 is listened on by that launch. The listener is the WebView2 process; its parent chain must include `%LOCALAPPDATA%\LutriVerify\target\debug\lutri.exe`
 - the server on port 14720 belongs to the same launcher
 - `%APPDATA%\app.lutri.studio.verify\lutri.sqlite3` exists
-- the page title is `Lutri`, the document language is `en`, a heading is visible, and the credential status is no longer loading
+- the page title is `Lutri`, the document language is `en`, a navigation button is current, and the credential status is no longer loading
 
 Each command that attaches to the WebView checks both listener process trees before connecting. Database reads also check the recorded run. If doctor fails, inspect `%LOCALAPPDATA%\LutriVerify\dev.log`.
 
@@ -69,7 +69,7 @@ node .agents/skills/verify-lutri/harness.js run --path .agents/skills/verify-lut
 
 `run` performs the process-tree check once, then executes the driving commands (`state`, `click`, `fill`, `text`, `snapshot`, `screenshot`, `read-record`) in order and stops at the first failing line, reporting its number. Inside a recipe, single quotes quote arguments containing double quotes.
 
-Icon buttons in the left navigation expose their names through the `title` attribute: `Creation`, `Upscale`, `Resources`, `Tasks`, and `Settings`. The page heading uses the same words, except the gallery page heading is `Resources`.
+Icon buttons in the left navigation expose their names through the `title` attribute: `Creation`, `Upscale`, `Resources`, `Tasks`, and `Settings`. The `--heading` observation reads the name of the current navigation button.
 
 Do not click `Reset`, `Import`, `Choose images`, `Start processing`, `Configure` followed by typing, or any control that calls a provider. `Reset` opens a native confirmation dialog. Import and image picking open native file dialogs. The harness cannot close those dialogs.
 
