@@ -80,12 +80,11 @@ fn client() -> Result<reqwest::Client, String> {
         .map_err(|e| e.to_string())
 }
 
-fn secret(provider: &str) -> Result<String, String> {
+fn secret(app: &tauri::AppHandle, provider: &str) -> Result<String, String> {
     if !matches!(provider, "openai" | "google") {
         return Err("Unsupported batch provider".into());
     }
-    keyring::Entry::new("app.lutri.studio", provider)
-        .map_err(|e| e.to_string())?
+    crate::network::credential(app, provider)?
         .get_password()
         .map_err(|_| "Provider credential unavailable".into())
 }
@@ -125,10 +124,15 @@ pub fn batch_input_append(
 }
 
 #[tauri::command]
-pub async fn batch_upload(store: tauri::State<'_, Store>, id: String, provider: String) -> Result<String, String> {
+pub async fn batch_upload(
+    app: tauri::AppHandle,
+    store: tauri::State<'_, Store>,
+    id: String,
+    provider: String,
+) -> Result<String, String> {
     let input = path(&store, &id)?;
     let bytes = std::fs::metadata(&input).map_err(|e| e.to_string())?.len();
-    let key = secret(&provider)?;
+    let key = secret(&app, &provider)?;
     let client = client()?;
     let response = if provider == "openai" {
         let file = reqwest::multipart::Part::file(&input)
@@ -202,6 +206,7 @@ pub async fn batch_upload(store: tauri::State<'_, Store>, id: String, provider: 
 /// Download large JSONL outputs to disk. The WebView reads one response at a time.
 #[tauri::command]
 pub async fn batch_output_fetch(
+    app: tauri::AppHandle,
     store: tauri::State<'_, Store>,
     id: String,
     provider: String,
@@ -211,7 +216,7 @@ pub async fn batch_output_fetch(
     if destination.exists() {
         return Ok(());
     }
-    let key = secret(&provider)?;
+    let key = secret(&app, &provider)?;
     let identifier = file_id.strip_prefix("files/").unwrap_or(&file_id);
     if identifier.is_empty()
         || !identifier

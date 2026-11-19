@@ -8,18 +8,20 @@ use tauri::ipc::Channel;
 
 mod recraft;
 
-fn credential(provider: &str) -> Result<keyring::Entry, String> {
-    keyring::Entry::new("app.lutri.studio", provider).map_err(|e| e.to_string())
+pub(crate) fn credential(app: &tauri::AppHandle, provider: &str) -> Result<keyring::Entry, String> {
+    keyring::Entry::new(&app.config().identifier, provider).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn credential_save(provider: String, secret: String) -> Result<(), String> {
-    credential(&provider)?.set_password(&secret).map_err(|e| e.to_string())
+pub fn credential_save(app: tauri::AppHandle, provider: String, secret: String) -> Result<(), String> {
+    credential(&app, &provider)?
+        .set_password(&secret)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn credential_present(provider: String) -> Result<bool, String> {
-    match credential(&provider)?.get_password() {
+pub fn credential_present(app: tauri::AppHandle, provider: String) -> Result<bool, String> {
+    match credential(&app, &provider)?.get_password() {
         Ok(_) => Ok(true),
         Err(keyring::Error::NoEntry) => Ok(false),
         Err(error) => Err(error.to_string()),
@@ -27,15 +29,15 @@ pub fn credential_present(provider: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub fn credential_remove(provider: String) -> Result<(), String> {
-    match credential(&provider)?.delete_credential() {
+pub fn credential_remove(app: tauri::AppHandle, provider: String) -> Result<(), String> {
+    match credential(&app, &provider)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(error) => Err(error.to_string()),
     }
 }
 
 #[tauri::command]
-pub async fn credential_check(provider: String) -> Result<(), String> {
+pub async fn credential_check(app: tauri::AppHandle, provider: String) -> Result<(), String> {
     // Only authenticated read-only operations; never generate an image to probe credentials.
     let (url, header, prefix) = match provider.as_str() {
         "openrouter" => ("https://openrouter.ai/api/v1/key", "Authorization", "Bearer "),
@@ -46,7 +48,7 @@ pub async fn credential_check(provider: String) -> Result<(), String> {
         ),
         _ => return Err("unsupported".into()),
     };
-    let secret = credential(&provider)?.get_password().map_err(|e| e.to_string())?;
+    let secret = credential(&app, &provider)?.get_password().map_err(|e| e.to_string())?;
     let response = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .timeout(std::time::Duration::from_secs(20))
@@ -66,6 +68,7 @@ pub async fn credential_check(provider: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn writer_discover_efforts(
+    app: tauri::AppHandle,
     provider: String,
     endpoint: String,
     model: String,
@@ -73,7 +76,7 @@ pub async fn writer_discover_efforts(
 ) -> Result<Vec<String>, String> {
     let secret = match secret.filter(|value| !value.trim().is_empty()) {
         Some(value) => value,
-        None => credential(&provider)?
+        None => credential(&app, &provider)?
             .get_password()
             .map_err(|_| "Credential unavailable")?,
     };
@@ -148,8 +151,8 @@ pub struct HttpResponse {
     retry_after: Option<String>,
 }
 
-fn prepare(request: HttpRequest) -> Result<reqwest::RequestBuilder, String> {
-    let secret = credential(&request.provider)?
+fn prepare(app: &tauri::AppHandle, request: HttpRequest) -> Result<reqwest::RequestBuilder, String> {
+    let secret = credential(app, &request.provider)?
         .get_password()
         .map_err(|e| e.to_string())?;
     let client = reqwest::Client::builder()
@@ -191,9 +194,13 @@ fn prepare(request: HttpRequest) -> Result<reqwest::RequestBuilder, String> {
 }
 
 #[tauri::command]
-pub async fn http_request(store: tauri::State<'_, Store>, request: HttpRequest) -> Result<HttpResponse, String> {
+pub async fn http_request(
+    app: tauri::AppHandle,
+    store: tauri::State<'_, Store>,
+    request: HttpRequest,
+) -> Result<HttpResponse, String> {
     let is_recraft = request.provider == "recraft";
-    let response = prepare(request)?.send().await.map_err(|e| e.to_string())?;
+    let response = prepare(&app, request)?.send().await.map_err(|e| e.to_string())?;
     let status = response.status().as_u16();
     let retry_after = response
         .headers()
@@ -225,8 +232,8 @@ pub async fn http_request(store: tauri::State<'_, Store>, request: HttpRequest) 
 }
 
 #[tauri::command]
-pub async fn http_stream(request: HttpRequest, channel: Channel<Vec<u8>>) -> Result<(), String> {
-    let response = prepare(request)?.send().await.map_err(|e| e.to_string())?;
+pub async fn http_stream(app: tauri::AppHandle, request: HttpRequest, channel: Channel<Vec<u8>>) -> Result<(), String> {
+    let response = prepare(&app, request)?.send().await.map_err(|e| e.to_string())?;
     if !response.status().is_success() {
         let status = response.status();
         return Err(format!(
