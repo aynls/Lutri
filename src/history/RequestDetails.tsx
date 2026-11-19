@@ -168,14 +168,18 @@ export function RequestDetails({
           <dt>{t("request")}</dt>
           <dd>
             <code>{task.id}</code>
-            <CopyButton value={task.id} onError={onError} />
+            <CopyButton value={task.id} title={taskText("copyRequestId")} onError={onError} />
           </dd>
           {(task.providerTaskId ?? task.recovery?.remoteId) && (
             <>
               <dt>{taskText("providerTask")}</dt>
               <dd>
                 <code>{task.providerTaskId ?? task.recovery?.remoteId}</code>
-                <CopyButton value={task.providerTaskId ?? task.recovery!.remoteId} onError={onError} />
+                <CopyButton
+                  value={task.providerTaskId ?? task.recovery!.remoteId}
+                  title={taskText("copyProviderTaskId")}
+                  onError={onError}
+                />
               </dd>
             </>
           )}
