@@ -19,15 +19,9 @@ export function LayerDelivery({
   const busy = retrying || ["queued", "submitting", "generating", "downloading"].includes(task.status);
   return (
     <div className="layer-delivery">
-      <small role="status">
-        {delivery.status === "completed"
-          ? c("layerOutputSaved")
-          : busy
-            ? c("layerSaving")
-            : result.assetId
-              ? c("compositeSaved")
-              : null}
-      </small>
+      {delivery.status !== "completed" && (busy || result.assetId) && (
+        <small role="status">{c(busy ? "layerSaving" : "compositeSaved")}</small>
+      )}
       {delivery.status === "completed" && delivery.psdPath && (
         <button onClick={() => void revealItemInDir(delivery.psdPath!).catch(onError)}>{c("openPsdLocation")}</button>
       )}

@@ -14,7 +14,7 @@ const messages = {
   add: ["Add to batch", "加入清单", "リストに追加"],
   save: ["Save changes", "保存修改", "変更を保存"],
   submit: ["Submit batch", "提交批处理", "バッチを送信"],
-  empty: ["Build your batch", "准备一份批处理", "バッチを準備"],
+  empty: ["Add at least one configuration", "至少添加一组配置", "設定を1件以上追加してください"],
   emptyHint: [
     "Add prompts and settings from the editor.",
     "从左侧添加提示词和参数配置。",

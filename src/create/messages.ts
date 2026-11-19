@@ -27,7 +27,6 @@ const messages = {
   openPsdLocation: label("Show PSD in folder", "在文件夹中显示 PSD", "PSD をフォルダーで表示"),
   retryLayerSave: label("Retry local save", "重试本地保存", "ローカル保存を再試行"),
   compositeSaved: label("Composite saved to gallery", "合成图已存入图库", "合成画像をギャラリーに保存済み"),
-  layerOutputSaved: label("Composite PNG and PSD saved", "合成图和 PSD 已保存", "合成画像と PSD を保存済み"),
   layerSaving: label("Saving PNG / PSD", "正在保存 PNG / PSD", "PNG / PSDを保存中"),
   psdSizeLimit: label("PSD exceeds the size limit", "PSD 超出大小限制", "PSDのサイズ上限を超えています"),
   singleLayerSource: label(

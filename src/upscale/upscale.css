@@ -274,13 +274,6 @@
   flex: 1;
   margin-left: 0;
 }
-.upscale-saved {
-  display: inline-flex;
-  align-items: center;
-  margin-left: auto;
-  order: 1;
-  color: var(--muted);
-}
 .upscale-save-error {
   color: var(--danger);
 }

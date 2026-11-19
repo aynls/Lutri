@@ -406,7 +406,7 @@ export function LayoutEditor({
                 }}
               />
             )}
-            {selected ? (
+            {selected && (
               <div className="region-properties" key={selected.id}>
                 <div className="region-object-actions">
                   <button
@@ -528,11 +528,6 @@ export function LayoutEditor({
                     )}
                   </section>
                 )}
-              </div>
-            ) : (
-              <div className="region-selection-empty">
-                <BoundingBoxIcon size={28} />
-                <span>{t("drawRegionHint")}</span>
               </div>
             )}
           </div>

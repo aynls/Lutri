@@ -269,8 +269,8 @@ export function BatchHistory({
                     </small>
                   </span>
                 </div>
-                <span className={`status-badge status-${summary}`}>{b(summary)}</span>
-                {processed !== undefined && (
+                {summary !== "completed" && <span className={`status-badge status-${summary}`}>{b(summary)}</span>}
+                {summary !== "completed" && processed !== undefined && (
                   <span className="cloud-batch-summary">
                     {b("processed")} {processed}/{requests.length}
                   </span>
@@ -302,7 +302,9 @@ export function BatchHistory({
                             <span className="muted">
                               {t("request")} {taskIndex + 1}
                             </span>
-                            <span className={`status-badge status-${task.status}`}>{t(task.status)}</span>
+                            {task.status !== "completed" && (
+                              <span className={`status-badge status-${task.status}`}>{t(task.status)}</span>
+                            )}
                           </div>
                           <div className="history-meta">
                             <span>
@@ -368,7 +370,8 @@ export function BatchHistory({
                 {groups.map((group) => (
                   <div className="cloud-group" key={group.id}>
                     <span>
-                      {providerNames[group.provider]} · {group.model} · {b(group.status)}
+                      {providerNames[group.provider]} · {group.model}
+                      {group.status !== "completed" && ` · ${b(group.status)}`}
                     </span>
                     <code>{group.remoteId ?? group.id}</code>
                     {group.error && <p className="error-text">{group.error}</p>}
@@ -404,18 +407,15 @@ export function BatchHistory({
           className="request-dialog"
           onClose={() => setDetail(undefined)}
           footer={
-            <>
-              <button onClick={() => setDetail(undefined)}>{t("close")}</button>
-              <button
-                className="primary-button"
-                onClick={() => {
-                  onRestore({ ...detailTask.draft, requestCount: 1 });
-                  setDetail(undefined);
-                }}
-              >
-                {t("restore")}
-              </button>
-            </>
+            <button
+              className="primary-button"
+              onClick={() => {
+                onRestore({ ...detailTask.draft, requestCount: 1 });
+                setDetail(undefined);
+              }}
+            >
+              {t("restore")}
+            </button>
           }
         >
           <RequestDetails
