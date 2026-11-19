@@ -10,7 +10,7 @@ use tauri::{Emitter, Manager};
 use tokio::sync::oneshot;
 
 const PROTOCOLS: &[&str] = &["2025-06-18", "2025-11-25"];
-const INSTRUCTIONS: &str = "Lutri exposes creation, gallery lookup and saved task results. Start with list_models and get_model. Use validate_creation before submitting. Generate and submit_batch return durable batch/task IDs; query list_tasks/get_task/get_batch for results. Retry a lost submission with the same requestId and identical arguments. Find previous results with list_tasks (all origins by default); status=completed, orderBy=updatedAt, limit=1 selects the most recently completed task. get_image accepts saved results outside the gallery. User drafts are independent. Upscaling is not exposed.";
+const INSTRUCTIONS: &str = "Lutri exposes creation, gallery lookup and saved task results. Start with list_models and get_model. Use validate_creation before submitting. The generate tool returns batchId and taskIds. The submit_batch tool returns batchId and taskCount. Use get_task for individual results, get_batch for batch progress and list_tasks with batchId to page through batch results. Retry a lost submission with the same requestId and identical arguments. To find the latest completed task across all origins, use list_tasks with status=completed, orderBy=updatedAt and limit=1. get_image accepts saved results outside the gallery. User drafts are independent. Upscaling is not exposed.";
 const MAX_REQUEST_BYTES: usize = 16 * 1024 * 1024;
 const MAX_PENDING_CALLS: usize = 128;
 

@@ -9,51 +9,45 @@ const documents = import.meta.glob<string>("/doc/model/**/*.md", { query: "?raw"
 export const modelTools = [
   tool(
     "list_models",
-    "List creation model/provider combinations, input capabilities and credential readiness. Use get_model for parameter schemas.",
+    "List model names and their providers with combination IDs, five models per page by default. Use get_model for parameters.",
     z.strictObject({
       query: z.string().optional(),
       provider: identifier.optional(),
       mode: executionMode.optional(),
-      configuredOnly: z.boolean().optional(),
+      configuredOnly: z.boolean().optional().describe("Show only providers with saved credentials. Defaults to true."),
       ...pagination,
     }),
-    async (input) => {
+    async ({ query, provider, mode, configuredOnly = true, offset = 0, limit = 5 }) => {
+      const search = query?.toLowerCase();
       const candidates = combinations.filter(
         (combination) =>
-          (!input.provider || combination.provider === input.provider) &&
-          (input.mode !== "batch" || !!combination.batch) &&
-          (!input.query ||
-            `${combination.id} ${combination.label} ${combination.family}`
-              .toLowerCase()
-              .includes(input.query.toLowerCase())),
+          (!provider || combination.provider === provider) &&
+          (mode !== "batch" || !!combination.batch) &&
+          (!search || `${combination.id} ${combination.label} ${combination.family}`.toLowerCase().includes(search)),
       );
-      const readiness = new Map(
-        await Promise.all(
-          [...new Set(candidates.map((entry) => entry.provider))].map(
-            async (provider) => [provider, await native<boolean>("credential_present", { provider })] as const,
-          ),
-        ),
-      );
-      const entries = candidates
-        .map((entry) => ({
-          combinationId: entry.id,
-          name: entry.label,
-          family: entry.family,
-          model: entry.model,
-          provider: entry.provider,
-          credentialConfigured: readiness.get(entry.provider) === true,
-          modes: entry.batch ? ["regular", "batch"] : ["regular"],
-          maxReferences: entry.maxReferences,
-          supportsMask: !!entry.mask,
-          supportsRegions: !!entry.regions,
-        }))
-        .filter((entry) => !input.configuredOnly || entry.credentialConfigured);
-      const offset = input.offset ?? 0,
-        limit = input.limit ?? 25;
+      const readiness = configuredOnly
+        ? new Map(
+            await Promise.all(
+              [...new Set(candidates.map((entry) => entry.provider))].map(
+                async (provider) => [provider, await native<boolean>("credential_present", { provider })] as const,
+              ),
+            ),
+          )
+        : undefined;
+      const models = new Map<string, { name: string; providers: Record<string, string> }>();
+      for (const entry of candidates) {
+        if (readiness && !readiness.get(entry.provider)) continue;
+        let model = models.get(entry.model);
+        if (!model) {
+          model = { name: entry.label, providers: {} };
+          models.set(entry.model, model);
+        }
+        model.providers[entry.provider] = entry.id;
+      }
+      const end = offset + limit;
       return success({
-        models: entries.slice(offset, offset + limit),
-        total: entries.length,
-        nextOffset: offset + limit < entries.length ? offset + limit : null,
+        models: [...models.values()].slice(offset, end),
+        nextOffset: end < models.size ? end : null,
       });
     },
     { readOnly: true },

@@ -6,9 +6,16 @@ import { submitBatch } from "../generation";
 import { getState } from "../store";
 import { identifier, McpError, success, tool } from "./contracts";
 import { checkedOutput, checkCreation, creationSchema, executionMode, outputFields, requireCreation } from "./creation";
-import { batchSummary } from "./tasks";
 
 let submissions: Promise<unknown> = Promise.resolve();
+
+function submissionReceipt(batch: GenerationBatch, reused: boolean) {
+  return success({
+    batchId: batch.id,
+    reused,
+    ...(batch.cloud ? { taskCount: batch.taskIds.length } : { taskIds: batch.taskIds }),
+  });
+}
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
@@ -39,11 +46,11 @@ function submitOnce(
             "This requestId already identifies a different creation request. Use a new ID for intentional new work.",
             { batchId: existing.id },
           );
-        return success({ reused: true, batch: batchSummary(existing) });
+        return submissionReceipt(existing, true);
       }
       try {
         const batch = await submit({ id: input.requestId, fingerprint });
-        return success({ reused: false, batch: batchSummary(batch) });
+        return submissionReceipt(batch, false);
       } catch (error) {
         if (error instanceof BatchValidationError)
           throw new McpError("INVALID_CREATION", "Correct the batch items before submitting.", error.issues);
@@ -68,17 +75,29 @@ export const submissionTools = [
     async (input) => {
       const mode = input.mode ?? "regular";
       const checked = await checkCreation(input.creation, mode);
-      const output = await checkedOutput(mode, input);
-      return success({
-        valid:
-          !checked.issues.length && checked.credentialConfigured && checked.assets.every((asset) => asset.available),
-        issues: checked.issues,
-        assets: checked.assets,
-        credentialConfigured: checked.credentialConfigured,
-        requestLimit: checked.requestLimit,
-        effectiveParameters: checked.draft.parameters,
-        outputs: output,
-      });
+      const issues: { code: string; message: string; assetIds?: string[] }[] = checked.issues.map((message) => ({
+        code: "INVALID_CREATION",
+        message,
+      }));
+      const missing = checked.assets.filter((asset) => !asset.available).map((asset) => asset.assetId);
+      if (missing.length)
+        issues.push({
+          code: "ASSET_UNAVAILABLE",
+          message: "Reference or mask images are missing.",
+          assetIds: missing,
+        });
+      if (!checked.credentialConfigured)
+        issues.push({
+          code: "CREDENTIAL_REQUIRED",
+          message: "Configure this provider in Lutri Settings before submitting.",
+        });
+      try {
+        await checkedOutput(mode, input);
+      } catch (error) {
+        if (!(error instanceof McpError)) throw error;
+        issues.push({ code: error.code, message: error.message });
+      }
+      return success(issues.length ? { valid: false, issues } : { valid: true });
     },
     { readOnly: true },
   ),
@@ -96,7 +115,7 @@ export const submissionTools = [
   ),
   tool(
     "submit_batch",
-    "Submit a native cloud batch using only batch-capable model combinations. Items are independent of the user's batch draft. Prepares and persists requests locally, then submits/retrieves in the background. Up to 50,000 total requests; returns batch/task IDs. Reuse requestId and identical input after a lost response.",
+    "Submit up to 50,000 cloud requests independently of the user's batch draft. Returns the batch ID and task count after local preparation. Use get_batch for progress and list_tasks with batchId for tasks. Retry lost responses with the same requestId and identical input.",
     z.strictObject({ requestId, items: z.array(creationSchema).min(1).max(batchRequestLimit), ...outputFields }),
     async (input) =>
       submitOnce("submit_batch", input, async (request) => {

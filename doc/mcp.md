@@ -13,35 +13,39 @@ Lutri 的本机 MCP 服务提供创作、图库资产检索和任务结果访问
 
 复制的配置分别使用 `lutri`（HTTP）和 `lutri-stdio`（stdio）作为服务器名。两个入口均支持协议版本 `2025-06-18` 和 `2025-11-25`。创作任务提交后由应用的队列管理，断开连接后继续执行。
 
-本次重写更改了工具及参数，旧客户端需要重新获取工具列表并调整调用。没有保留旧工具别名或旧参数适配。
+旧客户端需要重新获取工具列表，并按本文更新请求参数和响应字段。
 
 ## 工具
 
 | 工具                | 用途                                                                                                         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `list_models`       | 分页列出模型与供应商组合，支持 `query`、`provider`、`mode`、`configuredOnly` 筛选。                          |
+| `list_models`       | 按模型列出供应商和组合 ID，支持 `query`、`provider`、`mode`、`configuredOnly` 筛选。                            |
 | `get_model`         | 返回单个组合的参数 schema。传入 `includeDocumentation: true` 可附带该组合绑定的一份文档。                    |
 | `validate_creation` | 检查创作参数、素材是否存在、供应商密钥是否已配置及输出目录，不向供应商提交请求。                             |
 | `generate`          | 提交普通创作，返回批次与任务 ID，不等待生图完成。                                                            |
-| `submit_batch`      | 提交供应商原生云端批处理，支持多个创作条目；本地准备完成后返回 ID，上传、提交和获取结果在后台执行。          |
+| `submit_batch`      | 提交供应商原生云端批处理，本地准备完成后返回批次 ID 和任务数。上传、提交和获取结果在后台执行。                 |
 | `list_tasks`        | 分页查询任务，可按来源、创作模式、状态、是否已有结果、批次 ID 和调用标识筛选。                               |
-| `get_task`          | 查询一个任务的状态、单次请求参数及结果资产。                                                                 |
-| `get_batch`         | 查询一批创作的任务 ID、状态计数和云端分组状态。                                                              |
+| `get_task`          | 查询任务状态和结果，支持通过 `includeCreation` 读取单次创作的参数。                                           |
+| `get_batch`         | 按状态统计批次中的任务和云端分组，支持通过 `includeGroups` 查询分组详情。                                    |
 | `resume_task`       | 继续获取原任务结果或下载；云端任务恢复所属批次。不会重新提交生成请求。                                       |
 | `cancel_batch`      | 普通创作仅取消尚未提交的请求；云端批处理向供应商请求取消。                                                   |
 | `find_assets`       | 查询完整图库，支持精确 `assetId` 或 `query` 中的 ID 片段，以及来源筛选。                                     |
 | `get_image`         | 按 asset ID 读取图库图片或未入库结果；默认返回 PNG 预览，`variant: "original"` 读取原图。原始 SVG 返回文本。 |
 | `import_image`      | 将本地图片或 Base64 图片持久导入参考素材库，返回 asset ID。                                                  |
 
-分页参数为 `limit`（1–100）和 `offset`（从 0 开始）。模型列表默认每页 25 项，任务和资产默认每页 20 项。响应中的 `nextOffset` 为下一页偏移，`null` 表示没有下一页。
+分页参数为 `limit`（1–100）和 `offset`（从 0 开始）。模型列表默认每页 5 个型号，任务和资产默认每页 20 项。响应中的 `nextOffset` 为下一页偏移，`null` 表示没有下一页。
+
+`list_models` 的每个型号包含 `name` 和 `providers`。`providers` 的键是供应商 ID，值是用于 `get_model` 和创作请求的 `combinationId`。默认只列出已保存凭据的供应商，传入 `configuredOnly: false` 可浏览完整目录。
 
 ## 创作流程
 
 1. 调用 `list_models` 选择组合，再调用 `get_model` 获取该组合的参数。`mode` 为 `regular` 或 `batch`。凭据存在只表示已保存密钥，不保证供应商接受请求。
 2. 通过 `find_assets` 查找图库图片，或通过 `import_image` 导入素材。按需调用 `get_image` 查看内容。
-3. 构造 `creation`，调用 `validate_creation`。`valid` 同时考虑模型校验、素材可读性和密钥配置；不会验证供应商余额或实际授权。
+3. 构造 `creation`，调用 `validate_creation`。请求通过时返回 `valid: true`。校验失败时，`valid: false` 附带 `issues`，其中包括错误码、消息和涉及的素材 ID。校验范围包括参数、素材、凭据和输出目录。
 4. 使用新的 `requestId` 调用 `generate`，或把多个创作条目放入 `submit_batch.items`。
-5. 保存返回的 `batchId` 和 `taskIds`，通过 `get_task`、`get_batch` 或 `list_tasks` 获取状态。任务仍在进行时，`get_task` 会返回建议的 `pollAfterMs`。
+5. 普通创作返回 `batchId` 和 `taskIds`，通过 `get_task` 查询单个任务。云端批处理返回 `batchId` 和 `taskCount`，通过 `get_batch` 查看进度，通过 `list_tasks({ batchId })` 分页获取任务和结果。任务仍在进行时，`get_task` 会返回建议的 `pollAfterMs`。
+
+`get_batch` 的 `taskCounts` 按状态统计仍可查询的任务，`cloudGroupCounts` 统计云端分组。计数为零的状态会省略。传入 `includeGroups: true` 可查看每个云端分组的状态和错误。
 
 以下示例是工具的 arguments，须替换 `REQUEST_ID` 和 `COMBINATION_ID`。模型组合 ID 来自 `list_models`；每次有意发起的新创作使用新的调用标识。
 
@@ -72,7 +76,7 @@ Lutri 的本机 MCP 服务提供创作、图库资产检索和任务结果访问
 
 区域包含 `id`、`description`，以及可选的 `operation`、`referenceId`、`source`、`target`。`operation` 为 `place`、`move`、`anchor` 或 `remove`。矩形格式为 `[top, left, bottom, right]`，坐标归一化为 0–1000，必须满足上小于下、左小于右。来源区域必须绑定参考身份；每个区域必须具有目标区域，或同时具有来源区域与参考身份。
 
-蒙版使用 `{ "assetId": "MASK_ASSET_ID", "referenceId": "REFERENCE_ID" }`。通过 `list_models` 查看组合是否支持蒙版和区域。`validate_creation` 检查数量限制以及编辑原图、区域和蒙版的引用关系。`inputPreparation.maxEdge` 只缩放请求副本，不改写资产原图。
+蒙版使用 `{ "assetId": "MASK_ASSET_ID", "referenceId": "REFERENCE_ID" }`。`validate_creation` 检查组合是否支持蒙版和区域，并检查数量限制和图片引用关系。`inputPreparation.maxEdge` 只缩放请求副本，不改写资产原图。
 
 ### 输出
 
@@ -91,7 +95,7 @@ Lutri 的本机 MCP 服务提供创作、图库资产检索和任务结果访问
 }
 ```
 
-Base64 来源使用 `{ "source": { "type": "dataUrl", "dataUrl": "data:image/png;base64,..." } }`；其中省略号须替换为完整编码。
+Base64 来源使用 `{ "source": { "type": "dataUrl", "dataUrl": "data:image/png;base64,..." } }`；其中省略号须替换为完整编码。导入成功后，从 `data.assetId` 读取新素材的 ID。
 
 ## 找回上次结果
 
@@ -108,7 +112,7 @@ Base64 来源使用 `{ "source": { "type": "dataUrl", "dataUrl": "data:image/png
 }
 ```
 
-如需包含部分成功的任务，可用 `hasResults: true` 替代 `status: "completed"`。查询结果返回 asset ID 摘要；通过 `get_task` 读取每张结果的可读性、尺寸、媒体类型和错误。`get_task.creation` 的 `requestCount` 为 1，表示该任务对应的单次供应商请求。
+如需包含部分成功的任务，可用 `hasResults: true` 替代 `status: "completed"`。从任务列表的 `assetIds` 直接获取已保存结果的 ID。通过 `get_task` 查看单张结果的可用性、尺寸、媒体类型和错误。传入 `includeCreation: true` 可读取 `creation` 和 `outputs`。`creation.requestCount` 为 1，表示该任务对应的单次供应商请求。
 
 `requestId` 可用于找回同一调用的任务。任务和调用标识保存在本地，重启后仍可查询；已从历史删除的任务不参与任务查询。
 
@@ -132,6 +136,6 @@ Base64 来源使用 `{ "source": { "type": "dataUrl", "dataUrl": "data:image/png
 | `BRIDGE_TIMEOUT`                                            | 查询已有任务，或用原调用标识及相同参数重试提交。           |
 | `OPERATION_FAILED`                                          | 阅读脱敏消息并检查应用状态。                               |
 
-任务自身的供应商、下载或另存为错误位于查询结果中。查询成功与创作成功分别表达。`resume_task` 在任务已结束或已运行时返回 `accepted: false` 和原因；恢复失败可继续从任务状态读取。普通取消只影响排队请求，已经提交的请求继续获取原结果。
+任务自身的供应商、下载或另存为错误位于查询结果中。查询成功与创作成功分别表达。`resume_task` 在任务已结束或已运行时返回 `accepted: false` 和原因。恢复失败可继续从任务状态读取。`cancel_batch` 对普通创作返回本次取消的排队任务数 `cancelled`。对云端批处理，返回操作后正在取消的分组数 `cancellingGroups` 和已取消的分组数 `cancelledGroups`。
 
 协议依据：[MCP 工具规范](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)、[MCP 传输规范](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)。

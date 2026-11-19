@@ -20,13 +20,13 @@ const statuses = z.enum([
   "failed",
 ]);
 
-export function requireTask(id: string) {
+function requireTask(id: string) {
   const task = getState().tasks.find((entry) => entry.id === id && !entry.historyDeletedAt);
   if (!task) throw new McpError("TASK_NOT_FOUND", `Task not found: ${id}`);
   return task;
 }
 
-export function requireBatch(id: string) {
+function requireBatch(id: string) {
   const batch = getState().batches.find((entry) => entry.id === id);
   if (!batch) throw new McpError("BATCH_NOT_FOUND", `Batch not found: ${id}`);
   return batch;
@@ -46,56 +46,41 @@ function resumable(task: GenerationTask) {
   );
 }
 
-export function taskSummary(task: GenerationTask) {
-  const batch = getState().batches.find((entry) => entry.id === task.batchId);
+function taskSummary(task: GenerationTask) {
+  const assetIds = task.results.flatMap((result) => (result.assetId ? [result.assetId] : []));
   return {
     taskId: task.id,
     batchId: task.batchId,
-    origin: batch?.origin,
-    mode: task.cloudGroupId ? "batch" : "regular",
-    requestId: batch?.mcpRequest?.id,
     status: task.status,
-    createdAt: task.createdAt,
     updatedAt: task.updatedAt,
-    combinationId: task.draft.combinationId,
     prompt: Array.from(task.draft.prompt).slice(0, 160).join(""),
-    assetIds: task.results.flatMap((result) => (result.assetId ? [result.assetId] : [])),
-    savedResults: task.results.filter((result) => !!result.assetId).length,
-    deliveredPsdResults: task.results.filter((result) => result.layerDelivery?.status === "completed").length,
-    resultCount: task.results.length,
-    error: task.error,
-    canResume: resumable(task),
+    ...(assetIds.length ? { assetIds } : {}),
   };
 }
 
-export function batchSummary(batch: GenerationBatch) {
+function countByStatus<Status extends string>(entries: readonly { status: Status }[]) {
+  const counts: Partial<Record<Status, number>> = {};
+  for (const { status } of entries) counts[status] = (counts[status] ?? 0) + 1;
+  return counts;
+}
+
+function batchProgress(batch: GenerationBatch, includeGroups: boolean) {
   const tasks = getState().tasks.filter((task) => task.batchId === batch.id && !task.historyDeletedAt);
-  const counts = Object.fromEntries(
-    statuses.options.map((status) => [status, tasks.filter((task) => task.status === status).length]),
-  );
+  const groups = batch.cloud?.groups;
   return {
     batchId: batch.id,
-    mode: batch.cloud ? "batch" : "regular",
-    origin: batch.origin,
-    requestId: batch.mcpRequest?.id,
-    createdAt: batch.createdAt,
-    taskIds: tasks.map((task) => task.id),
-    taskCounts: counts,
-    outputs: tasks[0]
-      ? {
-          autoSave: !!tasks[0].draft.outputDirectory,
-          destination: tasks[0].draft.outputDirectory,
-        }
+    taskCounts: countByStatus(tasks),
+    cloudGroupCounts: groups ? countByStatus(groups) : undefined,
+    groups: includeGroups
+      ? groups?.map((group) => ({
+          groupId: group.id,
+          provider: group.provider,
+          model: group.model,
+          status: group.status,
+          requestCount: group.taskIds.length,
+          error: group.error,
+        }))
       : undefined,
-    groups: batch.cloud?.groups.map((group) => ({
-      groupId: group.id,
-      provider: group.provider,
-      model: group.model,
-      status: group.status,
-      requestCount: group.taskIds.length,
-      updatedAt: group.updatedAt,
-      error: group.error,
-    })),
   };
 }
 
@@ -167,19 +152,20 @@ export const taskTools = [
   ),
   tool(
     "get_task",
-    "Read one creation task, its request and locally saved results. Result asset IDs work with get_image and subsequent creation. Returned creation describes one provider request.",
-    z.strictObject({ taskId: identifier }),
-    async ({ taskId }) => {
+    "Read a task's status and results. Use result asset IDs with get_image or a subsequent creation.",
+    z.strictObject({
+      taskId: identifier,
+      includeCreation: z.boolean().optional().describe("Include the creation and output settings for this request."),
+    }),
+    async ({ taskId, includeCreation }) => {
       const task = requireTask(taskId);
       const ids = task.results.flatMap((result) => (result.assetId ? [result.assetId] : []));
-      const assets = new Map(
-        (await native<GalleryEntry[]>("gallery_entries", { ids })).map((entry) => [entry.asset.id, entry]),
-      );
+      const entries = ids.length ? await native<GalleryEntry[]>("gallery_entries", { ids }) : [];
+      const assets = new Map(entries.map((entry) => [entry.asset.id, entry]));
       const results = await Promise.all(
         task.results.map(async (result) => {
           const entry = result.assetId ? assets.get(result.assetId) : undefined;
           return {
-            resultId: result.id,
             index: result.index,
             status: result.status,
             assetId: result.assetId,
@@ -187,7 +173,6 @@ export const taskTools = [
             mediaType: entry?.asset.mediaType ?? result.mediaType,
             width: entry?.asset.width,
             height: entry?.asset.height,
-            inGallery: entry ? (entry.favorite || entry.boardIds.length > 0) && !entry.staged : false,
             error: result.error,
             exportError: result.exportError,
             path: entry?.path,
@@ -196,10 +181,17 @@ export const taskTools = [
         }),
       );
       return success({
-        ...taskSummary(task),
-        creation: creationInput(task.draft),
-        results,
-        outputs: { destination: task.draft.outputDirectory },
+        taskId,
+        status: task.status,
+        error: task.error,
+        canResume: resumable(task),
+        ...(results.length ? { results } : {}),
+        ...(includeCreation
+          ? {
+              creation: creationInput(task.draft),
+              outputs: { autoSave: !!task.draft.outputDirectory, destination: task.draft.outputDirectory },
+            }
+          : {}),
         pollAfterMs: ["queued", "submitting", "generating", "downloading"].includes(task.status) ? 2000 : null,
       });
     },
@@ -207,9 +199,12 @@ export const taskTools = [
   ),
   tool(
     "get_batch",
-    "Read a creation submission's task IDs, status counts and cloud batch group states. Use list_tasks with batchId to page through its tasks.",
-    z.strictObject({ batchId: identifier }),
-    async ({ batchId }) => success(batchSummary(requireBatch(batchId))),
+    "Read task and cloud group counts by status. Use list_tasks with batchId to find tasks and their results.",
+    z.strictObject({
+      batchId: identifier,
+      includeGroups: z.boolean().optional().describe("Include individual cloud group states and errors."),
+    }),
+    async ({ batchId, includeGroups = false }) => success(batchProgress(requireBatch(batchId), includeGroups)),
     { readOnly: true },
   ),
   tool(
@@ -218,10 +213,11 @@ export const taskTools = [
     z.strictObject({ taskId: identifier }),
     async ({ taskId }) => {
       const task = requireTask(taskId);
+      const receipt = { taskId, batchId: task.cloudGroupId ? task.batchId : undefined };
       if (task.status === "completed" || task.status === "cancelled")
-        return success({ accepted: false, reason: "terminal", task: taskSummary(task) });
+        return success({ ...receipt, accepted: false, reason: "terminal" });
       if (isTaskScheduled(taskId) || (task.cloudGroupId && isCloudBusy(task.batchId)))
-        return success({ accepted: false, reason: "already_running", task: taskSummary(task) });
+        return success({ ...receipt, accepted: false, reason: "already_running" });
       if (!resumable(task))
         throw new McpError(
           "TASK_NOT_RESUMABLE",
@@ -229,7 +225,7 @@ export const taskTools = [
           { taskId, status: task.status },
         );
       void execute(taskId).catch(() => {});
-      return success({ accepted: true, task: taskSummary(requireTask(taskId)) });
+      return success({ ...receipt, accepted: true });
     },
     { idempotent: true, external: true },
   ),
@@ -248,10 +244,16 @@ export const taskTools = [
             true,
           );
         await cancelCloudBatch(batchId);
-        return success({ scope: "cloud", batch: batchSummary(requireBatch(batchId)) });
+        const counts = countByStatus(requireBatch(batchId).cloud?.groups ?? []);
+        return success({
+          batchId,
+          scope: "cloud",
+          cancellingGroups: counts.cancelling ?? 0,
+          cancelledGroups: counts.cancelled ?? 0,
+        });
       }
       const cancelled = await cancelBatch(batchId);
-      return success({ scope: "queued_requests", cancelled, batch: batchSummary(requireBatch(batchId)) });
+      return success({ batchId, scope: "queued_requests", cancelled });
     },
     { idempotent: true, external: true },
   ),

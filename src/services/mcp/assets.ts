@@ -4,24 +4,6 @@ import { importAsset, native } from "../native";
 import { refreshGallery } from "../store";
 import { identifier, McpError, pagination, success, tool } from "./contracts";
 
-function assetSummary(entry: GalleryEntry) {
-  return {
-    assetId: entry.asset.id,
-    mediaType: entry.asset.mediaType,
-    width: entry.asset.width,
-    height: entry.asset.height,
-    inGallery: (entry.favorite || entry.boardIds.length > 0) && !entry.staged,
-    source: entry.source,
-    addedAt: entry.addedAt,
-    bytes: entry.bytes,
-    availability: entry.availability,
-    favorite: entry.favorite,
-    boardIds: entry.boardIds,
-    tags: entry.tags,
-    provenance: entry.provenance,
-  };
-}
-
 export const assetTools = [
   tool(
     "find_assets",
@@ -45,7 +27,13 @@ export const assetTools = [
         limit,
       });
       return success({
-        assets: page.entries.map(assetSummary),
+        assets: page.entries.map(({ asset, availability }) => ({
+          assetId: asset.id,
+          mediaType: asset.mediaType,
+          width: asset.width,
+          height: asset.height,
+          availability,
+        })),
         total: page.total,
         nextOffset: offset + page.entries.length < page.total ? offset + page.entries.length : null,
       });
@@ -58,8 +46,7 @@ export const assetTools = [
     z.strictObject({ assetId: identifier, variant: z.enum(["preview", "original"]).optional() }),
     async ({ assetId, variant = "preview" }) => {
       const entries = await native<GalleryEntry[]>("gallery_entries", { ids: [assetId] });
-      const entry = entries[0];
-      if (!entry) throw new McpError("ASSET_NOT_FOUND", `Image asset not found: ${assetId}`);
+      if (!entries.length) throw new McpError("ASSET_NOT_FOUND", `Image asset not found: ${assetId}`);
       let dataUrl: string;
       try {
         dataUrl = await native<string>("asset_data", { id: assetId, preview: variant === "preview" });
@@ -68,7 +55,7 @@ export const assetTools = [
       }
       const match = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl);
       if (!match) throw new McpError("INVALID_IMAGE", "The stored image could not be decoded.");
-      const result = success({ asset: assetSummary(entry), variant, returnedMediaType: match[1] });
+      const result = success({ assetId, returnedMediaType: match[1] });
       if (match[1] === "image/svg+xml") {
         const text = new TextDecoder().decode(Uint8Array.from(atob(match[2]), (character) => character.charCodeAt(0)));
         result.content.push({ type: "text", text });
@@ -101,7 +88,7 @@ export const assetTools = [
     async ({ source }) => {
       const entry = await importAsset(source.type === "path" ? { path: source.path } : { dataUrl: source.dataUrl });
       void refreshGallery([entry.asset.id]).catch(() => {});
-      return success({ asset: assetSummary(entry) });
+      return success({ assetId: entry.asset.id });
     },
   ),
 ];

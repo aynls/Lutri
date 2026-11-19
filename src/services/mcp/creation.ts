@@ -3,7 +3,7 @@ import type { GenerationDraft, Parameters } from "../../domain/types";
 import { combinationById } from "../../models";
 import { initialDraft, maxRequestCount } from "../../models/shared";
 import { validateDraft } from "../../models/validateDraft";
-import { batchRequestLimit, validateBatchDraft } from "../../batch/capabilities";
+import { validateBatchDraft } from "../../batch/capabilities";
 import { missingPromptReferences } from "../../domain/references";
 import { assetExists, native } from "../native";
 import { getState } from "../store";
@@ -73,7 +73,7 @@ export const creationSchema = z.strictObject({
   mask: z
     .strictObject({ assetId: identifier, referenceId: identifier })
     .optional()
-    .describe("Mask asset and the reference id it applies to. Use list_models to check mask support."),
+    .describe("Mask asset and the reference id it applies to."),
   inputPreparation: z
     .strictObject({ maxEdge: z.number().int().min(256).max(8192) })
     .optional()
@@ -195,14 +195,12 @@ export async function checkCreation(input: CreationInput, mode: ExecutionMode) {
     issues.push("layerOutputDirectory must be an existing absolute folder.");
   const assets = await Promise.all(ids.map(async (id) => ({ assetId: id, available: await assetExists(id) })));
   const { provider } = modelById(input.combinationId);
-  const { preferences } = getState();
   const credentialConfigured = await native<boolean>("credential_present", { provider });
   return {
     draft,
     issues,
     assets,
     credentialConfigured,
-    requestLimit: mode === "batch" ? batchRequestLimit : maxRequestCount(preferences),
   };
 }
 
