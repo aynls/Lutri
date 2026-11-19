@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowClockwiseIcon,
   ArrowCounterClockwiseIcon,
@@ -20,6 +20,17 @@ import { favorite } from "../gallery/actions";
 import { execute } from "../services/generation";
 import { changeFeed, removeFeed, useApplication } from "../services/store";
 import { c } from "./messages";
+import { useRequestMasonry } from "./useRequestMasonry";
+
+function ResultCell({ width, height, children }: { width: number; height: number; children: ReactNode }) {
+  // Reserve the first known frame for this keyed slot so an incoming asset cannot move its neighbors.
+  const [ratio] = useState(() => (width > 0 && height > 0 ? Math.max(0.5, Math.min(2.5, width / height)) : 1));
+  return (
+    <div className="result-cell" data-ratio={ratio}>
+      {children}
+    </div>
+  );
+}
 
 export function Feed({
   onView,
@@ -44,6 +55,12 @@ export function Feed({
     }
     return Array.from(byRequest, ([id, slots]) => ({ id, slots: slots.sort((a, b) => a.resultIndex - b.resultIndex) }));
   }, [feed]);
+  const masonry = useRequestMasonry(
+    groups
+      .filter(({ id }) => taskMap.has(id))
+      .map(({ id, slots }) => `${id}:${slots.map((slot) => slot.id).join(",")}`)
+      .join("|"),
+  );
   const viewerIds = groups.flatMap(({ id, slots }) =>
     slots.flatMap((slot) => {
       const assetId = taskMap.get(id)?.results[slot.resultIndex]?.assetId;
@@ -95,7 +112,7 @@ export function Feed({
           <p>{t("empty")}</p>
         </div>
       ) : (
-        <div className="request-feed">
+        <div className="request-feed" ref={masonry}>
           {groups.map(({ id, slots }) => {
             const task = taskMap.get(id);
             if (!task) return null;
@@ -107,9 +124,11 @@ export function Feed({
                 <header className="request-heading">
                   <span className="request-model">
                     <ModelIcon family={model.family} size={16} />
-                    {model.label}
+                    <span title={model.label}>{model.label}</span>
                   </span>
-                  <span className="request-status">{t(task.status)}</span>
+                  <span className="request-status" title={t(task.status)}>
+                    {t(task.status)}
+                  </span>
                   <p className="result-prompt">{displayPrompt(task.draft)}</p>
                   <button title={t("restore")} onClick={() => onRestore(task.draft)}>
                     <ArrowCounterClockwiseIcon />
@@ -127,11 +146,7 @@ export function Feed({
                     const asset = result?.assetId ? assets.get(result.assetId) : undefined;
                     const { width, height } = asset?.asset ?? frame;
                     return (
-                      <div
-                        key={slot.id}
-                        className="result-cell"
-                        style={{ aspectRatio: width > 0 && height > 0 ? width / height : 1 }}
-                      >
+                      <ResultCell key={slot.id} width={width} height={height}>
                         <button
                           className="card-remove"
                           title={t("remove")}
@@ -186,7 +201,7 @@ export function Feed({
                             )}
                           </div>
                         )}
-                      </div>
+                      </ResultCell>
                     );
                   })}
                 </div>
